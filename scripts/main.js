@@ -1,5 +1,6 @@
 const MODULE_ID = "npc-spell-book";
 const SPELLBOOK_ICON = "icons/svg/book.svg";
+const FORMULA_ICON = "icons/svg/scroll.svg";
 const FALLBACK_SPELL_ICON = "icons/svg/book.svg";
 
 function log(...args) {
@@ -41,15 +42,23 @@ function isSpellbookItem(item) {
   return item?.getFlag?.(MODULE_ID, "spellbook") === true;
 }
 
-function isSpellCopy(item) {
+function isLegacySpellCopy(item) {
   return item?.getFlag?.(MODULE_ID, "spellCopy") === true;
+}
+
+function isFormulaEntry(item) {
+  return item?.getFlag?.(MODULE_ID, "formulaEntry") === true;
+}
+
+function getFormulaItemName(sourceSpell) {
+  return `Spell Formula: ${sourceSpell.name}`;
 }
 
 function getSourceSpellsFromActor(actor) {
   const actorItems = actor?.items?.contents ?? [];
 
   const spells = actorItems
-    .filter((item) => item.type === "spell" && !isSpellCopy(item))
+    .filter((item) => item.type === "spell" && !isLegacySpellCopy(item))
     .sort((a, b) => {
       const aLevel = Number(a.system?.level ?? 0);
       const bLevel = Number(b.system?.level ?? 0);
@@ -78,7 +87,8 @@ function buildStoredSpellData(sourceSpell) {
     uses: sourceSpell.system?.uses ?? {},
     materials: sourceSpell.system?.materials ?? {},
     consume: sourceSpell.system?.consume ?? {},
-    preparation: sourceSpell.system?.preparation ?? {},
+    method: sourceSpell.system?.method ?? "",
+    prepared: sourceSpell.system?.prepared ?? false,
     scaling: sourceSpell.system?.scaling ?? {}
   };
 }
@@ -200,18 +210,105 @@ async function ensureSpellbookItem(actor, storedSpells, wizardLevel) {
 }
 
 async function removeLegacySpellCopies(actor) {
-  const copies = actor.items.filter((item) => isSpellCopy(item));
-  if (!copies.length) {
-    return 0;
-  }
+  const copies = actor.items.filter((item) => isLegacySpellCopy(item));
+  if (!copies.length) return 0;
 
-  await actor.deleteEmbeddedDocuments(
-    "Item",
-    copies.map((item) => item.id)
-  );
-
+  await actor.deleteEmbeddedDocuments("Item", copies.map((item) => item.id));
   log(`${actor.name}: removed ${copies.length} legacy spell cop${copies.length === 1 ? "y" : "ies"}.`);
   return copies.length;
+}
+
+function buildFormulaDescription(sourceSpell) {
+  const level = Number(sourceSpell.system?.level ?? 0);
+  const levelText = level === 0 ? "Cantrip" : `Level ${level}`;
+  const school = sourceSpell.system?.school ? ` • ${sourceSpell.system.school}` : "";
+  const description = sourceSpell.system?.description?.value ?? "";
+
+  return `
+    <div class="npc-spell-formula">
+      <p><strong>${sourceSpell.name}</strong></p>
+      <p><em>${levelText}${school}</em></p>
+      <hr />
+      ${description || "<p><em>No description available.</em></p>"}
+    </div>
+  `.trim();
+}
+
+function buildFormulaItemData(sourceSpell, spellbookItem) {
+  return {
+    name: getFormulaItemName(sourceSpell),
+    type: "loot",
+    img: sourceSpell.img || FORMULA_ICON,
+    system: {
+      quantity: 1,
+      weight: 0,
+      price: {
+        value: 0,
+        denomination: "gp"
+      },
+      description: {
+        value: buildFormulaDescription(sourceSpell)
+      },
+      container: spellbookItem.id
+    },
+    flags: {
+      [MODULE_ID]: {
+        formulaEntry: true,
+        sourceSpellId: sourceSpell.id,
+        sourceSpellUuid: sourceSpell.uuid,
+        spellName: sourceSpell.name,
+        level: Number(sourceSpell.system?.level ?? 0),
+        school: sourceSpell.system?.school ?? "",
+        syncedAt: new Date().toISOString()
+      }
+    }
+  };
+}
+
+async function syncFormulaEntries(actor, spellbookItem, sourceSpells) {
+  const actorItems = actor.items.contents ?? [];
+
+  const existingEntries = actorItems.filter(
+    (item) => isFormulaEntry(item) && item.system?.container === spellbookItem.id
+  );
+
+  const existingBySourceId = new Map(
+    existingEntries.map((item) => [item.getFlag(MODULE_ID, "sourceSpellId"), item])
+  );
+
+  const sourceIds = new Set(sourceSpells.map((spell) => spell.id));
+
+  let added = 0;
+  let updated = 0;
+  let removed = 0;
+
+  for (const sourceSpell of sourceSpells) {
+    const itemData = buildFormulaItemData(sourceSpell, spellbookItem);
+    const existingEntry = existingBySourceId.get(sourceSpell.id);
+
+    if (existingEntry) {
+      await existingEntry.update(itemData);
+      updated += 1;
+    } else {
+      const created = await actor.createEmbeddedDocuments("Item", [itemData]);
+      if (created?.[0]) added += 1;
+    }
+  }
+
+  const staleEntries = existingEntries.filter((item) => {
+    const sourceSpellId = item.getFlag(MODULE_ID, "sourceSpellId");
+    return !sourceIds.has(sourceSpellId);
+  });
+
+  if (staleEntries.length) {
+    await actor.deleteEmbeddedDocuments(
+      "Item",
+      staleEntries.map((item) => item.id)
+    );
+    removed = staleEntries.length;
+  }
+
+  return { added, updated, removed };
 }
 
 async function createSummaryChatMessage({
@@ -220,7 +317,10 @@ async function createSummaryChatMessage({
   storedSpells,
   wizardLevel,
   rulesVersion,
-  removedCopies
+  removedCopies,
+  addedEntries,
+  updatedEntries,
+  removedEntries
 }) {
   const content = `
     <div class="npc-spellbook-summary">
@@ -232,6 +332,9 @@ async function createSummaryChatMessage({
         <li>Wizard level: ${wizardLevel}.</li>
         <li>Spells stored: ${storedSpells.length}.</li>
         <li>Legacy spell copies removed: ${removedCopies}.</li>
+        <li>Formula entries added: ${addedEntries}.</li>
+        <li>Formula entries updated: ${updatedEntries}.</li>
+        <li>Formula entries removed: ${removedEntries}.</li>
       </ul>
     </div>
   `;
@@ -258,13 +361,22 @@ async function syncSpellbookForActor(actor) {
   const { item: spellbookItem, created: createdSpellbook } =
     await ensureSpellbookItem(actor, storedSpells, wizardLevel);
 
+  const {
+    added: addedEntries,
+    updated: updatedEntries,
+    removed: removedEntries
+  } = await syncFormulaEntries(actor, spellbookItem, sourceSpells);
+
   await createSummaryChatMessage({
     actor,
     createdSpellbook,
     storedSpells,
     wizardLevel,
     rulesVersion,
-    removedCopies
+    removedCopies,
+    addedEntries,
+    updatedEntries,
+    removedEntries
   });
 
   ui.notifications.info(`${actor.name}: spellbook synced successfully.`);
@@ -277,7 +389,10 @@ async function syncSpellbookForActor(actor) {
     rulesVersion,
     wizardLevel,
     storedSpellCount: storedSpells.length,
-    removedCopies
+    removedCopies,
+    addedEntries,
+    updatedEntries,
+    removedEntries
   };
 }
 
