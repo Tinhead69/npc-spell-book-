@@ -48,6 +48,7 @@ Hooks.once("init", () => {
           const id = getEntryId(li);
           const item = game.items.get(id);
           if (!item) return;
+
           await markAsSpellbook(item);
           ui.notifications.info(`${item.name} is now a spellbook.`);
         }
@@ -65,6 +66,7 @@ Hooks.once("init", () => {
           const id = getEntryId(li);
           const item = game.items.get(id);
           if (!item) return;
+
           await item.unsetFlag(MODULE_ID, "isSpellbook");
           await item.unsetFlag(MODULE_ID, "spells");
           ui.notifications.info(`${item.name} is no longer a spellbook.`);
@@ -83,50 +85,51 @@ Hooks.once("ready", () => {
 });
 
 Hooks.on("renderDialog", (app, html) => {
-  console.log("NPC Spellbook | renderDialog fired", app, html);
   try {
-    // Only target dialogs that look like the item creation dialog
-    const hasTypeRadios = html.find("input[name='type']").length > 0;
-    const hasCreateButton = html.text().includes("CREATE ITEM");
+    console.log("NPC Spellbook | renderDialog fired");
 
-    if (!hasTypeRadios || !hasCreateButton) return;
+    const typeInputs = html.find("input[name='type']");
+    if (!typeInputs.length) return;
 
+    const createButton = html
+      .find("button[type='submit'], .dialog-buttons button")
+      .filter((_, el) => /create item/i.test(el.textContent ?? ""))
+      .first();
+
+    if (!createButton.length) return;
     if (html.find(".npc-spellbook-choice").length) return;
 
-    const submitButton = html.find("button[type='submit'], .dialog-buttons button");
-    if (!submitButton.length) return;
+    const lootInput = html.find("input[name='type'][value='loot']").first();
+    const lootRow = lootInput.closest("label");
 
-    const lootInput = html.find("input[name='type'][value='loot']");
-    const lootLabel = lootInput.closest("label");
-
-    const spellbookLabel = $(`
+    const spellbookRow = $(`
       <label class="npc-spellbook-choice">
-        <input type="radio" name="type" value="__npc_spellbook__">
         <span class="npc-spellbook-choice-content">
           <img src="${SPELLBOOK_ICON}" alt="Spellbook">
           <span class="npc-spellbook-choice-text">Spellbook</span>
         </span>
+        <input type="radio" name="type" value="__npc_spellbook__">
       </label>
     `);
 
-    if (lootLabel.length) {
-      lootLabel.after(spellbookLabel);
+    if (lootRow.length) {
+      lootRow.after(spellbookRow);
     } else {
-      const form = html.find("form");
-      form.append(spellbookLabel);
+      typeInputs.last().closest("label").after(spellbookRow);
     }
 
-    submitButton.off("click.npcSpellbook").on("click.npcSpellbook", async (event) => {
+    createButton.off("click.npcSpellbook").on("click.npcSpellbook", async (event) => {
       const selected = html.find("input[name='type']:checked").val();
       if (selected !== "__npc_spellbook__") return;
 
       event.preventDefault();
       event.stopPropagation();
 
+      const nameField = html.find("input[name='name']").val() || "New Spellbook";
       const folderValue = html.find("[name='folder']").val() || null;
 
       const item = await Item.create({
-        name: "New Spellbook",
+        name: nameField,
         type: "loot",
         img: SPELLBOOK_ICON,
         folder: folderValue
@@ -139,7 +142,7 @@ Hooks.on("renderDialog", (app, html) => {
       item.sheet?.render(true);
     });
 
-    console.log("NPC Spellbook | Spellbook option injected into create item dialog");
+    console.log("NPC Spellbook | Spellbook option injected");
   } catch (err) {
     console.error("NPC Spellbook | Failed to patch create item dialog", err);
   }
