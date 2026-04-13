@@ -85,6 +85,7 @@ Hooks.once("ready", () => {
 });
 
 Hooks.on("renderDialog", (app, html) => {
+  console.log("NPC Spellbook | renderDialog fired", app, html);
   try {
     console.log("NPC Spellbook | renderDialog fired");
 
