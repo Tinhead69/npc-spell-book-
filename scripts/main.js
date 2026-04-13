@@ -141,27 +141,36 @@ function buildStoredSpellData(spell, actor) {
 }
 
 async function ensureSpellbookItem(actor) {
-  let book = findExistingSpellbook(actor);
-  if (book) return { book, created: false };
+  const desiredName = `Spell book of ${actor.name}`;
+  console.log("NPC Spellbook | ensureSpellbookItem | actor:", actor.name);
+  console.log("NPC Spellbook | ensureSpellbookItem | desiredName:", desiredName);
+
+  const existing = actor.items.find(i => i.name === desiredName);
+  console.log("NPC Spellbook | ensureSpellbookItem | existing:", existing);
+
+  if (existing) {
+    console.log("NPC Spellbook | ensureSpellbookItem | using existing item:", existing.name, existing.id);
+    return existing;
+  }
 
   const itemData = {
-    name: getSpellbookName(actor),
-    type: "container",
-    img: SPELLBOOK_ICON,
-    system: {
-      equipped: true
-    },
-    flags: {
-      [MODULE_ID]: {
-        isSpellbook: true,
-        ownerActorId: actor.id,
-        ownerActorName: actor.name,
-        rulesVersion: getRulesVersion(),
-        wizardLevel: getWizardLevel(actor),
-        spells: []
-      }
-    }
+    name: desiredName,
+    type: "feat",
+    img: "icons/svg/book.svg",
+    system: {}
   };
+
+  console.log("NPC Spellbook | ensureSpellbookItem | creating with data:", itemData);
+
+  try {
+    const created = await actor.createEmbeddedDocuments("Item", [itemData]);
+    console.log("NPC Spellbook | ensureSpellbookItem | created result:", created);
+    return created?.[0] ?? null;
+  } catch (err) {
+    console.error("NPC Spellbook | ensureSpellbookItem | creation failed:", err);
+    return null;
+  }
+}
 
   const createdDocs = await actor.createEmbeddedDocuments("Item", [itemData]);
   const created = createdDocs?.[0];
