@@ -6,17 +6,32 @@ Hooks.once("ready", () => {
   console.log("NPC Spellbook | Ready");
 });
 
+function getEntryId(li) {
+  return (
+    li?.data?.("entryId") ??
+    li?.data?.("documentId") ??
+    li?.attr?.("data-entry-id") ??
+    li?.attr?.("data-document-id") ??
+    li?.[0]?.dataset?.entryId ??
+    li?.[0]?.dataset?.documentId ??
+    null
+  );
+}
+
 Hooks.on("getItemDirectoryEntryContext", (html, menuItems) => {
+  console.log("NPC Spellbook | Context hook fired");
+
   menuItems.push({
     name: "Mark as Spellbook",
     icon: '<i class="fas fa-book"></i>',
     condition: li => {
-      const id = li.data("documentId");
+      const id = getEntryId(li);
       const item = game.items.get(id);
+      console.log("NPC Spellbook | Mark check", { id, item });
       return item?.type === "loot" && !item.getFlag("npc-spell-book", "isSpellbook");
     },
     callback: async li => {
-      const id = li.data("documentId");
+      const id = getEntryId(li);
       const item = game.items.get(id);
       if (!item) return;
 
@@ -31,12 +46,13 @@ Hooks.on("getItemDirectoryEntryContext", (html, menuItems) => {
     name: "Remove Spellbook Flag",
     icon: '<i class="fas fa-book-dead"></i>',
     condition: li => {
-      const id = li.data("documentId");
+      const id = getEntryId(li);
       const item = game.items.get(id);
+      console.log("NPC Spellbook | Remove check", { id, item });
       return item?.getFlag("npc-spell-book", "isSpellbook") === true;
     },
     callback: async li => {
-      const id = li.data("documentId");
+      const id = getEntryId(li);
       const item = game.items.get(id);
       if (!item) return;
 
