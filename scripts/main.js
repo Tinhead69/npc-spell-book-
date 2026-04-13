@@ -41,50 +41,39 @@ function getSpellbookItemName(actor) {
   return `Spell book of ${actor.name}`;
 }
 
-function getSpellbookFlag(item) {
+function isSpellbookItem(item) {
   return item?.getFlag?.(MODULE_ID, "spellbook") === true;
 }
 
 function getWizardSpellsFromActor(actor) {
-  const rulesVersion = getRulesVersion();
+  const actorItems = actor?.items?.contents ?? actor?.items ?? [];
+  const wizardLevel = getWizardLevel(actor);
 
-  const spells = actor.items.filter((item) => {
+  const spells = actorItems.filter((item) => {
     if (item.type !== "spell") return false;
 
     const preparationMode =
       item.system?.preparation?.mode ??
       item.system?.preparationMode ??
-      null;
+      "";
 
-    const spellClass =
+    const sourceClass =
       item.system?.source?.class ??
+      item.system?.sourceClass ??
       item.system?.chatFlavor ??
       "";
 
-    // Keep this broad and robust.
-    // We mainly want wizard spells on the actor sheet.
-    const isWizardPrepared =
-      preparationMode === "prepared" ||
-      preparationMode === "always" ||
-      preparationMode === "innate" ||
-      preparationMode === "pact";
+    const sourceText = String(sourceClass).toLowerCase();
+    const looksWizardish = sourceText.includes("wizard");
 
-    const looksWizardish =
-      typeof spellClass === "string" &&
-      spellClass.toLowerCase().includes("wizard");
+    if (looksWizardish) return true;
 
-    // If the actor actually has wizard levels, keep spell items unless
-    // they are obviously from another source.
-    if (getWizardLevel(actor) > 0) {
-      return isWizardPrepared || !spellClass || looksWizardish;
+    if (wizardLevel > 0) {
+      return ["prepared", "always", "innate", "atwill", "pact"].includes(preparationMode);
     }
 
-    return looksWizardish;
+    return false;
   });
-
-  log(
-    `Collected ${spells.length} spell(s) from ${actor.name} using rulesVersion=${rulesVersion}.`
-  );
 
   return spells.sort((a, b) => {
     const aLevel = Number(a.system?.level ?? 0);
@@ -108,8 +97,6 @@ function buildStoredSpellData(spell) {
     activation: spell.system?.activation ?? {},
     target: spell.system?.target ?? {},
     range: spell.system?.range ?? {},
-    uses: spell.system?.uses ?? {},
-    consume: spell.system?.consume ?? {},
     duration: spell.system?.duration ?? {},
     materials: spell.system?.materials ?? {},
     scaling: spell.system?.scaling ?? {},
@@ -121,15 +108,15 @@ function buildStoredSpellData(spell) {
 }
 
 function renderSpellbookHtml(actor, storedSpells, wizardLevel, rulesVersion) {
-  const byLevel = new Map();
+  const grouped = new Map();
 
   for (const spell of storedSpells) {
     const level = Number(spell.level ?? 0);
-    if (!byLevel.has(level)) byLevel.set(level, []);
-    byLevel.get(level).push(spell);
+    if (!grouped.has(level)) grouped.set(level, []);
+    grouped.get(level).push(spell);
   }
 
-  const sections = [...byLevel.entries()]
+  const sections = [...grouped.entries()]
     .sort((a, b) => a[0] - b[0])
     .map(([level, spells]) => {
       const heading = level === 0 ? "Cantrips" : `Level ${level}`;
@@ -162,11 +149,20 @@ function renderSpellbookHtml(actor, storedSpells, wizardLevel, rulesVersion) {
   `.trim();
 }
 
+async function applySpellbookFlags(item, actor, storedSpells, wizardLevel, rulesVersion) {
+  await item.setFlag(MODULE_ID, "spellbook", true);
+  await item.setFlag(MODULE_ID, "ownerActorId", actor.id);
+  await item.setFlag(MODULE_ID, "storedSpells", storedSpells);
+  await item.setFlag(MODULE_ID, "wizardLevel", wizardLevel);
+  await item.setFlag(MODULE_ID, "rulesVersion", rulesVersion);
+  await item.setFlag(MODULE_ID, "syncedAt", new Date().toISOString());
+}
+
 async function ensureSpellbookItem(actor, storedSpells, wizardLevel) {
   const itemName = getSpellbookItemName(actor);
   const rulesVersion = getRulesVersion();
 
-  let spellbookItem = actor.items.find((item) => getSpellbookFlag(item));
+  let spellbookItem = actor.items.find((item) => isSpellbookItem(item));
 
   if (!spellbookItem) {
     spellbookItem = actor.items.find((item) => item.name === itemName);
@@ -174,39 +170,55 @@ async function ensureSpellbookItem(actor, storedSpells, wizardLevel) {
 
   const html = renderSpellbookHtml(actor, storedSpells, wizardLevel, rulesVersion);
 
-  const itemData = {
+  if (spellbookItem) {
+    await spellbookItem.update({
+      name: itemName,
+      img: SPELLBOOK_ICON,
+      system: {
+        ...(spellbookItem.system ?? {}),
+        description: {
+          ...(spellbookItem.system?.description ?? {}),
+          value: html
+        }
+      }
+    });
+
+    await applySpellbookFlags(
+      spellbookItem,
+      actor,
+      storedSpells,
+      wizardLevel,
+      rulesVersion
+    );
+
+    log(`Updated spellbook item for ${actor.name}: ${spellbookItem.name}`);
+    return { item: spellbookItem, created: false };
+  }
+
+  const created = await actor.createEmbeddedDocuments("Item", [{
     name: itemName,
-    type: "feat",
+    type: "container",
     img: SPELLBOOK_ICON,
     system: {
       description: {
         value: html
       }
-    },
-    flags: {
-      [MODULE_ID]: {
-        spellbook: true,
-        ownerActorId: actor.id,
-        storedSpells,
-        wizardLevel,
-        rulesVersion,
-        syncedAt: new Date().toISOString()
-      }
     }
-  };
+  }]);
 
-  if (spellbookItem) {
-    await spellbookItem.update(itemData);
-    log(`Updated spellbook item for ${actor.name}: ${spellbookItem.name}`);
-    return { item: spellbookItem, created: false };
-  }
-
-  const created = await actor.createEmbeddedDocuments("Item", [itemData]);
   const createdItem = created?.[0] ?? null;
 
   if (!createdItem) {
     throw new Error(`Failed to create spellbook item for ${actor.name}.`);
   }
+
+  await applySpellbookFlags(
+    createdItem,
+    actor,
+    storedSpells,
+    wizardLevel,
+    rulesVersion
+  );
 
   log(`Created spellbook item for ${actor.name}: ${createdItem.name}`);
   return { item: createdItem, created: true };
@@ -273,6 +285,7 @@ async function syncSpellbookForActor(actor) {
     actorName: actor.name,
     itemId: item.id,
     itemName: item.name,
+    itemType: item.type,
     created,
     rulesVersion,
     wizardLevel,
