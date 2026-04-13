@@ -1,5 +1,5 @@
 const MODULE_ID = "npc-spell-book";
-const SPELLBOOK_ICON = "icons/sundries/books/book-symbol-moon-gold-blue.webp";
+const SPELLBOOK_ICON = "icons/containers/boxes/crate-heavy-brown.webp";
 
 function log(...args) {
   console.log("NPC Spellbook |", ...args);
@@ -7,7 +7,11 @@ function log(...args) {
 
 function getRulesVersion() {
   try {
-    return game.settings.get("dnd5e", "modern") ?? "legacy";
+    const settings = game.settings?.settings;
+    if (settings?.has("dnd5e.rulesVersion")) {
+      return game.settings.get("dnd5e", "rulesVersion") ?? "legacy";
+    }
+    return "legacy";
   } catch (err) {
     console.warn("NPC Spellbook | Could not read dnd5e rules version setting", err);
     return "legacy";
