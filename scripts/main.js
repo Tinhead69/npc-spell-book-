@@ -2,9 +2,6 @@ const MODULE_ID = "npc-spell-book";
 const SPELLBOOK_ICON = "icons/svg/book.svg";
 const FALLBACK_SPELL_ICON = "icons/svg/book.svg";
 
-/**
- * Simple logger helpers.
- */
 function log(...args) {
   console.log("NPC Spellbook |", ...args);
 }
@@ -13,9 +10,6 @@ function warn(...args) {
   console.warn("NPC Spellbook |", ...args);
 }
 
-/**
- * Read the current dnd5e rules version safely.
- */
 function getRulesVersion() {
   try {
     if (game.settings?.settings?.has("dnd5e.rulesVersion")) {
@@ -28,9 +22,6 @@ function getRulesVersion() {
   }
 }
 
-/**
- * Get wizard level from the actor if present.
- */
 function getWizardLevel(actor) {
   try {
     const actorClasses = actor?.classes ?? actor?.system?.classes ?? {};
@@ -42,33 +33,18 @@ function getWizardLevel(actor) {
   }
 }
 
-/**
- * Consistent spellbook item name.
- */
 function getSpellbookItemName(actor) {
   return `Spell book of ${actor.name}`;
 }
 
-/**
- * Is this item the spellbook container created by this module?
- */
 function isSpellbookItem(item) {
   return item?.getFlag?.(MODULE_ID, "spellbook") === true;
 }
 
-/**
- * Is this item a copied spell that belongs to a spellbook?
- */
 function isSpellCopy(item) {
   return item?.getFlag?.(MODULE_ID, "spellCopy") === true;
 }
 
-/**
- * Gather source spells from the actor.
- * This intentionally keeps things simple:
- * - include all spell items on the actor
- * - exclude any spell copies previously created by this module
- */
 function getSourceSpellsFromActor(actor) {
   const actorItems = actor?.items?.contents ?? [];
 
@@ -85,14 +61,33 @@ function getSourceSpellsFromActor(actor) {
   return spells;
 }
 
-/**
- * Build HTML shown on the spellbook container description.
- */
-function buildSpellbookHtml(actor, spells, wizardLevel, rulesVersion) {
+function buildStoredSpellData(sourceSpell) {
+  return {
+    id: sourceSpell.id,
+    name: sourceSpell.name,
+    uuid: sourceSpell.uuid,
+    img: sourceSpell.img || FALLBACK_SPELL_ICON,
+    level: Number(sourceSpell.system?.level ?? 0),
+    school: sourceSpell.system?.school ?? "",
+    description: sourceSpell.system?.description?.value ?? "",
+    source: sourceSpell.system?.source ?? {},
+    activation: sourceSpell.system?.activation ?? {},
+    duration: sourceSpell.system?.duration ?? {},
+    target: sourceSpell.system?.target ?? {},
+    range: sourceSpell.system?.range ?? {},
+    uses: sourceSpell.system?.uses ?? {},
+    materials: sourceSpell.system?.materials ?? {},
+    consume: sourceSpell.system?.consume ?? {},
+    preparation: sourceSpell.system?.preparation ?? {},
+    scaling: sourceSpell.system?.scaling ?? {}
+  };
+}
+
+function buildSpellbookHtml(actor, storedSpells, wizardLevel, rulesVersion) {
   const grouped = new Map();
 
-  for (const spell of spells) {
-    const level = Number(spell.system?.level ?? 0);
+  for (const spell of storedSpells) {
+    const level = Number(spell.level ?? 0);
     if (!grouped.has(level)) grouped.set(level, []);
     grouped.get(level).push(spell);
   }
@@ -102,7 +97,10 @@ function buildSpellbookHtml(actor, spells, wizardLevel, rulesVersion) {
     .map(([level, entries]) => {
       const heading = level === 0 ? "Cantrips" : `Level ${level}`;
       const list = entries
-        .map((spell) => `<li><strong>${spell.name}</strong></li>`)
+        .map((spell) => {
+          const school = spell.school ? ` <em>(${spell.school})</em>` : "";
+          return `<li><strong>${spell.name}</strong>${school}</li>`;
+        })
         .join("");
 
       return `
@@ -120,29 +118,24 @@ function buildSpellbookHtml(actor, spells, wizardLevel, rulesVersion) {
       <p><strong>Owner:</strong> ${actor.name}</p>
       <p><strong>Rules version:</strong> ${rulesVersion}</p>
       <p><strong>Wizard level:</strong> ${wizardLevel}</p>
-      <p><strong>Stored spells:</strong> ${spells.length}</p>
+      <p><strong>Stored spells:</strong> ${storedSpells.length}</p>
       <hr />
       ${sections || "<p><em>No spells stored.</em></p>"}
     </div>
   `.trim();
 }
 
-/**
- * Apply identifying flags to the spellbook container.
- */
-async function applySpellbookFlags(item, actor, wizardLevel, rulesVersion, spellCount) {
+async function applySpellbookFlags(item, actor, wizardLevel, rulesVersion, storedSpells) {
   await item.setFlag(MODULE_ID, "spellbook", true);
   await item.setFlag(MODULE_ID, "ownerActorId", actor.id);
   await item.setFlag(MODULE_ID, "wizardLevel", wizardLevel);
   await item.setFlag(MODULE_ID, "rulesVersion", rulesVersion);
-  await item.setFlag(MODULE_ID, "storedSpellCount", spellCount);
+  await item.setFlag(MODULE_ID, "storedSpellCount", storedSpells.length);
+  await item.setFlag(MODULE_ID, "storedSpells", storedSpells);
   await item.setFlag(MODULE_ID, "syncedAt", new Date().toISOString());
 }
 
-/**
- * Find or create the spellbook container item.
- */
-async function ensureSpellbookItem(actor, sourceSpells, wizardLevel) {
+async function ensureSpellbookItem(actor, storedSpells, wizardLevel) {
   const itemName = getSpellbookItemName(actor);
   const rulesVersion = getRulesVersion();
 
@@ -151,7 +144,7 @@ async function ensureSpellbookItem(actor, sourceSpells, wizardLevel) {
     spellbookItem = actor.items.find((item) => item.name === itemName);
   }
 
-  const html = buildSpellbookHtml(actor, sourceSpells, wizardLevel, rulesVersion);
+  const html = buildSpellbookHtml(actor, storedSpells, wizardLevel, rulesVersion);
 
   if (spellbookItem) {
     await spellbookItem.update({
@@ -171,7 +164,7 @@ async function ensureSpellbookItem(actor, sourceSpells, wizardLevel) {
       actor,
       wizardLevel,
       rulesVersion,
-      sourceSpells.length
+      storedSpells
     );
 
     return { item: spellbookItem, created: false };
@@ -200,125 +193,34 @@ async function ensureSpellbookItem(actor, sourceSpells, wizardLevel) {
     actor,
     wizardLevel,
     rulesVersion,
-    sourceSpells.length
+    storedSpells
   );
 
   return { item: createdItem, created: true };
 }
 
-/**
- * Build a lean spell copy payload.
- * Important: do NOT clone sourceSpell.toObject() wholesale.
- */
-function buildSpellCopyData(sourceSpell, spellbookId) {
-  return {
-    name: `[Book] ${sourceSpell.name}`,
-    type: "spell",
-    img: sourceSpell.img || FALLBACK_SPELL_ICON,
-    system: {
-      level: sourceSpell.system?.level ?? 0,
-      school: sourceSpell.system?.school ?? "",
-      description: {
-        value: sourceSpell.system?.description?.value ?? ""
-      },
-      source: sourceSpell.system?.source ?? {},
-      activation: sourceSpell.system?.activation ?? {},
-      duration: sourceSpell.system?.duration ?? {},
-      target: sourceSpell.system?.target ?? {},
-      range: sourceSpell.system?.range ?? {},
-      uses: sourceSpell.system?.uses ?? {},
-      materials: sourceSpell.system?.materials ?? {},
-      consume: sourceSpell.system?.consume ?? {},
-      preparation: sourceSpell.system?.preparation ?? {},
-      scaling: sourceSpell.system?.scaling ?? {},
-      container: spellbookId
-    },
-    flags: {
-      [MODULE_ID]: {
-        spellCopy: true,
-        sourceSpellId: sourceSpell.id,
-        sourceSpellUuid: sourceSpell.uuid,
-        syncedAt: new Date().toISOString()
-      }
-    }
-  };
-}
-
-/**
- * Sync source spells into the spellbook container as copied spell items.
- */
-async function syncSpellsIntoSpellbook(actor, spellbookItem, sourceSpells) {
-  const actorItems = actor.items.contents ?? [];
-
-  const existingCopies = actorItems.filter(
-    (item) => isSpellCopy(item) && item.system?.container === spellbookItem.id
-  );
-
-  const existingBySourceId = new Map(
-    existingCopies.map((item) => [item.getFlag(MODULE_ID, "sourceSpellId"), item])
-  );
-
-  const sourceIds = new Set(sourceSpells.map((spell) => spell.id));
-
-  let added = 0;
-  let updated = 0;
-  let removed = 0;
-
-  for (const sourceSpell of sourceSpells) {
-    const copyData = buildSpellCopyData(sourceSpell, spellbookItem.id);
-    const existingCopy = existingBySourceId.get(sourceSpell.id);
-
-    try {
-      if (existingCopy) {
-        await existingCopy.update(copyData);
-        updated += 1;
-        log(`Updated spell copy: ${existingCopy.name}`);
-      } else {
-        const created = await actor.createEmbeddedDocuments("Item", [copyData]);
-        if (created?.[0]) {
-          added += 1;
-          log(`Created spell copy: ${created[0].name}`);
-        } else {
-          warn(`No spell copy returned for ${sourceSpell.name}`);
-        }
-      }
-    } catch (err) {
-      console.error(
-        `NPC Spellbook | Failed to sync spell copy for ${sourceSpell.name}`,
-        err,
-        copyData
-      );
-    }
+async function removeLegacySpellCopies(actor) {
+  const copies = actor.items.filter((item) => isSpellCopy(item));
+  if (!copies.length) {
+    return 0;
   }
 
-  const staleCopies = existingCopies.filter((item) => {
-    const sourceSpellId = item.getFlag(MODULE_ID, "sourceSpellId");
-    return !sourceIds.has(sourceSpellId);
-  });
+  await actor.deleteEmbeddedDocuments(
+    "Item",
+    copies.map((item) => item.id)
+  );
 
-  if (staleCopies.length) {
-    await actor.deleteEmbeddedDocuments(
-      "Item",
-      staleCopies.map((item) => item.id)
-    );
-    removed = staleCopies.length;
-  }
-
-  return { added, updated, removed };
+  log(`${actor.name}: removed ${copies.length} legacy spell cop${copies.length === 1 ? "y" : "ies"}.`);
+  return copies.length;
 }
 
-/**
- * Create a whisper summary for the GM.
- */
 async function createSummaryChatMessage({
   actor,
   createdSpellbook,
-  sourceSpells,
+  storedSpells,
   wizardLevel,
   rulesVersion,
-  added,
-  updated,
-  removed
+  removedCopies
 }) {
   const content = `
     <div class="npc-spellbook-summary">
@@ -328,10 +230,8 @@ async function createSummaryChatMessage({
         <li>${createdSpellbook ? "Created spellbook." : "Updated spellbook."}</li>
         <li>Rules version: ${rulesVersion}.</li>
         <li>Wizard level: ${wizardLevel}.</li>
-        <li>Source spells found: ${sourceSpells.length}.</li>
-        <li>Added: ${added}.</li>
-        <li>Updated: ${updated}.</li>
-        <li>Removed: ${removed}.</li>
+        <li>Spells stored: ${storedSpells.length}.</li>
+        <li>Legacy spell copies removed: ${removedCopies}.</li>
       </ul>
     </div>
   `;
@@ -343,9 +243,6 @@ async function createSummaryChatMessage({
   });
 }
 
-/**
- * Main entry point.
- */
 async function syncSpellbookForActor(actor) {
   if (!actor) {
     throw new Error("No actor supplied to syncSpellbookForActor.");
@@ -354,44 +251,20 @@ async function syncSpellbookForActor(actor) {
   const rulesVersion = getRulesVersion();
   const wizardLevel = getWizardLevel(actor);
   const sourceSpells = getSourceSpellsFromActor(actor);
+  const storedSpells = sourceSpells.map(buildStoredSpellData);
+
+  const removedCopies = await removeLegacySpellCopies(actor);
 
   const { item: spellbookItem, created: createdSpellbook } =
-    await ensureSpellbookItem(actor, sourceSpells, wizardLevel);
-
-  const { added, updated, removed } = await syncSpellsIntoSpellbook(
-    actor,
-    spellbookItem,
-    sourceSpells
-  );
-
-  await spellbookItem.update({
-    img: SPELLBOOK_ICON,
-    system: {
-      ...(spellbookItem.system ?? {}),
-      description: {
-        ...(spellbookItem.system?.description ?? {}),
-        value: buildSpellbookHtml(actor, sourceSpells, wizardLevel, rulesVersion)
-      }
-    }
-  });
-
-  await applySpellbookFlags(
-    spellbookItem,
-    actor,
-    wizardLevel,
-    rulesVersion,
-    sourceSpells.length
-  );
+    await ensureSpellbookItem(actor, storedSpells, wizardLevel);
 
   await createSummaryChatMessage({
     actor,
     createdSpellbook,
-    sourceSpells,
+    storedSpells,
     wizardLevel,
     rulesVersion,
-    added,
-    updated,
-    removed
+    removedCopies
   });
 
   ui.notifications.info(`${actor.name}: spellbook synced successfully.`);
@@ -401,18 +274,13 @@ async function syncSpellbookForActor(actor) {
     actor,
     book: spellbookItem,
     created: createdSpellbook,
-    expectedMinimum: sourceSpells.length,
-    actualCount: sourceSpells.length,
     rulesVersion,
-    added,
-    updated,
-    removed
+    wizardLevel,
+    storedSpellCount: storedSpells.length,
+    removedCopies
   };
 }
 
-/**
- * Expose public API only.
- */
 Hooks.once("ready", () => {
   game[MODULE_ID] = {
     syncSpellbookForActor
