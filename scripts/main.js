@@ -7,11 +7,7 @@ function log(...args) {
 
 function getRulesVersion() {
   try {
-    const settings = game.settings?.settings;
-    if (settings?.has("dnd5e.rulesVersion")) {
-      return game.settings.get("dnd5e", "rulesVersion") ?? "legacy";
-    }
-    return "legacy";
+    return game.settings.get("dnd5e", "rulesVersion") ?? "legacy";
   } catch (err) {
     console.warn("NPC Spellbook | Could not read dnd5e rules version setting", err);
     return "legacy";
