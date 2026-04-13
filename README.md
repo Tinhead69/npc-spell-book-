@@ -1,20 +1,26 @@
-# NPC Spellbook v0.1.4
+# NPC Spellbook v0.2.0
 
-## Included in this version
-- Right-click item directory option: **Mark as Spellbook**
-- Right-click item directory option: **Remove Spellbook Flag**
-- **Spellbook** option injected into the **Create New Item** dialog
+This version uses an actor-driven workflow.
 
-## Expected behaviour
-When **Spellbook** is selected in the create item dialog, the module creates:
-- a new **Loot** item
-- named **New Spellbook**
-- with spellbook flags applied
+## What it does
+- Checks whether an actor is a Wizard or multiclassed Wizard.
+- Looks for an equipped item named `Spell book of <actor name>`.
+- If no spellbook exists, creates one in the actor's inventory.
+- If a spellbook exists, reconciles it against the actor's current spell list.
+- Reads the dnd5e rules-version setting (`modern` or `legacy`) and stores it on the spellbook.
+- Checks the wizard's baseline minimum spellbook size:
+  - 6 spells at wizard level 1
+  - +2 spells per wizard level after 1st
 
-## Test steps
-1. Enable the module.
-2. Open the Items directory.
-3. Click **Create Item**.
-4. Confirm **Spellbook** appears in the type list.
-5. Select **Spellbook** and create the item.
-6. Confirm the new item is created and is already marked as a spellbook.
+## How to use
+### Actor Directory
+Right-click a wizard actor and choose **Generate / Sync Spellbook**.
+
+### Actor Sheet
+Open a wizard actor sheet and click the **Spellbook** header button.
+
+## Notes
+- The underlying item type is `container`.
+- The created item is named `Spell book of <actor name>`.
+- The item is flagged under `flags["npc-spell-book"]`.
+- Spell class attribution is best-effort: if a spell does not store a source class, the module assumes it belongs to the wizard's spellbook.
