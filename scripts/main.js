@@ -41,36 +41,31 @@ function isSpellbookItem(item) {
   return item?.getFlag?.(MODULE_ID, "spellbook") === true;
 }
 
-function isSpellbookSpell(item, spellbookId) {
-  return (
-    item?.type === "spell" &&
-    item?.getFlag?.(MODULE_ID, "spellCopy") === true &&
-    item?.system?.container === spellbookId
-  );
+function isSpellCopy(item) {
+  return item?.getFlag?.(MODULE_ID, "spellCopy") === true;
 }
 
-function getWizardSpellsFromActor(actor) {
-  const actorItems = actor?.items?.contents ?? actor?.items ?? [];
+function getSourceSpellsFromActor(actor) {
+  const actorItems = actor?.items?.contents ?? [];
 
-  return actorItems
-    .filter((item) => {
-      if (item.type !== "spell") return false;
-      if (item.getFlag?.(MODULE_ID, "spellCopy") === true) return false;
-      return true;
-    })
+  const spells = actorItems
+    .filter((item) => item.type === "spell" && !isSpellCopy(item))
     .sort((a, b) => {
       const aLevel = Number(a.system?.level ?? 0);
       const bLevel = Number(b.system?.level ?? 0);
       if (aLevel !== bLevel) return aLevel - bLevel;
       return a.name.localeCompare(b.name);
     });
+
+  log(`${actor.name}: found ${spells.length} source spell(s).`, spells.map(s => s.name));
+  return spells;
 }
 
 function buildSpellbookHtml(actor, spells, wizardLevel, rulesVersion) {
   const grouped = new Map();
 
   for (const spell of spells) {
-    const level = Number(spell.system?.level ?? spell.level ?? 0);
+    const level = Number(spell.system?.level ?? 0);
     if (!grouped.has(level)) grouped.set(level, []);
     grouped.get(level).push(spell);
   }
@@ -80,11 +75,7 @@ function buildSpellbookHtml(actor, spells, wizardLevel, rulesVersion) {
     .map(([level, entries]) => {
       const heading = level === 0 ? "Cantrips" : `Level ${level}`;
       const list = entries
-        .map((spell) => {
-          const school = spell.system?.school ?? spell.school ?? "";
-          const schoolText = school ? ` <em>(${school})</em>` : "";
-          return `<li><strong>${spell.name}</strong>${schoolText}</li>`;
-        })
+        .map((spell) => `<li><strong>${spell.name}</strong></li>`)
         .join("");
 
       return `
@@ -118,7 +109,7 @@ async function applySpellbookFlags(item, actor, wizardLevel, rulesVersion, spell
   await item.setFlag(MODULE_ID, "syncedAt", new Date().toISOString());
 }
 
-async function ensureSpellbookItem(actor, wizardSpells, wizardLevel) {
+async function ensureSpellbookItem(actor, sourceSpells, wizardLevel) {
   const itemName = getSpellbookItemName(actor);
   const rulesVersion = getRulesVersion();
 
@@ -127,7 +118,7 @@ async function ensureSpellbookItem(actor, wizardSpells, wizardLevel) {
     spellbookItem = actor.items.find((item) => item.name === itemName);
   }
 
-  const html = buildSpellbookHtml(actor, wizardSpells, wizardLevel, rulesVersion);
+  const html = buildSpellbookHtml(actor, sourceSpells, wizardLevel, rulesVersion);
 
   if (spellbookItem) {
     await spellbookItem.update({
@@ -147,7 +138,7 @@ async function ensureSpellbookItem(actor, wizardSpells, wizardLevel) {
       actor,
       wizardLevel,
       rulesVersion,
-      wizardSpells.length
+      sourceSpells.length
     );
 
     return { item: spellbookItem, created: false };
@@ -174,7 +165,7 @@ async function ensureSpellbookItem(actor, wizardSpells, wizardLevel) {
     actor,
     wizardLevel,
     rulesVersion,
-    wizardSpells.length
+    sourceSpells.length
   );
 
   return { item: createdItem, created: true };
@@ -188,8 +179,8 @@ function buildSpellCopyData(sourceSpell, spellbookId) {
   delete data.folder;
   delete data.sort;
   delete data.ownership;
-  delete data.flags?.core?.sourceId;
 
+  data.name = `[Book] ${sourceSpell.name}`;
   data.img = data.img || FALLBACK_SPELL_ICON;
 
   data.system = data.system ?? {};
@@ -200,36 +191,41 @@ function buildSpellCopyData(sourceSpell, spellbookId) {
     ...(data.flags[MODULE_ID] ?? {}),
     spellCopy: true,
     sourceSpellId: sourceSpell.id,
-    sourceSpellUuid: sourceSpell.uuid
+    sourceSpellUuid: sourceSpell.uuid,
+    syncedAt: new Date().toISOString()
   };
 
   return data;
 }
 
-async function syncSpellsIntoSpellbook(actor, spellbookItem, wizardSpells) {
+async function syncSpellsIntoSpellbook(actor, spellbookItem, sourceSpells) {
   const actorItems = actor.items.contents ?? [];
-  const existingCopies = actorItems.filter((item) => isSpellbookSpell(item, spellbookItem.id));
 
+  const existingCopies = actorItems.filter((item) => isSpellCopy(item));
   const existingBySourceId = new Map(
     existingCopies.map((item) => [item.getFlag(MODULE_ID, "sourceSpellId"), item])
   );
 
-  const sourceIds = new Set(wizardSpells.map((spell) => spell.id));
+  const sourceIds = new Set(sourceSpells.map((spell) => spell.id));
 
   let added = 0;
   let updated = 0;
   let removed = 0;
 
-  for (const sourceSpell of wizardSpells) {
-    const existingCopy = existingBySourceId.get(sourceSpell.id);
+  for (const sourceSpell of sourceSpells) {
     const copyData = buildSpellCopyData(sourceSpell, spellbookItem.id);
+    const existingCopy = existingBySourceId.get(sourceSpell.id);
 
     if (existingCopy) {
       await existingCopy.update(copyData);
       updated += 1;
+      log(`Updated spell copy: ${existingCopy.name}`);
     } else {
-      await actor.createEmbeddedDocuments("Item", [copyData]);
-      added += 1;
+      const created = await actor.createEmbeddedDocuments("Item", [copyData]);
+      if (created?.[0]) {
+        added += 1;
+        log(`Created spell copy: ${created[0].name}`);
+      }
     }
   }
 
@@ -252,7 +248,7 @@ async function syncSpellsIntoSpellbook(actor, spellbookItem, wizardSpells) {
 async function createSummaryChatMessage({
   actor,
   createdSpellbook,
-  wizardSpells,
+  sourceSpells,
   wizardLevel,
   rulesVersion,
   added,
@@ -267,7 +263,7 @@ async function createSummaryChatMessage({
         <li>${createdSpellbook ? "Created spellbook." : "Updated spellbook."}</li>
         <li>Rules version: ${rulesVersion}.</li>
         <li>Wizard level: ${wizardLevel}.</li>
-        <li>Spells stored: ${wizardSpells.length}.</li>
+        <li>Source spells found: ${sourceSpells.length}.</li>
         <li>Added: ${added}.</li>
         <li>Updated: ${updated}.</li>
         <li>Removed: ${removed}.</li>
@@ -289,25 +285,24 @@ async function syncSpellbookForActor(actor) {
 
   const rulesVersion = getRulesVersion();
   const wizardLevel = getWizardLevel(actor);
-  const wizardSpells = getWizardSpellsFromActor(actor);
+  const sourceSpells = getSourceSpellsFromActor(actor);
 
   const { item: spellbookItem, created: createdSpellbook } =
-    await ensureSpellbookItem(actor, wizardSpells, wizardLevel);
+    await ensureSpellbookItem(actor, sourceSpells, wizardLevel);
 
   const { added, updated, removed } = await syncSpellsIntoSpellbook(
     actor,
     spellbookItem,
-    wizardSpells
+    sourceSpells
   );
 
-  // Refresh the description after copies are synced
   await spellbookItem.update({
     img: SPELLBOOK_ICON,
     system: {
       ...(spellbookItem.system ?? {}),
       description: {
         ...(spellbookItem.system?.description ?? {}),
-        value: buildSpellbookHtml(actor, wizardSpells, wizardLevel, rulesVersion)
+        value: buildSpellbookHtml(actor, sourceSpells, wizardLevel, rulesVersion)
       }
     }
   });
@@ -317,13 +312,13 @@ async function syncSpellbookForActor(actor) {
     actor,
     wizardLevel,
     rulesVersion,
-    wizardSpells.length
+    sourceSpells.length
   );
 
   await createSummaryChatMessage({
     actor,
     createdSpellbook,
-    wizardSpells,
+    sourceSpells,
     wizardLevel,
     rulesVersion,
     added,
@@ -343,7 +338,7 @@ async function syncSpellbookForActor(actor) {
     createdSpellbook,
     rulesVersion,
     wizardLevel,
-    storedSpellCount: wizardSpells.length,
+    sourceSpellCount: sourceSpells.length,
     added,
     updated,
     removed
