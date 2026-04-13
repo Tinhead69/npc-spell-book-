@@ -1,358 +1,289 @@
 const MODULE_ID = "npc-spell-book";
-const SPELLBOOK_ICON = "icons/containers/boxes/crate-heavy-brown.webp";
+const SPELLBOOK_ICON = "icons/svg/book.svg";
+const FALLBACK_SPELL_ICON = "icons/svg/book.svg";
 
 function log(...args) {
   console.log("NPC Spellbook |", ...args);
 }
 
+function warn(...args) {
+  console.warn("NPC Spellbook |", ...args);
+}
+
+function error(...args) {
+  console.error("NPC Spellbook |", ...args);
+}
+
 function getRulesVersion() {
   try {
-    return game.settings.get("dnd5e", "rulesVersion") ?? "legacy";
+    if (game.settings?.settings?.has("dnd5e.rulesVersion")) {
+      return game.settings.get("dnd5e", "rulesVersion") ?? "legacy";
+    }
+    return "legacy";
   } catch (err) {
-    console.warn("NPC Spellbook | Could not read dnd5e rules version setting", err);
+    warn("Could not read dnd5e rules version setting", err);
     return "legacy";
   }
 }
 
 function getWizardLevel(actor) {
-  const actorClasses = actor?.classes ?? actor?.system?.classes ?? {};
-  const wizard = actorClasses?.wizard;
-  return Number(wizard?.system?.levels ?? wizard?.levels ?? 0);
+  try {
+    const actorClasses = actor?.classes ?? actor?.system?.classes ?? {};
+    const wizard = actorClasses?.wizard;
+    return Number(wizard?.system?.levels ?? wizard?.levels ?? 0);
+  } catch (err) {
+    warn(`Could not determine wizard level for ${actor?.name ?? "unknown actor"}`, err);
+    return 0;
+  }
 }
 
-function isWizardActor(actor) {
-  return getWizardLevel(actor) > 0;
-}
-
-function getExpectedMinimumSpellCount(wizardLevel) {
-  if (wizardLevel < 1) return 0;
-  return 6 + ((wizardLevel - 1) * 2);
-}
-
-function getSpellbookName(actor) {
+function getSpellbookItemName(actor) {
   return `Spell book of ${actor.name}`;
 }
 
-function getActiveWizardCharacters() {
-  return game.users
-    .filter(user => user.active && !user.isGM && user.character)
-    .map(user => {
-      const actor = user.character;
-      const wizardLevel = getWizardLevel(actor);
-      return {
-        userId: user.id,
-        userName: user.name,
-        actorId: actor.id,
-        actorName: actor.name,
-        wizardLevel,
-        actor
-      };
-    })
-    .filter(entry => entry.wizardLevel > 0);
-}
-
-function isEquippedItem(item) {
-  return Boolean(item?.system?.equipped);
-}
-
-function isFlaggedSpellbook(item) {
-  return item?.getFlag(MODULE_ID, "isSpellbook") === true;
-}
-
-function findExistingSpellbook(actor) {
-  const expectedName = getSpellbookName(actor);
-  const items = actor.items.contents ?? Array.from(actor.items);
-  return (
-    items.find(item =>
-      item.name === expectedName &&
-      isFlaggedSpellbook(item) &&
-      isEquippedItem(item)
-    ) ||
-    items.find(item =>
-      item.name === expectedName &&
-      isFlaggedSpellbook(item)
-    ) ||
-    null
-  );
-}
-
-function getSpellOriginClass(spell) {
-  const candidates = [
-    spell?.flags?.dnd5e?.sourceClass,
-    spell?.flags?.[MODULE_ID]?.sourceClass,
-    spell?.system?.sourceClass,
-    spell?.system?.source?.class,
-    spell?.system?.source?.classes,
-    spell?.system?.chatFlavor
-  ].filter(Boolean);
-
-  for (const value of candidates) {
-    if (typeof value === "string") return value.toLowerCase();
-    if (Array.isArray(value)) return value.join(" ").toLowerCase();
-    if (typeof value === "object") return JSON.stringify(value).toLowerCase();
-  }
-
-  return "";
-}
-
-function spellMatchesRulesVersion(spell, rulesVersion) {
-  const text = JSON.stringify({
-    source: spell?.system?.source ?? null,
-    flags: spell?.flags?.dnd5e ?? null,
-    folder: spell?.folder?.name ?? null,
-    pack: spell?.pack ?? null
-  }).toLowerCase();
-
-  if (rulesVersion === "modern") {
-    if (text.includes("2014") || text.includes("legacy")) return false;
-  } else {
-    if (text.includes("2024") || text.includes("modern")) return false;
-  }
-
-  return true;
-}
-
-function spellBelongsToWizard(spell) {
-  const origin = getSpellOriginClass(spell);
-  if (!origin) return true;
-  return origin.includes("wizard");
+function getSpellbookFlag(item) {
+  return item?.getFlag?.(MODULE_ID, "spellbook") === true;
 }
 
 function getWizardSpellsFromActor(actor) {
   const rulesVersion = getRulesVersion();
-  const allSpells = (actor.items.contents ?? Array.from(actor.items)).filter(item => item.type === "spell");
-  return allSpells.filter(spell => spellBelongsToWizard(spell) && spellMatchesRulesVersion(spell, rulesVersion));
+
+  const spells = actor.items.filter((item) => {
+    if (item.type !== "spell") return false;
+
+    const preparationMode =
+      item.system?.preparation?.mode ??
+      item.system?.preparationMode ??
+      null;
+
+    const spellClass =
+      item.system?.source?.class ??
+      item.system?.chatFlavor ??
+      "";
+
+    // Keep this broad and robust.
+    // We mainly want wizard spells on the actor sheet.
+    const isWizardPrepared =
+      preparationMode === "prepared" ||
+      preparationMode === "always" ||
+      preparationMode === "innate" ||
+      preparationMode === "pact";
+
+    const looksWizardish =
+      typeof spellClass === "string" &&
+      spellClass.toLowerCase().includes("wizard");
+
+    // If the actor actually has wizard levels, keep spell items unless
+    // they are obviously from another source.
+    if (getWizardLevel(actor) > 0) {
+      return isWizardPrepared || !spellClass || looksWizardish;
+    }
+
+    return looksWizardish;
+  });
+
+  log(
+    `Collected ${spells.length} spell(s) from ${actor.name} using rulesVersion=${rulesVersion}.`
+  );
+
+  return spells.sort((a, b) => {
+    const aLevel = Number(a.system?.level ?? 0);
+    const bLevel = Number(b.system?.level ?? 0);
+    if (aLevel !== bLevel) return aLevel - bLevel;
+    return a.name.localeCompare(b.name);
+  });
 }
 
-function buildStoredSpellData(spell, actor) {
+function buildStoredSpellData(spell) {
   return {
     id: spell.id,
     name: spell.name,
-    img: spell.img,
+    uuid: spell.uuid,
+    type: spell.type,
+    img: spell.img || FALLBACK_SPELL_ICON,
     level: Number(spell.system?.level ?? 0),
     school: spell.system?.school ?? "",
-    sourceClass: getSpellOriginClass(spell) || "wizard",
-    rulesVersion: getRulesVersion(),
-    sourceActorId: actor.id,
-    sourceItemId: spell.id,
-    copiedAt: new Date().toISOString(),
-    data: spell.toObject()
+    source: spell.system?.source ?? {},
+    preparation: spell.system?.preparation ?? {},
+    activation: spell.system?.activation ?? {},
+    target: spell.system?.target ?? {},
+    range: spell.system?.range ?? {},
+    uses: spell.system?.uses ?? {},
+    consume: spell.system?.consume ?? {},
+    duration: spell.system?.duration ?? {},
+    materials: spell.system?.materials ?? {},
+    scaling: spell.system?.scaling ?? {},
+    description:
+      spell.system?.description?.value ??
+      spell.system?.description ??
+      ""
   };
 }
 
-async function ensureSpellbookItem(actor) {
-  const desiredName = `Spell book of ${actor.name}`;
-  console.log("NPC Spellbook | ensureSpellbookItem | actor:", actor.name);
-  console.log("NPC Spellbook | ensureSpellbookItem | desiredName:", desiredName);
+function renderSpellbookHtml(actor, storedSpells, wizardLevel, rulesVersion) {
+  const byLevel = new Map();
 
-  const existing = actor.items.find(i => i.name === desiredName);
-  console.log("NPC Spellbook | ensureSpellbookItem | existing:", existing);
-
-  if (existing) {
-    console.log("NPC Spellbook | ensureSpellbookItem | using existing item:", existing.name, existing.id);
-    return existing;
+  for (const spell of storedSpells) {
+    const level = Number(spell.level ?? 0);
+    if (!byLevel.has(level)) byLevel.set(level, []);
+    byLevel.get(level).push(spell);
   }
+
+  const sections = [...byLevel.entries()]
+    .sort((a, b) => a[0] - b[0])
+    .map(([level, spells]) => {
+      const heading = level === 0 ? "Cantrips" : `Level ${level}`;
+      const list = spells
+        .map((spell) => {
+          const school = spell.school ? ` <em>(${spell.school})</em>` : "";
+          return `<li><strong>${spell.name}</strong>${school}</li>`;
+        })
+        .join("");
+
+      return `
+        <section style="margin-bottom: 0.75em;">
+          <h3 style="margin: 0 0 0.25em 0;">${heading}</h3>
+          <ul style="margin: 0 0 0 1.25em; padding: 0;">${list}</ul>
+        </section>
+      `;
+    })
+    .join("");
+
+  return `
+    <div class="npc-spell-book">
+      <h1 style="margin-bottom: 0.5em;">NPC Spellbook</h1>
+      <p><strong>Owner:</strong> ${actor.name}</p>
+      <p><strong>Rules version:</strong> ${rulesVersion}</p>
+      <p><strong>Wizard level:</strong> ${wizardLevel}</p>
+      <p><strong>Stored spells:</strong> ${storedSpells.length}</p>
+      <hr />
+      ${sections || "<p><em>No spells stored.</em></p>"}
+    </div>
+  `.trim();
+}
+
+async function ensureSpellbookItem(actor, storedSpells, wizardLevel) {
+  const itemName = getSpellbookItemName(actor);
+  const rulesVersion = getRulesVersion();
+
+  let spellbookItem = actor.items.find((item) => getSpellbookFlag(item));
+
+  if (!spellbookItem) {
+    spellbookItem = actor.items.find((item) => item.name === itemName);
+  }
+
+  const html = renderSpellbookHtml(actor, storedSpells, wizardLevel, rulesVersion);
 
   const itemData = {
-    name: desiredName,
+    name: itemName,
     type: "feat",
-    img: "icons/svg/book.svg",
-    system: {}
-  };
-
-  console.log("NPC Spellbook | ensureSpellbookItem | creating with data:", itemData);
-
-  try {
-    const created = await actor.createEmbeddedDocuments("Item", [itemData]);
-    console.log("NPC Spellbook | ensureSpellbookItem | created result:", created);
-    return created?.[0] ?? null;
-  } catch (err) {
-    console.error("NPC Spellbook | ensureSpellbookItem | creation failed:", err);
-    return null;
-  }
-}
-
-  const createdDocs = await actor.createEmbeddedDocuments("Item", [itemData]);
-  const created = createdDocs?.[0];
-  if (!created) throw new Error("Failed to create spellbook item.");
-  return { book: created, created: true };
-}
-
-function mergeSpellLists(existingSpells, actorSpells) {
-  const byName = new Map();
-  for (const spell of existingSpells) {
-    byName.set((spell.name ?? "").toLowerCase(), spell);
-  }
-
-  let added = 0;
-  let updated = 0;
-
-  for (const spell of actorSpells) {
-    const key = (spell.name ?? "").toLowerCase();
-    if (byName.has(key)) {
-      byName.set(key, {
-        ...byName.get(key),
-        ...spell,
+    img: SPELLBOOK_ICON,
+    system: {
+      description: {
+        value: html
+      }
+    },
+    flags: {
+      [MODULE_ID]: {
+        spellbook: true,
+        ownerActorId: actor.id,
+        storedSpells,
+        wizardLevel,
+        rulesVersion,
         syncedAt: new Date().toISOString()
-      });
-      updated += 1;
-    } else {
-      byName.set(key, spell);
-      added += 1;
+      }
     }
+  };
+
+  if (spellbookItem) {
+    await spellbookItem.update(itemData);
+    log(`Updated spellbook item for ${actor.name}: ${spellbookItem.name}`);
+    return { item: spellbookItem, created: false };
   }
 
-  return {
-    spells: Array.from(byName.values()).sort((a, b) => {
-      const levelDelta = (a.level ?? 0) - (b.level ?? 0);
-      return levelDelta || String(a.name).localeCompare(String(b.name));
-    }),
-    added,
-    updated
-  };
+  const created = await actor.createEmbeddedDocuments("Item", [itemData]);
+  const createdItem = created?.[0] ?? null;
+
+  if (!createdItem) {
+    throw new Error(`Failed to create spellbook item for ${actor.name}.`);
+  }
+
+  log(`Created spellbook item for ${actor.name}: ${createdItem.name}`);
+  return { item: createdItem, created: true };
+}
+
+async function createSummaryChatMessage({
+  actor,
+  created,
+  storedSpells,
+  wizardLevel,
+  rulesVersion
+}) {
+  const content = `
+    <div class="npc-spellbook-summary">
+      <h1 style="margin:0 0 0.5em 0;">NPC Spellbook</h1>
+      <h3 style="margin:0 0 0.5em 0;">${actor.name}</h3>
+      <ul style="margin:0; padding-left:1.25em;">
+        <li>${created ? "Created spellbook." : "Updated spellbook."}</li>
+        <li>Rules version: ${rulesVersion}.</li>
+        <li>Wizard level: ${wizardLevel}.</li>
+        <li>Spells stored: ${storedSpells.length}.</li>
+        <li>Added: ${created ? 1 : 0}.</li>
+        <li>Updated: ${created ? 0 : 1}.</li>
+      </ul>
+    </div>
+  `;
+
+  return ChatMessage.create({
+    speaker: { alias: "Gamemaster" },
+    whisper: ChatMessage.getWhisperRecipients("GM").map((u) => u.id),
+    content
+  });
 }
 
 async function syncSpellbookForActor(actor) {
   if (!actor) {
-    ui.notifications.warn("No actor provided.");
-    return null;
+    throw new Error("No actor supplied to syncSpellbookForActor.");
   }
 
-  if (!isWizardActor(actor)) {
-    ui.notifications.warn(`${actor.name} is not a wizard or multiclassed wizard.`);
-    return null;
-  }
-
+  const rulesVersion = getRulesVersion();
   const wizardLevel = getWizardLevel(actor);
-  const expectedMinimum = getExpectedMinimumSpellCount(wizardLevel);
-  const actorWizardSpells = getWizardSpellsFromActor(actor).map(spell => buildStoredSpellData(spell, actor));
+  const wizardSpells = getWizardSpellsFromActor(actor);
+  const storedSpells = wizardSpells.map(buildStoredSpellData);
 
-  const ensured = await ensureSpellbookItem(actor);
-  const book = ensured.book;
-  const created = ensured.created;
+  const { item, created } = await ensureSpellbookItem(
+    actor,
+    storedSpells,
+    wizardLevel
+  );
 
-  const existingSpells = book.getFlag(MODULE_ID, "spells") ?? [];
-  const merged = mergeSpellLists(existingSpells, actorWizardSpells);
-
-  await book.update({
-    "name": getSpellbookName(actor),
-    "system.equipped": true,
-    [`flags.${MODULE_ID}.isSpellbook`]: true,
-    [`flags.${MODULE_ID}.ownerActorId`]: actor.id,
-    [`flags.${MODULE_ID}.ownerActorName`]: actor.name,
-    [`flags.${MODULE_ID}.rulesVersion`]: getRulesVersion(),
-    [`flags.${MODULE_ID}.wizardLevel`]: wizardLevel,
-    [`flags.${MODULE_ID}.spells`]: merged.spells
+  await createSummaryChatMessage({
+    actor,
+    created,
+    storedSpells,
+    wizardLevel,
+    rulesVersion
   });
 
-  const actualCount = merged.spells.length;
-  const problems = [];
-  if (actualCount < expectedMinimum) {
-    problems.push(`baseline minimum is ${expectedMinimum}, but the spellbook currently contains ${actualCount} wizard spells`);
-  }
+  ui.notifications.info(`${actor.name}: spellbook synced successfully.`);
+  log(`${actor.name}: spellbook synced successfully.`);
 
-  const summary = [
-    created ? "Created spellbook." : "Updated spellbook.",
-    `Rules version: ${getRulesVersion()}.`,
-    `Wizard level: ${wizardLevel}.`,
-    `Spells stored: ${actualCount}.`,
-    `Added: ${merged.added}.`,
-    `Updated: ${merged.updated}.`
-  ];
-
-  if (problems.length) {
-    summary.push(`Warning: ${problems.join("; ")}.`);
-    ui.notifications.warn(`${actor.name}: ${problems.join("; ")}.`);
-  } else {
-    ui.notifications.info(`${actor.name}: spellbook synced successfully.`);
-  }
-
-  const whisperIds = ChatMessage.getWhisperRecipients("GM").map(u => u.id);
-  ChatMessage.create({
-    content: `<h3>NPC Spellbook</h3><p><strong>${actor.name}</strong></p><ul>${summary.map(line => `<li>${line}</li>`).join("")}</ul>`,
-    whisper: whisperIds
-  });
-
-  return { actor, book, created, expectedMinimum, actualCount, rulesVersion: getRulesVersion() };
-}
-
-function canManageSpellbook(actor) {
-  return game.user.isGM && ["character", "npc"].includes(actor?.type) && isWizardActor(actor);
-}
-
-Hooks.once("init", () => {
-  log("Initialising");
-
-  game[MODULE_ID] = {
-    getActiveWizardCharacters,
-    syncSpellbookForActor,
-    getRulesVersion,
-    getWizardLevel
+  return {
+    actorId: actor.id,
+    actorName: actor.name,
+    itemId: item.id,
+    itemName: item.name,
+    created,
+    rulesVersion,
+    wizardLevel,
+    storedSpellCount: storedSpells.length
   };
-
-  const ActorDirectoryClass =
-    foundry?.applications?.sidebar?.tabs?.ActorDirectory ?? globalThis.ActorDirectory;
-
-  if (ActorDirectoryClass?.prototype?._getEntryContextOptions) {
-    const original = ActorDirectoryClass.prototype._getEntryContextOptions;
-    ActorDirectoryClass.prototype._getEntryContextOptions = function () {
-      const options = original.call(this) ?? [];
-
-      options.push({
-        name: "Generate / Sync Spellbook",
-        icon: '<i class="fas fa-book"></i>',
-        condition: li => {
-          const id =
-            li?.dataset?.entryId ??
-            li?.dataset?.documentId ??
-            li?.getAttribute?.("data-entry-id") ??
-            li?.getAttribute?.("data-document-id") ??
-            null;
-          const actor = game.actors.get(id);
-          return canManageSpellbook(actor);
-        },
-        callback: async li => {
-          const id =
-            li?.dataset?.entryId ??
-            li?.dataset?.documentId ??
-            li?.getAttribute?.("data-entry-id") ??
-            li?.getAttribute?.("data-document-id") ??
-            null;
-          const actor = game.actors.get(id);
-          await syncSpellbookForActor(actor);
-        }
-      });
-
-      return options;
-    };
-  } else {
-    console.warn("NPC Spellbook | Could not patch actor directory context menu");
-  }
-
-  const ActorSheetClass = globalThis.ActorSheet ?? foundry?.applications?.sheets?.ActorSheet;
-  if (ActorSheetClass?.prototype?._getHeaderButtons) {
-    const originalButtons = ActorSheetClass.prototype._getHeaderButtons;
-    ActorSheetClass.prototype._getHeaderButtons = function () {
-      const buttons = originalButtons.call(this);
-      const actor = this.actor;
-      if (canManageSpellbook(actor)) {
-        buttons.unshift({
-          label: "Spellbook",
-          class: "npc-spellbook-sync",
-          icon: "fas fa-book",
-          onclick: async () => {
-            await syncSpellbookForActor(actor);
-          }
-        });
-      }
-      return buttons;
-    };
-  } else {
-    console.warn("NPC Spellbook | Could not patch actor sheet header buttons");
-  }
-});
+}
 
 Hooks.once("ready", () => {
-  log("Ready");
-  log("Active wizard PCs:", getActiveWizardCharacters().map(w => `${w.actorName} (${w.wizardLevel})`));
+  game[MODULE_ID] = {
+    syncSpellbookForActor
+  };
+
+  log("Module ready.");
 });
