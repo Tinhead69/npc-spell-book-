@@ -2,7 +2,7 @@
   "id": "npc-spell-book",
   "title": "NPC Spellbook",
   "description": "Lootable spellbooks for NPC casters that allow wizard PCs to learn spells.",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "compatibility": {
     "minimum": "13",
     "verified": "14"
@@ -12,6 +12,17 @@
       "name": "Martin Zealey"
     }
   ],
+  "relationships": {
+    "systems": [
+      {
+        "id": "dnd5e",
+        "type": "system",
+        "compatibility": {
+          "minimum": "3.0.0"
+        }
+      }
+    ]
+  },
   "esmodules": [
     "scripts/main.js"
   ],
