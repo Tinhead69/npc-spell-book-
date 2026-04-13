@@ -83,18 +83,21 @@ Hooks.once("ready", () => {
 });
 
 Hooks.on("renderDialog", (app, html) => {
+  console.log("NPC Spellbook | renderDialog fired", app, html);
   try {
-    const title = app?.title ?? "";
-    if (!/Create New Item/i.test(title)) return;
+    // Only target dialogs that look like the item creation dialog
+    const hasTypeRadios = html.find("input[name='type']").length > 0;
+    const hasCreateButton = html.text().includes("CREATE ITEM");
+
+    if (!hasTypeRadios || !hasCreateButton) return;
 
     if (html.find(".npc-spellbook-choice").length) return;
 
     const submitButton = html.find("button[type='submit'], .dialog-buttons button");
     if (!submitButton.length) return;
 
-    const lootLabel = html.find("label").filter((_, el) => {
-      return /loot/i.test(el.textContent ?? "");
-    }).first();
+    const lootInput = html.find("input[name='type'][value='loot']");
+    const lootLabel = lootInput.closest("label");
 
     const spellbookLabel = $(`
       <label class="npc-spellbook-choice">
