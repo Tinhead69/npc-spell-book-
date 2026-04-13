@@ -1,1 +1,4 @@
-.npc-spellbook { padding:5px;}
+.npc-spellbook-create {
+  margin-left: 0.25rem;
+  white-space: nowrap;
+}

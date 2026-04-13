@@ -73,3 +73,41 @@ Hooks.once("init", () => {
 Hooks.once("ready", () => {
   console.log("NPC Spellbook | Ready");
 });
+
+Hooks.on("renderItemDirectory", (app, html) => {
+  console.log("NPC Spellbook | renderItemDirectory fired");
+
+  const headerActions = html.find(".directory-header .header-actions");
+  if (!headerActions.length) {
+    console.warn("NPC Spellbook | Could not find item directory header actions container");
+    return;
+  }
+
+  if (html.find(".npc-spellbook-create").length) return;
+
+  const button = $(`
+    <button type="button" class="npc-spellbook-create">
+      <i class="fas fa-book"></i> Create Spellbook
+    </button>
+  `);
+
+  button.on("click", async (event) => {
+    event.preventDefault();
+
+    const item = await Item.create({
+      name: "New Spellbook",
+      type: "loot",
+      img: "icons/sundries/books/book-symbol-moon-gold-blue.webp",
+      system: {}
+    });
+
+    await item.setFlag("npc-spell-book", "isSpellbook", true);
+    await item.setFlag("npc-spell-book", "spells", []);
+
+    ui.notifications.info(`${item.name} created as a spellbook.`);
+    item.sheet?.render(true);
+  });
+
+  headerActions.append(button);
+  console.log("NPC Spellbook | Create Spellbook button added");
+});
