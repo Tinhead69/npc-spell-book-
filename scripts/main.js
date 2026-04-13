@@ -57,7 +57,7 @@ function getSourceSpellsFromActor(actor) {
       return a.name.localeCompare(b.name);
     });
 
-  log(`${actor.name}: found ${spells.length} source spell(s).`, spells.map(s => s.name));
+  log(`${actor.name}: found ${spells.length} source spell(s).`, spells.map((s) => s.name));
   return spells;
 }
 
@@ -144,16 +144,18 @@ async function ensureSpellbookItem(actor, sourceSpells, wizardLevel) {
     return { item: spellbookItem, created: false };
   }
 
-  const created = await actor.createEmbeddedDocuments("Item", [{
-    name: itemName,
-    type: "container",
-    img: SPELLBOOK_ICON,
-    system: {
-      description: {
-        value: html
+  const created = await actor.createEmbeddedDocuments("Item", [
+    {
+      name: itemName,
+      type: "container",
+      img: SPELLBOOK_ICON,
+      system: {
+        description: {
+          value: html
+        }
       }
     }
-  }]);
+  ]);
 
   const createdItem = created?.[0];
   if (!createdItem) {
@@ -172,36 +174,48 @@ async function ensureSpellbookItem(actor, sourceSpells, wizardLevel) {
 }
 
 function buildSpellCopyData(sourceSpell, spellbookId) {
-  const data = sourceSpell.toObject();
-
-  delete data._id;
-  delete data.id;
-  delete data.folder;
-  delete data.sort;
-  delete data.ownership;
-
-  data.name = `[Book] ${sourceSpell.name}`;
-  data.img = data.img || FALLBACK_SPELL_ICON;
-
-  data.system = data.system ?? {};
-  data.system.container = spellbookId;
-
-  data.flags = data.flags ?? {};
-  data.flags[MODULE_ID] = {
-    ...(data.flags[MODULE_ID] ?? {}),
-    spellCopy: true,
-    sourceSpellId: sourceSpell.id,
-    sourceSpellUuid: sourceSpell.uuid,
-    syncedAt: new Date().toISOString()
+  return {
+    name: `[Book] ${sourceSpell.name}`,
+    type: "spell",
+    img: sourceSpell.img || FALLBACK_SPELL_ICON,
+    system: {
+      level: sourceSpell.system?.level ?? 0,
+      school: sourceSpell.system?.school ?? "",
+      description: {
+        value: sourceSpell.system?.description?.value ?? ""
+      },
+      source: sourceSpell.system?.source ?? {},
+      activation: sourceSpell.system?.activation ?? {},
+      duration: sourceSpell.system?.duration ?? {},
+      target: sourceSpell.system?.target ?? {},
+      range: sourceSpell.system?.range ?? {},
+      uses: sourceSpell.system?.uses ?? {},
+      materials: sourceSpell.system?.materials ?? {},
+      consume: sourceSpell.system?.consume ?? {},
+      preparation: sourceSpell.system?.preparation ?? {},
+      scaling: sourceSpell.system?.scaling ?? {},
+      container: spellbookId
+    },
+    flags: {
+      [MODULE_ID]: {
+        spellCopy: true,
+        sourceSpellId: sourceSpell.id,
+        sourceSpellUuid: sourceSpell.uuid,
+        syncedAt: new Date().toISOString()
+      }
+    }
   };
-
-  return data;
 }
 
 async function syncSpellsIntoSpellbook(actor, spellbookItem, sourceSpells) {
   const actorItems = actor.items.contents ?? [];
 
-  const existingCopies = actorItems.filter((item) => isSpellCopy(item));
+  const existingCopies = actorItems.filter(
+    (item) =>
+      isSpellCopy(item) &&
+      item.system?.container === spellbookItem.id
+  );
+
   const existingBySourceId = new Map(
     existingCopies.map((item) => [item.getFlag(MODULE_ID, "sourceSpellId"), item])
   );
@@ -216,16 +230,22 @@ async function syncSpellsIntoSpellbook(actor, spellbookItem, sourceSpells) {
     const copyData = buildSpellCopyData(sourceSpell, spellbookItem.id);
     const existingCopy = existingBySourceId.get(sourceSpell.id);
 
-    if (existingCopy) {
-      await existingCopy.update(copyData);
-      updated += 1;
-      log(`Updated spell copy: ${existingCopy.name}`);
-    } else {
-      const created = await actor.createEmbeddedDocuments("Item", [copyData]);
-      if (created?.[0]) {
-        added += 1;
-        log(`Created spell copy: ${created[0].name}`);
+    try {
+      if (existingCopy) {
+        await existingCopy.update(copyData);
+        updated += 1;
+        log(`Updated spell copy: ${existingCopy.name}`);
+      } else {
+        const created = await actor.createEmbeddedDocuments("Item", [copyData]);
+        if (created?.[0]) {
+          added += 1;
+          log(`Created spell copy: ${created[0].name}`);
+        } else {
+          warn(`No spell copy returned for ${sourceSpell.name}`);
+        }
       }
+    } catch (err) {
+      console.error(`NPC Spellbook | Failed to sync spell copy for ${sourceSpell.name}`, err, copyData);
     }
   }
 
@@ -330,15 +350,12 @@ async function syncSpellbookForActor(actor) {
   log(`${actor.name}: spellbook synced successfully.`);
 
   return {
-    actorId: actor.id,
-    actorName: actor.name,
-    itemId: spellbookItem.id,
-    itemName: spellbookItem.name,
-    itemType: spellbookItem.type,
-    createdSpellbook,
+    actor,
+    book: spellbookItem,
+    created: createdSpellbook,
+    expectedMinimum: sourceSpells.length,
+    actualCount: sourceSpells.length,
     rulesVersion,
-    wizardLevel,
-    sourceSpellCount: sourceSpells.length,
     added,
     updated,
     removed
