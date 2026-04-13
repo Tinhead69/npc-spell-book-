@@ -1,113 +1,143 @@
+const MODULE_ID = "npc-spell-book";
+const SPELLBOOK_ICON = "icons/sundries/books/book-symbol-moon-gold-blue.webp";
+
+function isSpellbook(item) {
+  return item?.getFlag(MODULE_ID, "isSpellbook") === true;
+}
+
+async function markAsSpellbook(item) {
+  await item.setFlag(MODULE_ID, "isSpellbook", true);
+  await item.setFlag(MODULE_ID, "spells", []);
+}
+
+function getEntryId(li) {
+  return (
+    li?.dataset?.entryId ??
+    li?.dataset?.documentId ??
+    li?.getAttribute?.("data-entry-id") ??
+    li?.getAttribute?.("data-document-id") ??
+    li?.data?.("entryId") ??
+    li?.data?.("documentId") ??
+    li?.attr?.("data-entry-id") ??
+    li?.attr?.("data-document-id") ??
+    null
+  );
+}
+
 Hooks.once("init", () => {
   console.log("NPC Spellbook | Initialising");
 
   const ItemDirectoryClass =
     foundry?.applications?.sidebar?.tabs?.ItemDirectory ?? globalThis.ItemDirectory;
 
-  if (!ItemDirectoryClass) {
-    console.error("NPC Spellbook | Could not find ItemDirectory class");
-    return;
+  if (ItemDirectoryClass?.prototype?._getEntryContextOptions) {
+    const originalGetEntryContextOptions = ItemDirectoryClass.prototype._getEntryContextOptions;
+
+    ItemDirectoryClass.prototype._getEntryContextOptions = function () {
+      const options = originalGetEntryContextOptions.call(this) ?? [];
+
+      options.push({
+        name: "Mark as Spellbook",
+        icon: '<i class="fas fa-book"></i>',
+        condition: (li) => {
+          const id = getEntryId(li);
+          const item = game.items.get(id);
+          return item?.type === "loot" && !isSpellbook(item);
+        },
+        callback: async (li) => {
+          const id = getEntryId(li);
+          const item = game.items.get(id);
+          if (!item) return;
+          await markAsSpellbook(item);
+          ui.notifications.info(`${item.name} is now a spellbook.`);
+        }
+      });
+
+      options.push({
+        name: "Remove Spellbook Flag",
+        icon: '<i class="fas fa-book-dead"></i>',
+        condition: (li) => {
+          const id = getEntryId(li);
+          const item = game.items.get(id);
+          return isSpellbook(item);
+        },
+        callback: async (li) => {
+          const id = getEntryId(li);
+          const item = game.items.get(id);
+          if (!item) return;
+          await item.unsetFlag(MODULE_ID, "isSpellbook");
+          await item.unsetFlag(MODULE_ID, "spells");
+          ui.notifications.info(`${item.name} is no longer a spellbook.`);
+        }
+      });
+
+      return options;
+    };
+  } else {
+    console.warn("NPC Spellbook | Could not patch item directory context menu");
   }
-
-  const originalGetEntryContextOptions = ItemDirectoryClass.prototype._getEntryContextOptions;
-
-  ItemDirectoryClass.prototype._getEntryContextOptions = function () {
-    const options = originalGetEntryContextOptions
-      ? originalGetEntryContextOptions.call(this)
-      : [];
-
-    const getEntryId = (li) =>
-      li?.dataset?.entryId ??
-      li?.dataset?.documentId ??
-      li?.getAttribute?.("data-entry-id") ??
-      li?.getAttribute?.("data-document-id") ??
-      null;
-
-    options.push({
-      name: "Mark as Spellbook",
-      icon: '<i class="fas fa-book"></i>',
-      condition: (li) => {
-        const id = getEntryId(li);
-        const item = game.items.get(id);
-        console.log("NPC Spellbook | Mark check", { id, item });
-        return item?.type === "loot" && !item.getFlag("npc-spell-book", "isSpellbook");
-      },
-      callback: async (li) => {
-        const id = getEntryId(li);
-        const item = game.items.get(id);
-        if (!item) return;
-
-        await item.setFlag("npc-spell-book", "isSpellbook", true);
-        await item.setFlag("npc-spell-book", "spells", []);
-
-        ui.notifications.info(`${item.name} is now a spellbook.`);
-      }
-    });
-
-    options.push({
-      name: "Remove Spellbook Flag",
-      icon: '<i class="fas fa-book-slash"></i>',
-      condition: (li) => {
-        const id = getEntryId(li);
-        const item = game.items.get(id);
-        console.log("NPC Spellbook | Remove check", { id, item });
-        return item?.getFlag("npc-spell-book", "isSpellbook") === true;
-      },
-      callback: async (li) => {
-        const id = getEntryId(li);
-        const item = game.items.get(id);
-        if (!item) return;
-
-        await item.unsetFlag("npc-spell-book", "isSpellbook");
-        await item.unsetFlag("npc-spell-book", "spells");
-
-        ui.notifications.info(`${item.name} is no longer a spellbook.`);
-      }
-    });
-
-    console.log("NPC Spellbook | Patched item directory context options");
-    return options;
-  };
 });
 
 Hooks.once("ready", () => {
   console.log("NPC Spellbook | Ready");
 });
 
-Hooks.on("renderItemDirectory", (app, html) => {
-  console.log("NPC Spellbook | renderItemDirectory fired");
+Hooks.on("renderDialog", (app, html) => {
+  try {
+    const title = app?.title ?? "";
+    if (!/Create New Item/i.test(title)) return;
 
-  const headerActions = html.find(".directory-header .header-actions");
-  if (!headerActions.length) {
-    console.warn("NPC Spellbook | Could not find item directory header actions container");
-    return;
-  }
+    if (html.find(".npc-spellbook-choice").length) return;
 
-  if (html.find(".npc-spellbook-create").length) return;
+    const submitButton = html.find("button[type='submit'], .dialog-buttons button");
+    if (!submitButton.length) return;
 
-  const button = $(`
-    <button type="button" class="npc-spellbook-create">
-      <i class="fas fa-book"></i> Create Spellbook
-    </button>
-  `);
+    const lootLabel = html.find("label").filter((_, el) => {
+      return /loot/i.test(el.textContent ?? "");
+    }).first();
 
-  button.on("click", async (event) => {
-    event.preventDefault();
+    const spellbookLabel = $(`
+      <label class="npc-spellbook-choice">
+        <input type="radio" name="type" value="__npc_spellbook__">
+        <span class="npc-spellbook-choice-content">
+          <img src="${SPELLBOOK_ICON}" alt="Spellbook">
+          <span class="npc-spellbook-choice-text">Spellbook</span>
+        </span>
+      </label>
+    `);
 
-    const item = await Item.create({
-      name: "New Spellbook",
-      type: "loot",
-      img: "icons/sundries/books/book-symbol-moon-gold-blue.webp",
-      system: {}
+    if (lootLabel.length) {
+      lootLabel.after(spellbookLabel);
+    } else {
+      const form = html.find("form");
+      form.append(spellbookLabel);
+    }
+
+    submitButton.off("click.npcSpellbook").on("click.npcSpellbook", async (event) => {
+      const selected = html.find("input[name='type']:checked").val();
+      if (selected !== "__npc_spellbook__") return;
+
+      event.preventDefault();
+      event.stopPropagation();
+
+      const folderValue = html.find("[name='folder']").val() || null;
+
+      const item = await Item.create({
+        name: "New Spellbook",
+        type: "loot",
+        img: SPELLBOOK_ICON,
+        folder: folderValue
+      });
+
+      await markAsSpellbook(item);
+
+      ui.notifications.info(`${item.name} created as a spellbook.`);
+      app.close();
+      item.sheet?.render(true);
     });
 
-    await item.setFlag("npc-spell-book", "isSpellbook", true);
-    await item.setFlag("npc-spell-book", "spells", []);
-
-    ui.notifications.info(`${item.name} created as a spellbook.`);
-    item.sheet?.render(true);
-  });
-
-  headerActions.append(button);
-  console.log("NPC Spellbook | Create Spellbook button added");
+    console.log("NPC Spellbook | Spellbook option injected into create item dialog");
+  } catch (err) {
+    console.error("NPC Spellbook | Failed to patch create item dialog", err);
+  }
 });

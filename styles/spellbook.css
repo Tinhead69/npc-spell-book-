@@ -1,4 +1,21 @@
-.npc-spellbook-create {
-  margin-left: 0.25rem;
-  white-space: nowrap;
+.npc-spellbook-choice {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.npc-spellbook-choice-content {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.npc-spellbook-choice img {
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+}
+
+.npc-spellbook-choice-text {
+  font-weight: 600;
 }
