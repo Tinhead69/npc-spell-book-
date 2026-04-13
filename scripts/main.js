@@ -51,43 +51,19 @@ function isSpellbookSpell(item, spellbookId) {
 
 function getWizardSpellsFromActor(actor) {
   const actorItems = actor?.items?.contents ?? actor?.items ?? [];
-  const wizardLevel = getWizardLevel(actor);
 
-  const spells = actorItems.filter((item) => {
-    if (item.type !== "spell") return false;
-
-    // Ignore copied spellbook entries
-    if (item.getFlag?.(MODULE_ID, "spellCopy") === true) return false;
-
-    const preparationMode =
-      item.system?.preparation?.mode ??
-      item.system?.preparationMode ??
-      "";
-
-    const sourceClass =
-      item.system?.source?.class ??
-      item.system?.sourceClass ??
-      item.system?.chatFlavor ??
-      "";
-
-    const sourceText = String(sourceClass).toLowerCase();
-    const looksWizardish = sourceText.includes("wizard");
-
-    if (looksWizardish) return true;
-
-    if (wizardLevel > 0) {
-      return ["prepared", "always", "innate", "atwill", "pact"].includes(preparationMode);
-    }
-
-    return false;
-  });
-
-  return spells.sort((a, b) => {
-    const aLevel = Number(a.system?.level ?? 0);
-    const bLevel = Number(b.system?.level ?? 0);
-    if (aLevel !== bLevel) return aLevel - bLevel;
-    return a.name.localeCompare(b.name);
-  });
+  return actorItems
+    .filter((item) => {
+      if (item.type !== "spell") return false;
+      if (item.getFlag?.(MODULE_ID, "spellCopy") === true) return false;
+      return true;
+    })
+    .sort((a, b) => {
+      const aLevel = Number(a.system?.level ?? 0);
+      const bLevel = Number(b.system?.level ?? 0);
+      if (aLevel !== bLevel) return aLevel - bLevel;
+      return a.name.localeCompare(b.name);
+    });
 }
 
 function buildSpellbookHtml(actor, spells, wizardLevel, rulesVersion) {
