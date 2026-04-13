@@ -29,7 +29,7 @@
   "styles": [
     "styles/spellbook.css"
   ],
-  "url": "https://github.com/Tinhead69/npc-spell-book",
-  "manifest": "https://raw.githubusercontent.com/Tinhead69/npc-spell-book/main/module.json",
-  "download": "https://github.com/Tinhead69/npc-spell-book/archive/refs/heads/main"
+  "url": "https://github.com/Tinhead69/npc-spell-book-",
+  "manifest": "https://raw.githubusercontent.com/Tinhead69/npc-spell-book-/main/module.json",
+  "download": "https://github.com/Tinhead69/npc-spell-book-/archive/refs/heads/main.zip"
 }
