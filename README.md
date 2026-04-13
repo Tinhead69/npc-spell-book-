@@ -1,4 +1,4 @@
-# NPC Spellbook v0.2.0
+# NPC Spellbook v0.2.1
 
 This version uses an actor-driven workflow.
 
@@ -13,14 +13,5 @@ This version uses an actor-driven workflow.
   - +2 spells per wizard level after 1st
 
 ## How to use
-### Actor Directory
-Right-click a wizard actor and choose **Generate / Sync Spellbook**.
-
-### Actor Sheet
-Open a wizard actor sheet and click the **Spellbook** header button.
-
-## Notes
-- The underlying item type is `container`.
-- The created item is named `Spell book of <actor name>`.
-- The item is flagged under `flags["npc-spell-book"]`.
-- Spell class attribution is best-effort: if a spell does not store a source class, the module assumes it belongs to the wizard's spellbook.
+- Right-click a wizard actor and choose **Generate / Sync Spellbook**
+- Or click the **Spellbook** button on a wizard actor sheet
