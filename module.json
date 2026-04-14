@@ -2,10 +2,10 @@
   "id": "npc-spell-book",
   "title": "NPC Spell Book",
   "description": "Creates a visible lootable spellbook item linked to a backing storage container filled with spell formula entries.",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "compatibility": {
-    "minimum": "12",
-    "verified": "12"
+    "minimum": "13",
+    "verified": "13"
   },
   "authors": [
     {

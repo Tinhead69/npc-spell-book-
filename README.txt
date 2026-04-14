@@ -1,4 +1,7 @@
-Replace your existing scripts/main.js with scripts/main.js from this package.
+Manual install:
+1. Download this zip.
+2. Extract the folder "npc-spell-book" into your Foundry Data/modules/ directory.
+3. Restart Foundry or refresh the browser.
+4. Enable the module in your world.
 
-If you want to test immediately in Foundry:
-await game["npc-spell-book"].syncSpellbookForActor(game.actors.getName("Dagobert Seesdem"))
+Note: Foundry's Install Module dialog expects a manifest URL, not a local zip file.
