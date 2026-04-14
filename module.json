@@ -2,7 +2,7 @@
   "id": "npc-spell-book",
   "title": "NPC Spell Book",
   "description": "Creates a visible lootable spellbook item linked to a backing storage container filled with spell formula entries.",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "compatibility": {
     "minimum": "13",
     "verified": "13"
@@ -14,5 +14,8 @@
   ],
   "esmodules": [
     "scripts/main.js"
-  ]
+  ],
+  "url": "https://github.com/YOUR_GITHUB_USERNAME/YOUR_REPOSITORY_NAME",
+  "manifest": "https://raw.githubusercontent.com/YOUR_GITHUB_USERNAME/YOUR_REPOSITORY_NAME/main/module.json",
+  "download": "https://github.com/YOUR_GITHUB_USERNAME/YOUR_REPOSITORY_NAME/releases/download/v0.1.2/npc-spell-book.zip"
 }
