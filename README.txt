@@ -1,21 +1,4 @@
-# NPC Spell Book
+Replace your existing scripts/main.js with scripts/main.js from this package.
 
-GitHub-ready Foundry VTT module package.
-
-## Before publishing
-Edit `module.json` and replace these placeholders:
-- `YOUR_GITHUB_USERNAME`
-- `YOUR_REPOSITORY_NAME`
-
-## Suggested GitHub layout
-Repository root:
-- `module.json`
-- `scripts/main.js`
-- `README.txt`
-
-## Release zip name
-When you create a GitHub release, upload a zip named:
-- `npc-spell-book.zip`
-
-## Foundry install URL
-After upload, use the raw `module.json` URL in Foundry's Install Module dialog.
+If you want to test immediately in Foundry:
+await game["npc-spell-book"].syncSpellbookForActor(game.actors.getName("Dagobert Seesdem"))

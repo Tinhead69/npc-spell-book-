@@ -1,21 +1,42 @@
 {
   "id": "npc-spell-book",
-  "title": "NPC Spell Book",
-  "description": "Creates a visible lootable spellbook item linked to a backing storage container filled with spell formula entries.",
-  "version": "0.1.2",
+  "title": "NPC Spellbook",
+  "description": "Generate and sync wizard spellbooks from actor spell lists.",
+  "version": "0.2.1",
   "compatibility": {
     "minimum": "13",
-    "verified": "13"
+    "verified": "14"
   },
   "authors": [
     {
-      "name": "OpenAI"
+      "name": "Martin Zealey"
     }
   ],
+  "relationships": {
+    "systems": [
+      {
+        "id": "dnd5e",
+        "type": "system",
+        "compatibility": {
+          "minimum": "5.2.0"
+        }
+      }
+    ]
+  },
   "esmodules": [
     "scripts/main.js"
   ],
+  "styles": [
+    "styles/spellbook.css"
+  ],
+  "languages": [
+    {
+      "lang": "en",
+      "name": "English",
+      "path": "lang/en.json"
+    }
+  ],
   "url": "https://github.com/Tinhead69/npc-spell-book-",
   "manifest": "https://raw.githubusercontent.com/Tinhead69/npc-spell-book-/main/module.json",
-  "download": "https://github.com/Tinhead69/npc-spell-book-/releases/download/v0.1.2/npc-spell-book.zip"
+  "download": "https://codeload.github.com/Tinhead69/npc-spell-book-/zip/refs/heads/main"
 }
