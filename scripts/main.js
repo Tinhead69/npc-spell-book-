@@ -34,12 +34,20 @@ function getWizardLevel(actor) {
   }
 }
 
-function getSpellbookItemName(actor) {
+function getSpellbookDisplayName(actor) {
   return `Spell book of ${actor.name}`;
 }
 
-function isSpellbookItem(item) {
-  return item?.getFlag?.(MODULE_ID, "spellbook") === true;
+function getSpellbookStorageName(actor) {
+  return `Spell book of ${actor.name} [Storage]`;
+}
+
+function isVisibleSpellbookItem(item) {
+  return item?.getFlag?.(MODULE_ID, "spellbookVisible") === true;
+}
+
+function isSpellbookStorage(item) {
+  return item?.getFlag?.(MODULE_ID, "spellbookStorage") === true;
 }
 
 function isLegacySpellCopy(item) {
@@ -135,78 +143,133 @@ function buildSpellbookHtml(actor, storedSpells, wizardLevel, rulesVersion) {
   `.trim();
 }
 
-async function applySpellbookFlags(item, actor, wizardLevel, rulesVersion, storedSpells) {
-  await item.setFlag(MODULE_ID, "spellbook", true);
+function buildVisibleBookHtml(actor, storedSpells, storageContainer) {
+  return `
+    <div class="npc-spell-book-link">
+      <h1 style="margin-bottom: 0.5em;">${getSpellbookDisplayName(actor)}</h1>
+      <p>This item links to the spellbook storage container.</p>
+      <p><strong>Stored spells:</strong> ${storedSpells.length}</p>
+      <p><strong>Linked container ID:</strong> ${storageContainer.id}</p>
+    </div>
+  `.trim();
+}
+
+async function applyStorageFlags(item, actor, wizardLevel, rulesVersion, storedSpells, visibleBook = null) {
+  await item.setFlag(MODULE_ID, "spellbookStorage", true);
   await item.setFlag(MODULE_ID, "ownerActorId", actor.id);
   await item.setFlag(MODULE_ID, "wizardLevel", wizardLevel);
   await item.setFlag(MODULE_ID, "rulesVersion", rulesVersion);
   await item.setFlag(MODULE_ID, "storedSpellCount", storedSpells.length);
   await item.setFlag(MODULE_ID, "storedSpells", storedSpells);
+  await item.setFlag(MODULE_ID, "linkedBookId", visibleBook?.id ?? null);
   await item.setFlag(MODULE_ID, "syncedAt", new Date().toISOString());
 }
 
-async function ensureSpellbookItem(actor, storedSpells, wizardLevel) {
-  const itemName = getSpellbookItemName(actor);
-  const rulesVersion = getRulesVersion();
+async function applyVisibleBookFlags(item, actor, storageContainer, storedSpells) {
+  await item.setFlag(MODULE_ID, "spellbookVisible", true);
+  await item.setFlag(MODULE_ID, "ownerActorId", actor.id);
+  await item.setFlag(MODULE_ID, "linkedContainerId", storageContainer.id);
+  await item.setFlag(MODULE_ID, "storedSpellCount", storedSpells.length);
+  await item.setFlag(MODULE_ID, "syncedAt", new Date().toISOString());
+}
 
-  let spellbookItem = actor.items.find((item) => isSpellbookItem(item));
-  if (!spellbookItem) {
-    spellbookItem = actor.items.find((item) => item.name === itemName);
+async function ensureSpellbookItems(actor, storedSpells, wizardLevel) {
+  const rulesVersion = getRulesVersion();
+  const displayName = getSpellbookDisplayName(actor);
+  const storageName = getSpellbookStorageName(actor);
+
+  let storageContainer = actor.items.find((item) => isSpellbookStorage(item));
+  if (!storageContainer) {
+    storageContainer = actor.items.find(
+      (item) => item.name === storageName && item.type === "container"
+    );
   }
 
-  const html = buildSpellbookHtml(actor, storedSpells, wizardLevel, rulesVersion);
+  const storageHtml = buildSpellbookHtml(actor, storedSpells, wizardLevel, rulesVersion);
 
-  if (spellbookItem) {
-    await spellbookItem.update({
-      name: itemName,
+  if (storageContainer) {
+    await storageContainer.update({
+      name: storageName,
       img: SPELLBOOK_ICON,
       system: {
-        ...(spellbookItem.system ?? {}),
+        ...(storageContainer.system ?? {}),
         description: {
-          ...(spellbookItem.system?.description ?? {}),
-          value: html
+          ...(storageContainer.system?.description ?? {}),
+          value: storageHtml
         }
       }
     });
-
-    await applySpellbookFlags(
-      spellbookItem,
-      actor,
-      wizardLevel,
-      rulesVersion,
-      storedSpells
-    );
-
-    return { item: spellbookItem, created: false };
-  }
-
-  const created = await actor.createEmbeddedDocuments("Item", [
-    {
-      name: itemName,
-      type: "container",
-      img: SPELLBOOK_ICON,
-      system: {
-        description: {
-          value: html
+  } else {
+    const created = await actor.createEmbeddedDocuments("Item", [
+      {
+        name: storageName,
+        type: "container",
+        img: SPELLBOOK_ICON,
+        system: {
+          description: {
+            value: storageHtml
+          }
         }
       }
-    }
-  ]);
-
-  const createdItem = created?.[0];
-  if (!createdItem) {
-    throw new Error(`Failed to create spellbook item for ${actor.name}.`);
+    ]);
+    storageContainer = created?.[0] ?? null;
   }
 
-  await applySpellbookFlags(
-    createdItem,
-    actor,
-    wizardLevel,
-    rulesVersion,
-    storedSpells
-  );
+  if (!storageContainer) {
+    throw new Error(`Failed to create spellbook storage container for ${actor.name}.`);
+  }
 
-  return { item: createdItem, created: true };
+  let visibleBook = actor.items.find((item) => isVisibleSpellbookItem(item));
+  if (!visibleBook) {
+    visibleBook = actor.items.find(
+      (item) => item.name === displayName && item.type !== "container"
+    );
+  }
+
+  const visibleHtml = buildVisibleBookHtml(actor, storedSpells, storageContainer);
+
+  if (visibleBook) {
+    await visibleBook.update({
+      name: displayName,
+      img: SPELLBOOK_ICON,
+      system: {
+        ...(visibleBook.system ?? {}),
+        description: {
+          ...(visibleBook.system?.description ?? {}),
+          value: visibleHtml
+        }
+      }
+    });
+  } else {
+    const created = await actor.createEmbeddedDocuments("Item", [
+      {
+        name: displayName,
+        type: "loot",
+        img: SPELLBOOK_ICON,
+        system: {
+          quantity: 1,
+          weight: 0,
+          price: {
+            value: 0,
+            denomination: "gp"
+          },
+          description: {
+            value: visibleHtml
+          }
+        }
+      }
+    ]);
+    visibleBook = created?.[0] ?? null;
+  }
+
+  if (!visibleBook) {
+    throw new Error(`Failed to create visible spellbook item for ${actor.name}.`);
+  }
+
+  await applyVisibleBookFlags(visibleBook, actor, storageContainer, storedSpells);
+  await applyStorageFlags(storageContainer, actor, wizardLevel, rulesVersion, storedSpells, visibleBook);
+
+  return { visibleBook, storageContainer };
 }
 
 async function removeLegacySpellCopies(actor) {
@@ -234,7 +297,7 @@ function buildFormulaDescription(sourceSpell) {
   `.trim();
 }
 
-function buildFormulaItemData(sourceSpell, spellbookItem) {
+function buildFormulaItemData(sourceSpell, storageContainer) {
   return {
     name: getFormulaItemName(sourceSpell),
     type: "loot",
@@ -249,7 +312,7 @@ function buildFormulaItemData(sourceSpell, spellbookItem) {
       description: {
         value: buildFormulaDescription(sourceSpell)
       },
-      container: spellbookItem.id
+      container: storageContainer.id
     },
     flags: {
       [MODULE_ID]: {
@@ -265,11 +328,11 @@ function buildFormulaItemData(sourceSpell, spellbookItem) {
   };
 }
 
-async function syncFormulaEntries(actor, spellbookItem, sourceSpells) {
+async function syncFormulaEntries(actor, storageContainer, sourceSpells) {
   const actorItems = actor.items.contents ?? [];
 
   const existingEntries = actorItems.filter(
-    (item) => isFormulaEntry(item) && item.system?.container === spellbookItem.id
+    (item) => isFormulaEntry(item) && item.system?.container === storageContainer.id
   );
 
   const existingBySourceId = new Map(
@@ -283,7 +346,7 @@ async function syncFormulaEntries(actor, spellbookItem, sourceSpells) {
   let removed = 0;
 
   for (const sourceSpell of sourceSpells) {
-    const itemData = buildFormulaItemData(sourceSpell, spellbookItem);
+    const itemData = buildFormulaItemData(sourceSpell, storageContainer);
     const existingEntry = existingBySourceId.get(sourceSpell.id);
 
     if (existingEntry) {
@@ -313,7 +376,8 @@ async function syncFormulaEntries(actor, spellbookItem, sourceSpells) {
 
 async function createSummaryChatMessage({
   actor,
-  createdSpellbook,
+  createdVisibleBook,
+  createdStorageContainer,
   storedSpells,
   wizardLevel,
   rulesVersion,
@@ -327,7 +391,8 @@ async function createSummaryChatMessage({
       <h1 style="margin:0 0 0.5em 0;">NPC Spellbook</h1>
       <h3 style="margin:0 0 0.5em 0;">${actor.name}</h3>
       <ul style="margin:0; padding-left:1.25em;">
-        <li>${createdSpellbook ? "Created spellbook." : "Updated spellbook."}</li>
+        <li>${createdVisibleBook ? "Created visible spellbook item." : "Updated visible spellbook item."}</li>
+        <li>${createdStorageContainer ? "Created storage container." : "Updated storage container."}</li>
         <li>Rules version: ${rulesVersion}.</li>
         <li>Wizard level: ${wizardLevel}.</li>
         <li>Spells stored: ${storedSpells.length}.</li>
@@ -358,18 +423,25 @@ async function syncSpellbookForActor(actor) {
 
   const removedCopies = await removeLegacySpellCopies(actor);
 
-  const { item: spellbookItem, created: createdSpellbook } =
-    await ensureSpellbookItem(actor, storedSpells, wizardLevel);
+  const hadVisibleBook = actor.items.some((item) => isVisibleSpellbookItem(item));
+  const hadStorageContainer = actor.items.some((item) => isSpellbookStorage(item));
+
+  const { visibleBook, storageContainer } = await ensureSpellbookItems(
+    actor,
+    storedSpells,
+    wizardLevel
+  );
 
   const {
     added: addedEntries,
     updated: updatedEntries,
     removed: removedEntries
-  } = await syncFormulaEntries(actor, spellbookItem, sourceSpells);
+  } = await syncFormulaEntries(actor, storageContainer, sourceSpells);
 
   await createSummaryChatMessage({
     actor,
-    createdSpellbook,
+    createdVisibleBook: !hadVisibleBook,
+    createdStorageContainer: !hadStorageContainer,
     storedSpells,
     wizardLevel,
     rulesVersion,
@@ -384,8 +456,10 @@ async function syncSpellbookForActor(actor) {
 
   return {
     actor,
-    book: spellbookItem,
-    created: createdSpellbook,
+    book: visibleBook,
+    container: storageContainer,
+    createdVisibleBook: !hadVisibleBook,
+    createdStorageContainer: !hadStorageContainer,
     rulesVersion,
     wizardLevel,
     storedSpellCount: storedSpells.length,
