@@ -15,7 +15,7 @@
   "esmodules": [
     "scripts/main.js"
   ],
-  "url": "https://github.com/YOUR_GITHUB_USERNAME/YOUR_REPOSITORY_NAME",
-  "manifest": "https://raw.githubusercontent.com/YOUR_GITHUB_USERNAME/YOUR_REPOSITORY_NAME/main/module.json",
-  "download": "https://github.com/YOUR_GITHUB_USERNAME/YOUR_REPOSITORY_NAME/releases/download/v0.1.2/npc-spell-book.zip"
+  "url": "https://github.com/Tinhead69/npc-spell-book-",
+  "manifest": "https://raw.githubusercontent.com/Tinhead69/npc-spell-book-/main/module.json",
+  "download": "https://github.com/Tinhead69/npc-spell-book-/releases/download/v0.1.2/npc-spell-book.zip"
 }
