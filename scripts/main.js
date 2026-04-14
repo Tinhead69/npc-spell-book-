@@ -65,7 +65,7 @@ function getFormulaItemName(sourceSpell) {
 function getSourceSpellsFromActor(actor) {
   const actorItems = actor?.items?.contents ?? [];
 
-  const spells = actorItems
+  return actorItems
     .filter((item) => item.type === "spell" && !isLegacySpellCopy(item))
     .sort((a, b) => {
       const aLevel = Number(a.system?.level ?? 0);
@@ -73,9 +73,6 @@ function getSourceSpellsFromActor(actor) {
       if (aLevel !== bLevel) return aLevel - bLevel;
       return a.name.localeCompare(b.name);
     });
-
-  log(`${actor.name}: found ${spells.length} source spell(s).`, spells.map((s) => s.name));
-  return spells;
 }
 
 function buildStoredSpellData(sourceSpell) {
@@ -147,7 +144,7 @@ function buildVisibleBookHtml(actor, storedSpells, storageContainer) {
   return `
     <div class="npc-spell-book-link">
       <h1 style="margin-bottom: 0.5em;">${getSpellbookDisplayName(actor)}</h1>
-      <p>This item links to the spellbook storage container.</p>
+      <p>This item links to the backing spellbook container.</p>
       <p><strong>Stored spells:</strong> ${storedSpells.length}</p>
       <p><strong>Linked container ID:</strong> ${storageContainer.id}</p>
     </div>
@@ -183,6 +180,15 @@ async function ensureSpellbookItems(actor, storedSpells, wizardLevel) {
     storageContainer = actor.items.find(
       (item) => item.name === storageName && item.type === "container"
     );
+  }
+
+  if (!storageContainer) {
+    const legacyContainer = actor.items.find(
+      (item) => item.name === displayName && item.type === "container"
+    );
+    if (legacyContainer) {
+      storageContainer = legacyContainer;
+    }
   }
 
   const storageHtml = buildSpellbookHtml(actor, storedSpells, wizardLevel, rulesVersion);
