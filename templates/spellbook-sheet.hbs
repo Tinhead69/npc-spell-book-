@@ -2,7 +2,7 @@
   <!-- Header Section -->
   <header class="spellbook-header flexrow">
     <div class="profile-img-container">
-      <img class="profile-img" src="{{item.img}}" title="{{item.name}}" width="64" height="64" />
+      <img class="profile-img" src="{{item.img}}" title="{{item.name}}" width="64" height="64" data-action="editImage" />
     </div>
     <div class="header-fields flexcol">
       <h1 class="charname">
@@ -14,9 +14,6 @@
 
   <!-- Controls Bar -->
   <div class="spellbook-toolbar flexrow">
-    <button type="button" class="btn" data-action="addSpell">
-      <i class="fas fa-plus"></i> Add Spell
-    </button>
     <button type="button" class="btn" data-action="studySpellbook">
       <i class="fas fa-book-reader"></i> Study Spellbook
     </button>
@@ -24,19 +21,18 @@
 
   <!-- Main Spells Content Area -->
   <div class="spellbook-body">
-    {{#if groupedSpells.length}}
+    {{#if hasSpells}}
       {{#each groupedSpells}}
         <div class="spell-group">
           <div class="spell-header flexrow">
-            <span class="group-label">{{this.label}}</span>
-            <span class="column-title spell-actions"></span>
+            <span class="group-label"><strong>{{this.label}}</strong></span>
           </div>
 
           <ul class="spell-list">
             {{#each this.spells}}
               <li class="spell-entry flexrow" data-entry-id="{{this.uuid}}">
                 <div class="item-name flexrow">
-                  <img class="item-image" src="{{this.img}}" width="32" height="32" />
+                  <img class="item-image" src="{{this.img}}" width="28" height="28" />
                   <span class="spell-name">{{this.name}}</span>
                 </div>
                 <div class="spell-actions">
