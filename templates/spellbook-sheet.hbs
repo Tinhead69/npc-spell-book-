@@ -1,61 +1,53 @@
-<form class="{{cssClass}} flexcol" autocomplete="off">
-  <header class="sheet-header flexrow">
-    <img class="profile-img" src="{{item.img}}" data-edit="img" title="{{item.name}}"/>
-    <div class="header-fields">
-      <h1 class="charname">
-        <input name="name" type="text" value="{{item.name}}" placeholder="Spellbook Name"/>
-      </h1>
-      <p class="notes">
-        This spellbook is independent of character spellbooks. Wizards may transcribe spells using 5e 2014 rules.
-      </p>
-    </div>
-  </header>
+import { getSpellbookSpells, setSpellbookSpells, MODULE_ID } from "./data.js";
 
-  <section class="sheet-body flexcol">
-    <div class="sheet-actions flexrow">
-      {{#if isGM}}
-        <button type="button" class="add-spell"><i class="fas fa-plus"></i> Add Spell</button>
-      {{/if}}
-      <button type="button" class="study-spellbook"><i class="fas fa-scroll"></i> Study Spellbook</button>
-    </div>
+export class NpcSpellbookSheet extends ItemSheet {
+  static get defaultOptions() {
+    return foundry.utils.mergeObject(super.defaultOptions, {
+      classes: ["npc-spellbook", "sheet", "item"],
+      template: "modules/npc-spell-book/templates/spellbook-sheet.hbs",
+      width: 600,
+      height: 600,
+      submitOnChange: true,
+      closeOnSubmit: false
+    });
+  }
 
-    <div class="spells-list">
-      {{#each spellLevels as |spells level|}}
-        <div class="spell-level-header">
-          <h3>{{#if (eq level 0)}}Cantrips{{else}}Level {{level}}{{/if}}</h3>
-        </div>
-        <table class="spells-table">
-          <thead>
-            <tr>
-              <th class="spell-name">Name</th>
-              <th class="spell-time">Time</th>
-              <th class="spell-range">Range</th>
-              <th class="spell-target">Target</th>
-              <th class="spell-actions"></th>
-            </tr>
-          </thead>
-          <tbody>
-            {{#each spells as |spell|}}
-              <tr class="spell-item" data-spell-id="{{spell.id}}">
-                <td class="spell-name flexrow">
-                  <img src="{{spell.img}}" class="spell-icon" width="24" height="24"/>
-                  <span>{{spell.name}}</span>
-                </td>
-                <td class="spell-time">{{spell.activation.cost}} {{spell.activation.type}}</td>
-                <td class="spell-range">{{spell.range.value}} {{spell.range.units}}</td>
-                <td class="spell-target">{{spell.target.value}} {{spell.target.units}}</td>
-                <td class="spell-actions">
-                  <a class="delete-spell" data-spell-id="{{spell.id}}" title="Delete Spell">
-                    <i class="fas fa-trash"></i>
-                  </a>
-                </td>
-              </tr>
-            {{/each}}
-          </tbody>
-        </table>
-      {{else}}
-        <p class="empty-notice">No spells recorded in this spellbook yet. Drop spell items here to add them.</p>
-      {{/each}}
-    </div>
-  </section>
-</form>
+  async getData(options) {
+    const context = await super.getData(options);
+    context.item = this.item;
+    context.isGM = game.user.isGM;
+    
+    // Group spells by level
+    const spells = getSpellbookSpells(this.item);
+    const levels = {};
+    for (const spell of spells) {
+      const lvl = spell.level ?? 0;
+      if (!levels[lvl]) levels[lvl] = [];
+      levels[lvl].push(spell);
+    }
+    context.spellLevels = levels;
+
+    return context;
+  }
+
+  activateListeners(html) {
+    super.activateListeners(html);
+
+    // Delete spell listener
+    html.find(".delete-spell").click(async (event) => {
+      event.preventDefault();
+      const spellId = event.currentTarget.dataset.spellId;
+      let spells = getSpellbookSpells(this.item);
+      spells = spells.filter((s) => s.id !== spellId && s.uuid !== spellId);
+      await setSpellbookSpells(this.item, spells);
+      this.render(false);
+    });
+  }
+
+  /**
+   * Process and update object properties when form changes occur (e.g. updating the name)
+   */
+  async _updateObject(event, formData) {
+    return this.object.update(formData);
+  }
+}
