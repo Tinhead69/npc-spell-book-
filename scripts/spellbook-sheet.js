@@ -109,20 +109,46 @@ export class NpcSpellbookSheet extends HandlebarsApplicationMixin(ItemSheetV2) {
     const sheet = /** @type {NpcSpellbookSheet} */ (this);
 
     try {
-      const Browser = globalThis.dnd5e?.applications?.CompendiumBrowser;
+      const Browser = globalThis.dnd5e?.applications?.CompendiumBrowser
+        ?? globalThis.game?.dnd5e?.applications?.CompendiumBrowser;
+
       if (Browser?.select) {
+        // Lock browser to Item/spell so it doesn't open on Classes.
         const selection = await Browser.select({
-          filters: { documentType: "Item", types: new Set(["spell"]) }
+          filters: {
+            locked: {
+              documentClass: "Item",
+              types: new Set(["spell"])
+            },
+            initial: {
+              documentClass: "Item",
+              types: new Set(["spell"])
+            }
+          },
+          selection: { min: 1, max: 20 }
         });
-        const docs = Array.isArray(selection) ? selection : selection ? [selection] : [];
-        for (const doc of docs) await sheet._addSpellEntry(spellItemToEntry(doc));
+
+        if (!selection) return;
+
+        const uuids = selection instanceof Set
+          ? [...selection]
+          : Array.isArray(selection)
+            ? selection
+            : [selection];
+
+        for (const entry of uuids) {
+          const doc = typeof entry === "string" ? await fromUuid(entry) : entry;
+          if (doc?.type === "spell") await sheet._addSpellEntry(spellItemToEntry(doc));
+        }
         return;
       }
     } catch (err) {
       console.warn("NPC Spellbook | Compendium browser unavailable", err);
     }
 
-    ui.notifications.info("Drag spells from a compendium onto the spellbook list.");
+    ui.notifications.info(
+      "Open Compendiums → Spells, then drag spell items onto this spellbook list."
+    );
   }
 
   static async #onRemoveSpell(event, target) {
