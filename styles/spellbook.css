@@ -344,3 +344,37 @@
 .study-spellbook .sort-btn:hover {
   text-shadow: 0 0 4px rgba(255, 255, 255, 0.5);
 }
+/* --------------------------------------------------------------------------
+   Create Item Dialog Patch Styling
+   -------------------------------------------------------------------------- */
+label.npc-spellbook-choice {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  width: 100%;
+  padding: 0.35rem 0.5rem;
+  cursor: pointer;
+}
+
+label.npc-spellbook-choice .npc-spellbook-choice-content {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+label.npc-spellbook-choice .npc-spellbook-choice-content .icon {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+  flex: 0 0 24px;
+  filter: drop-shadow(0 0 2px rgba(0, 0, 0, 0.5));
+}
+
+label.npc-spellbook-choice .npc-spellbook-choice-text {
+  font-weight: bold;
+}
+
+label.npc-spellbook-choice input[type="radio"] {
+  margin: 0;
+  cursor: pointer;
+}
