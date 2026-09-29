@@ -64,12 +64,12 @@
 
           <!-- Cost Column -->
           <span class="item-detail study-cost">
-            {{localize "NPC_SPELLBOOK.Learn.Cost" cost=spell.cost}}
+            {{spell.cost}} gp
           </span>
 
           <!-- Time Column -->
           <span class="item-detail study-time">
-            {{localize "NPC_SPELLBOOK.Learn.Time" hours=spell.hours}}
+            {{spell.hours}} {{#if (eq spell.hours 1)}}hour{{else}}hours{{/if}}
           </span>
 
           <!-- Status / Action Column -->
