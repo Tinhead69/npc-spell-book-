@@ -1,31 +1,34 @@
-<div class="study-spellbook dnd5e2">
-  <!-- Wizard Selection Section -->
-  <section class="wizard-select">
-    <h3>{{localize "NPC_SPELLBOOK.Learn.SelectWizard"}}</h3>
-    {{#if wizards.length}}
-    <ul class="wizard-list">
-      {{#each wizards as |w|}}
-      <li>
-        <button type="button" class="btn {{#if w.selected}}active{{/if}}" data-action="selectWizard" data-wizard-id="{{w.id}}">
-          {{w.name}}
-        </button>
-      </li>
-      {{/each}}
-    </ul>
-    {{else}}
-    <p class="hint">Assign a wizard PC to your user, or ensure party wizards are owned by players.</p>
+<div class="study-spellbook dnd5e2 flexcol">
+  <!-- Top Non-Scrolling Content -->
+  <div class="study-header-container flexcol">
+    <!-- Wizard Selection Section -->
+    <section class="wizard-select">
+      <h3>{{localize "NPC_SPELLBOOK.Learn.SelectWizard"}}</h3>
+      {{#if wizards.length}}
+      <ul class="wizard-list">
+        {{#each wizards as |w|}}
+        <li>
+          <button type="button" class="btn {{#if w.selected}}active{{/if}}" data-action="selectWizard" data-wizard-id="{{w.id}}">
+            {{w.name}}
+          </button>
+        </li>
+        {{/each}}
+      </ul>
+      {{else}}
+      <p class="hint">Assign a wizard PC to your user, or ensure party wizards are owned by players.</p>
+      {{/if}}
+    </section>
+
+    {{#if hasWizard}}
+    <section class="wizard-summary">
+      <span><strong>Level:</strong> {{wizardLevel}}</span> | 
+      <span><strong>Max Spell Level:</strong> {{maxLevel}}</span>
+    </section>
     {{/if}}
-  </section>
+  </div>
 
-  {{#if hasWizard}}
-  <section class="wizard-summary">
-    <span><strong>Level:</strong> {{wizardLevel}}</span> | 
-    <span><strong>Max Spell Level:</strong> {{maxLevel}}</span>
-  </section>
-  {{/if}}
-
-  <!-- Spells Tabular Section -->
-  <section class="spell-study-list spellbook-spells">
+  <!-- Scrollable Spells Section -->
+  <section class="spell-study-list spellbook-spells flex1">
     {{#if spellGroups.length}}
       {{#each spellGroups as |group|}}
       <div class="spell-group">
