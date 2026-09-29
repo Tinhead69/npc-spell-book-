@@ -1,10 +1,10 @@
 <form class="npc-spellbook-sheet {{cssClass}}" autocomplete="off">
   <!-- Header Section -->
-  <header class="spellbook-header">
-    <button type="button" class="img-button" data-action="editImage">
-      <img class="profile-img" src="{{item.img}}" title="{{item.name}}" />
-    </button>
-    <div class="header-fields">
+  <header class="spellbook-header flexrow">
+    <div class="profile-img-container">
+      <img class="profile-img" src="{{item.img}}" title="{{item.name}}" width="64" height="64" />
+    </div>
+    <div class="header-fields flexcol">
       <h1 class="charname">
         <input name="name" type="text" value="{{item.name}}" placeholder="Spellbook Name" />
       </h1>
@@ -22,33 +22,23 @@
     </button>
   </div>
 
-  <!-- Main Spells Content -->
+  <!-- Main Spells Content Area -->
   <div class="spellbook-body">
     {{#if groupedSpells.length}}
       {{#each groupedSpells}}
         <div class="spell-group">
           <div class="spell-header flexrow">
             <span class="group-label">{{this.label}}</span>
-            <span class="column-title spell-time">TIME</span>
-            <span class="column-title spell-range">RANGE</span>
-            <span class="column-title spell-target">TARGET</span>
-            <span class="column-title spell-roll">ROLL</span>
             <span class="column-title spell-actions"></span>
           </div>
 
           <ul class="spell-list">
             {{#each this.spells}}
               <li class="spell-entry flexrow" data-entry-id="{{this.uuid}}">
-                <div class="item-name">
+                <div class="item-name flexrow">
                   <img class="item-image" src="{{this.img}}" width="32" height="32" />
-                  <div class="name-container">
-                    <span class="spell-name">{{this.name}}</span>
-                  </div>
+                  <span class="spell-name">{{this.name}}</span>
                 </div>
-                <div class="spell-time">-</div>
-                <div class="spell-range">-</div>
-                <div class="spell-target">-</div>
-                <div class="spell-roll">-</div>
                 <div class="spell-actions">
                   <button type="button" class="remove-spell" data-action="removeSpell" title="Delete">
                     <i class="fas fa-trash"></i>
@@ -61,6 +51,7 @@
       {{/each}}
     {{else}}
       <div class="spellbook-drop-zone flexcol flex-center">
+        <i class="fas fa-file-import fa-2x"></i>
         <p>Drag and drop spells here to add them to this spellbook.</p>
       </div>
     {{/if}}
