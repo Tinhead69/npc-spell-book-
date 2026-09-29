@@ -1,78 +1,61 @@
-<div class="npc-spellbook-sheet dnd5e2">
-  <!-- Sheet Header -->
-  <header class="spellbook-header">
-    <button type="button" class="inline-edit img-button" data-action="editImage" data-edit="img" title="{{document.name}}">
-      <img class="profile-img" src="{{document.img}}" alt="{{document.name}}" width="64" height="64" />
-      <i class="fas fa-edit edit-icon"></i>
-    </button>
+<form class="{{cssClass}} flexcol" autocomplete="off">
+  <header class="sheet-header flexrow">
+    <img class="profile-img" src="{{item.img}}" data-edit="img" title="{{item.name}}"/>
     <div class="header-fields">
       <h1 class="charname">
-        <input name="name" type="text" value="{{document.name}}" placeholder="{{localize 'DND5E.ItemName'}}" />
+        <input name="name" type="text" value="{{item.name}}" placeholder="Spellbook Name"/>
       </h1>
-      <p class="description">{{localize "NPC_SPELLBOOK.Sheet.Description"}}</p>
+      <p class="notes">
+        This spellbook is independent of character spellbooks. Wizards may transcribe spells using 5e 2014 rules.
+      </p>
     </div>
   </header>
 
-  <!-- Toolbar -->
-  <div class="spellbook-toolbar">
-    {{#if editable}}
-    <button type="button" data-action="addSpell">
-      <i class="fas fa-plus"></i> {{localize "NPC_SPELLBOOK.Actions.AddSpell"}}
-    </button>
-    {{/if}}
-    <button type="button" data-action="studySpellbook">
-      <i class="fas fa-scroll"></i> {{localize "NPC_SPELLBOOK.Actions.StudySpellbook"}}
-    </button>
-  </div>
+  <section class="sheet-body flexcol">
+    <div class="sheet-actions flexrow">
+      {{#if isGM}}
+        <button type="button" class="add-spell"><i class="fas fa-plus"></i> Add Spell</button>
+      {{/if}}
+      <button type="button" class="study-spellbook"><i class="fas fa-scroll"></i> Study Spellbook</button>
+    </div>
 
-  <!-- Spells Section -->
-  <section class="spellbook-spells spellbook-drop-zone">
-    {{#if spellGroups.length}}
-      {{#each spellGroups as |group|}}
-      <div class="spell-group">
-        <!-- Group Header Bar with Tabular Column Titles -->
-        <div class="items-header spell-header flexrow">
-          <span class="group-label flex2">{{group.label}}</span>
-          <span class="column-title spell-time">TIME</span>
-          <span class="column-title spell-range">RANGE</span>
-          <span class="column-title spell-target">TARGET</span>
-          <span class="column-title spell-roll">ROLL</span>
-          <span class="column-title spell-actions"></span>
+    <div class="spells-list">
+      {{#each spellLevels as |spells level|}}
+        <div class="spell-level-header">
+          <h3>{{#if (eq level 0)}}Cantrips{{else}}Level {{level}}{{/if}}</h3>
         </div>
-
-        <!-- Spell Items in Group -->
-        <ol class="spell-list">
-          {{#each group.spells as |spell|}}
-          <li class="spell-entry flexrow" data-spell-uuid="{{spell.uuid}}">
-            <div class="item-name flexrow flex2">
-              <img class="item-image" src="{{spell.img}}" alt="{{spell.name}}" />
-              <div class="name-container">
-                <span class="spell-name">{{spell.name}}</span>
-                {{#if spell.components}}
-                <span class="spell-components">{{spell.components}}</span>
-                {{/if}}
-              </div>
-            </div>
-
-            <span class="item-detail spell-time">{{spell.activation}}</span>
-            <span class="item-detail spell-range">{{spell.range}}</span>
-            <span class="item-detail spell-target">{{spell.target}}</span>
-            <span class="item-detail spell-roll">{{spell.roll}}</span>
-
-            <div class="item-controls spell-actions">
-              {{#if ../../editable}}
-              <button type="button" class="remove-spell" data-action="removeSpell" title="{{localize 'NPC_SPELLBOOK.Actions.RemoveSpell'}}">
-                <i class="fas fa-trash"></i>
-              </button>
-              {{/if}}
-            </div>
-          </li>
-          {{/each}}
-        </ol>
-      </div>
+        <table class="spells-table">
+          <thead>
+            <tr>
+              <th class="spell-name">Name</th>
+              <th class="spell-time">Time</th>
+              <th class="spell-range">Range</th>
+              <th class="spell-target">Target</th>
+              <th class="spell-actions"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {{#each spells as |spell|}}
+              <tr class="spell-item" data-spell-id="{{spell.id}}">
+                <td class="spell-name flexrow">
+                  <img src="{{spell.img}}" class="spell-icon" width="24" height="24"/>
+                  <span>{{spell.name}}</span>
+                </td>
+                <td class="spell-time">{{spell.activation.cost}} {{spell.activation.type}}</td>
+                <td class="spell-range">{{spell.range.value}} {{spell.range.units}}</td>
+                <td class="spell-target">{{spell.target.value}} {{spell.target.units}}</td>
+                <td class="spell-actions">
+                  <a class="delete-spell" data-spell-id="{{spell.id}}" title="Delete Spell">
+                    <i class="fas fa-trash"></i>
+                  </a>
+                </td>
+              </tr>
+            {{/each}}
+          </tbody>
+        </table>
+      {{else}}
+        <p class="empty-notice">No spells recorded in this spellbook yet. Drop spell items here to add them.</p>
       {{/each}}
-    {{else}}
-      <p class="empty-hint">{{localize "NPC_SPELLBOOK.Sheet.EmptySpells"}}</p>
-    {{/if}}
+    </div>
   </section>
-</div>
+</form>
