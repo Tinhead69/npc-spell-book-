@@ -10,7 +10,7 @@ import {
 } from "./data.js";
 import { NpcSpellbookSheet } from "./spellbook-sheet.js";
 
-Hooks.once("init", async () => {
+Hooks.once("init", () => {
   console.log("NPC Spellbook | Initialising");
 
   game.settings.register(MODULE_ID, "deductGold", {
@@ -31,8 +31,7 @@ Hooks.once("init", async () => {
     default: true
   });
 
-  // Await loading remaining Handlebars templates
-  await foundry.applications.handlebars.loadTemplates([
+  foundry.applications.handlebars.loadTemplates([
     "modules/npc-spell-book/templates/spellbook-sheet.hbs",
     "modules/npc-spell-book/templates/learn-spells.hbs"
   ]);
@@ -49,6 +48,16 @@ Hooks.once("init", async () => {
 Hooks.once("ready", () => {
   console.log("NPC Spellbook | Ready");
 });
+
+/** Open study dialog for a spellbook item. */
+async function openStudySpellbook(item) {
+  try {
+    const { StudySpellbookDialog } = await import("./learn-dialog.js");
+    new StudySpellbookDialog({ spellbook: item }).render(true);
+  } catch (err) {
+    console.error("NPC Spellbook | Failed to load StudySpellbookDialog:", err);
+  }
+}
 
 /** Patch item directory right-click menu. */
 function patchItemDirectoryContextMenu() {
@@ -100,8 +109,7 @@ function patchItemDirectoryContextMenu() {
       callback: async (li) => {
         const item = game.items.get(getEntryId(li));
         if (!item) return;
-        const { StudySpellbookDialog } = await import("./learn-dialog.js");
-        new StudySpellbookDialog({ spellbook: item }).render(true);
+        await openStudySpellbook(item);
       }
     });
 
@@ -109,12 +117,7 @@ function patchItemDirectoryContextMenu() {
   };
 }
 
-/**
- * Create a flagged NPC spellbook loot item.
- * @param {object} [options]
- * @param {string|null} [options.folder]
- * @returns {Promise<Item>}
- */
+/** Create a flagged NPC spellbook loot item. */
 async function createNpcSpellbook({ folder = null } = {}) {
   const item = await Item.implementation.create({
     name: "New Spellbook",
@@ -137,11 +140,7 @@ function resolveAppElement(htmlOrElement) {
   return null;
 }
 
-/**
- * Inject Spellbook into the Create Item type list.
- * @param {Application} app
- * @param {HTMLElement|jQuery} htmlOrElement
- */
+/** Inject Spellbook choice in item creation dialog. */
 function injectSpellbookChoice(app, htmlOrElement) {
   try {
     const title = String(app?.title ?? app?.options?.window?.title ?? "");
@@ -232,12 +231,6 @@ Hooks.on("renderItemDirectory", (app, htmlOrElement) => {
   });
   header.append(button);
 });
-
-/** Open study dialog for a spellbook item. */
-async function openStudySpellbook(item) {
-  const { StudySpellbookDialog } = await import("./learn-dialog.js");
-  new StudySpellbookDialog({ spellbook: item }).render(true);
-}
 
 /** Header button for item sheets */
 Hooks.on("getItemSheetHeaderButtons", (app, buttons) => {
