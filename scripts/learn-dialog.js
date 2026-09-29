@@ -23,7 +23,6 @@ export class StudySpellbookDialog extends HandlebarsApplicationMixin(Application
     super(options);
     this.spellbook = options.spellbook;
     this.selectedWizard = options.wizard ?? null;
-    this.currentSort = "level";
   }
 
   /** @override */
@@ -34,8 +33,7 @@ export class StudySpellbookDialog extends HandlebarsApplicationMixin(Application
     window: { title: "Study Spellbook" },
     actions: {
       selectWizard: StudySpellbookDialog.#onSelectWizard,
-      transcribe: StudySpellbookDialog.#onTranscribe,
-      sortSpells: StudySpellbookDialog.#onSortSpells
+      transcribe: StudySpellbookDialog.#onTranscribe
     }
   };
 
@@ -64,8 +62,7 @@ export class StudySpellbookDialog extends HandlebarsApplicationMixin(Application
     const wizardLevel = wizard ? getWizardLevel(wizard) : 0;
     const maxLevel = getMaxSpellLevel(wizardLevel);
     const requireGold = game.settings.get("npc-spell-book", "requireGold");
-
-    let spells = getSpellbookSpells(this.spellbook).map((spell) => {
+    const spells = getSpellbookSpells(this.spellbook).map((spell) => {
       const evaluation = wizard
         ? evaluateTranscription(wizard, spell, { requireGold, checkAfford: requireGold })
         : { canLearn: false, reasonKey: "NPC_SPELLBOOK.Learn.SelectWizard" };
@@ -78,19 +75,6 @@ export class StudySpellbookDialog extends HandlebarsApplicationMixin(Application
       };
     });
 
-    // Sort Spells Logic
-    const sortBy = this.currentSort ?? "level";
-    spells.sort((a, b) => {
-      if (sortBy === "name") {
-        return a.name.localeCompare(b.name);
-      }
-      if (sortBy === "availability") {
-        if (a.canLearn !== b.canLearn) return a.canLearn ? -1 : 1;
-        return a.level - b.level || a.name.localeCompare(b.name);
-      }
-      return a.level - b.level || a.name.localeCompare(b.name);
-    });
-
     return {
       spellbook: this.spellbook,
       wizards: wizards.map((w) => ({ id: w.id, name: w.name, selected: wizard?.id === w.id })),
@@ -98,18 +82,8 @@ export class StudySpellbookDialog extends HandlebarsApplicationMixin(Application
       wizardLevel,
       maxLevel,
       spells,
-      hasWizard: Boolean(wizard),
-      currentSort: sortBy
+      hasWizard: Boolean(wizard)
     };
-  }
-
-  static #onSortSpells(event, target) {
-    const dialog = /** @type {StudySpellbookDialog} */ (this);
-    const sortBy = target.closest("[data-sort]")?.dataset?.sort;
-    if (!sortBy || dialog.currentSort === sortBy) return;
-
-    dialog.currentSort = sortBy;
-    dialog.render(false);
   }
 
   static #onSelectWizard(event, target) {
