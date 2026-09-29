@@ -1,10 +1,10 @@
 @layer npc-spell-book {
 
   /* ==========================================
-     1. SHARED ICON & ROW STYLING
+     1. SHARED ICON & HEADER STYLING
      ========================================== */
 
-  /* Strict 32x32 square icons across both main sheet and study dialog */
+  /* Strict 32x32 square icons across both sheets to prevent core resets */
   .npc-spellbook-sheet .spell-entry img.item-image,
   .npc-spellbook-sheet .spell-entry .item-image,
   .study-spellbook img,
@@ -25,7 +25,7 @@
     display: block !important;
   }
 
-  /* Header Bar Styles (Dark Red Top Bar) */
+  /* Shared Dark Red Header Bar */
   .npc-spellbook-sheet .spell-header,
   .study-spellbook .spell-header {
     background: #3e1b1d;
@@ -159,7 +159,7 @@
     color: var(--color-text-secondary);
   }
 
-  /* Main Sheet Column Alignments */
+  /* Main Sheet Column Widths */
   .npc-spellbook-sheet .spell-time {
     flex: 0 0 50px;
     text-align: center;
@@ -244,7 +244,7 @@
   .study-spellbook .study-entry {
     display: flex;
     align-items: center;
-    gap: 0.75rem;
+    gap: 0.5rem;
     padding: 0.35rem 0.5rem;
     border-bottom: 1px solid var(--color-border-light);
   }
@@ -253,12 +253,13 @@
     opacity: 0.7;
   }
 
+  /* Optimized space distribution for spell names */
   .study-spellbook .item-name {
     display: flex;
     align-items: center;
-    gap: 0.75rem;
+    gap: 0.5rem;
     min-width: 0;
-    flex: 2;
+    flex: 1 1 auto !important;
   }
 
   .study-spellbook .name-container {
@@ -266,6 +267,8 @@
     flex-direction: column;
     justify-content: center;
     overflow: hidden;
+    min-width: 0;
+    flex: 1;
   }
 
   .study-spellbook .spell-name {
@@ -280,19 +283,19 @@
     color: var(--color-text-secondary);
   }
 
-  /* Study Dialog Column Alignments */
+  /* Optimized Column Alignments for Study Dialog */
   .study-spellbook .study-cost {
-    flex: 0 0 100px;
+    flex: 0 0 75px !important;
     text-align: center;
   }
 
   .study-spellbook .study-time {
-    flex: 0 0 90px;
+    flex: 0 0 75px !important;
     text-align: center;
   }
 
   .study-spellbook .study-status {
-    flex: 0 0 160px;
+    flex: 0 0 130px !important;
     text-align: center;
   }
 
