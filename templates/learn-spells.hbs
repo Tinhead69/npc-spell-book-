@@ -1,27 +1,28 @@
-<div class="study-spellbook-content">
-  <!-- Wizard Selection Header -->
-  <div class="study-header flexrow">
-    <label class="wizard-label">{{localize "NPC_SPELLBOOK.Learn.WizardSelect"}}</label>
-    <div class="wizard-selector flexrow">
+<div class="study-spellbook-wrapper">
+  <!-- Wizard Selector Row -->
+  <div class="wizard-select">
+    <h3>Select Wizard</h3>
+    <ul class="wizard-list flexrow">
       {{#each wizards}}
-        <button type="button" 
-                class="btn wizard-btn {{#if this.selected}}active{{/if}}" 
-                data-action="selectWizard" 
-                data-wizard-id="{{this.id}}">
-          <i class="fas fa-hat-wizard"></i> {{this.name}}
-        </button>
+        <li>
+          <button type="button" 
+                  class="btn {{#if this.selected}}active{{/if}}" 
+                  data-action="selectWizard" 
+                  data-wizard-id="{{this.id}}">
+            <i class="fas fa-hat-wizard"></i> {{this.name}}
+          </button>
+        </li>
       {{/each}}
-    </div>
+    </ul>
   </div>
 
   {{#if hasWizard}}
-    <!-- Wizard Stats Bar -->
-    <div class="wizard-stats flexrow">
-      <span><strong>Level:</strong> {{wizardLevel}}</span>
+    <div class="wizard-summary">
+      <span><strong>Level:</strong> {{wizardLevel}}</span> | 
       <span><strong>Max Spell Level:</strong> {{maxLevel}}</span>
     </div>
 
-    <!-- Sort Toolbar -->
+    <!-- Sorting Bar -->
     <div class="study-toolbar flexrow">
       <span class="sort-label">Sort By:</span>
       <div class="btn-group flexrow">
@@ -48,33 +49,38 @@
       </div>
     </div>
 
-    <!-- Spells Table -->
-    <div class="spells-container">
-      <ol class="spells-list">
-        {{#each spells}}
-          <li class="spell-row flexrow {{#unless this.canLearn}}disabled{{/unless}}" data-spell-uuid="{{this.uuid}}">
-            <div class="spell-image">
-              <img src="{{this.img}}" title="{{this.name}}" width="32" height="32" />
+    <!-- Column Headers -->
+    <div class="spell-header flexrow">
+      <span class="column-title item-name">SPELL</span>
+      <span class="column-title study-cost">COST</span>
+      <span class="column-title study-time">TIME</span>
+      <span class="column-title study-status">STATUS / ACTION</span>
+    </div>
+
+    <!-- Spell List -->
+    <ul class="study-list">
+      {{#each spells}}
+        <li class="study-entry flexrow {{#unless this.canLearn}}blocked{{/unless}}" data-spell-uuid="{{this.uuid}}">
+          <div class="item-name">
+            <img src="{{this.img}}" width="32" height="32" />
+            <div class="name-container">
+              <span class="spell-name">{{this.name}}</span>
+              <span class="spell-level">Level {{this.level}}</span>
             </div>
-            <div class="spell-name flexcol">
-              <span class="name">{{this.name}}</span>
-              <span class="status-reason">{{this.statusLabel}}</span>
-            </div>
-            <div class="spell-level">Lvl {{this.level}}</div>
-            <div class="spell-cost">{{this.cost}} gp / {{this.hours}} hrs</div>
-            <div class="spell-actions">
-              <button type="button" 
-                      class="btn transcribe-btn" 
-                      data-action="transcribe" 
-                      {{#unless this.canLearn}}disabled{{/unless}}>
+          </div>
+          <div class="study-cost">Cost: {{this.cost}} gp</div>
+          <div class="study-time">Time: {{this.hours}} hours</div>
+          <div class="study-status">
+            {{#if this.canLearn}}
+              <button type="button" class="btn transcribe-btn" data-action="transcribe">
                 Transcribe
               </button>
-            </div>
-          </li>
-        {{/each}}
-      </ol>
-    </div>
-  {{else}}
-    <p class="notes">{{localize "NPC_SPELLBOOK.Learn.NoWizards"}}</p>
+            {{else}}
+              <span class="status-reason">{{this.statusLabel}}</span>
+            {{/if}}
+          </div>
+        </li>
+      {{/each}}
+    </ul>
   {{/if}}
 </div>
