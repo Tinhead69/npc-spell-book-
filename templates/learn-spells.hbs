@@ -1,0 +1,49 @@
+<div class="study-spellbook">
+  <section class="wizard-select">
+    <h3>{{localize "NPC_SPELLBOOK.Learn.SelectWizard"}}</h3>
+    {{#if wizards.length}}
+    <ul class="wizard-list">
+      {{#each wizards as |w|}}
+      <li>
+        <button type="button" class="{{#if w.selected}}active{{/if}}" data-action="selectWizard" data-wizard-id="{{w.id}}">
+          {{w.name}}
+        </button>
+      </li>
+      {{/each}}
+    </ul>
+    {{else}}
+    <p class="hint">Assign a wizard PC to your user, or ensure party wizards are owned by players.</p>
+    {{/if}}
+  </section>
+
+  {{#if hasWizard}}
+  <section class="wizard-summary">
+    <p>{{localize "NPC_SPELLBOOK.Learn.WizardLevel" level=wizardLevel}}</p>
+    <p>{{localize "NPC_SPELLBOOK.Learn.MaxSpellLevel" level=maxLevel}}</p>
+  </section>
+  {{/if}}
+
+  <section class="spell-study-list">
+    <ol>
+      {{#each spells as |spell|}}
+      <li class="study-entry {{#if spell.canLearn}}learnable{{else}}blocked{{/if}}" data-spell-uuid="{{spell.uuid}}">
+        <div class="study-main">
+          {{#if spell.img}}<img src="{{spell.img}}" alt=""> {{/if}}
+          <span class="name">{{spell.name}}</span>
+          <span class="level">Level {{spell.level}}</span>
+        </div>
+        <div class="study-meta">
+          <span class="cost">{{localize "NPC_SPELLBOOK.Learn.Cost" cost=spell.cost}}</span>
+          <span class="time">{{localize "NPC_SPELLBOOK.Learn.Time" hours=spell.hours}}</span>
+          <span class="status">{{spell.statusLabel}}</span>
+        </div>
+        {{#if spell.canLearn}}
+        <button type="button" data-action="transcribe">
+          <i class="fas fa-feather-alt"></i> {{localize "NPC_SPELLBOOK.Actions.TranscribeSpell"}}
+        </button>
+        {{/if}}
+      </li>
+      {{/each}}
+    </ol>
+  </section>
+</div>

@@ -1,0 +1,16 @@
+<div class="transcribed-spells">
+  {{#if empty}}
+  <p class="empty">{{localize "NPC_SPELLBOOK.Transcribed.Empty"}}</p>
+  {{else}}
+  <ol class="transcribed-list">
+    {{#each spells as |spell|}}
+    <li class="transcribed-entry">
+      {{#if spell.img}}<img src="{{spell.img}}" alt=""> {{/if}}
+      <span class="name">{{spell.name}}</span>
+      <span class="level">{{spell.levelLabel}}</span>
+      <span class="source">{{spell.sourceLabel}}</span>
+    </li>
+    {{/each}}
+  </ol>
+  {{/if}}
+</div>

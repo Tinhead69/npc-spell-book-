@@ -1,0 +1,45 @@
+<div class="npc-spellbook-sheet">
+  <header class="spellbook-header">
+    <img class="profile-img" src="{{item.img}}" alt="{{item.name}}">
+    <div class="header-fields">
+      <h1 class="charname">{{item.name}}</h1>
+      <p class="description">{{localize "NPC_SPELLBOOK.Sheet.Description"}}</p>
+    </div>
+  </header>
+
+  <div class="spellbook-toolbar">
+    {{#if editable}}
+    <button type="button" data-action="addSpell">
+      <i class="fas fa-plus"></i> {{localize "NPC_SPELLBOOK.Actions.AddSpell"}}
+    </button>
+    {{/if}}
+    <button type="button" data-action="studySpellbook">
+      <i class="fas fa-scroll"></i> {{localize "NPC_SPELLBOOK.Actions.StudySpellbook"}}
+    </button>
+  </div>
+
+  <section class="spellbook-spells">
+    <h3>{{localize "NPC_SPELLBOOK.Sheet.SpellsHeader"}}</h3>
+
+    <div class="spellbook-drop-zone">
+      {{#if spells.length}}
+      <ol class="spell-list">
+        {{#each spells as |spell|}}
+        <li class="spell-entry" data-spell-uuid="{{spell.uuid}}">
+          {{#if spell.img}}<img src="{{spell.img}}" alt=""> {{/if}}
+          <span class="spell-name">{{spell.name}}</span>
+          <span class="spell-level">Level {{spell.level}}</span>
+          {{#if ../editable}}
+          <button type="button" class="remove-spell" data-action="removeSpell" title="{{localize "NPC_SPELLBOOK.Actions.RemoveSpell"}}">
+            <i class="fas fa-trash"></i>
+          </button>
+          {{/if}}
+        </li>
+        {{/each}}
+      </ol>
+      {{else}}
+      <p class="empty-hint">{{localize "NPC_SPELLBOOK.Sheet.EmptySpells"}}</p>
+      {{/if}}
+    </div>
+  </section>
+</div>
