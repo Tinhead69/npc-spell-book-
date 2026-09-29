@@ -23,6 +23,8 @@ export class StudySpellbookDialog extends HandlebarsApplicationMixin(Application
     super(options);
     this.spellbook = options.spellbook;
     this.selectedWizard = options.wizard ?? null;
+    this.sortBy = "level"; // Default sort: "level" | "name" | "availability"
+    this.sortDir = "asc";  // "asc" | "desc"
   }
 
   /** @override */
@@ -33,7 +35,8 @@ export class StudySpellbookDialog extends HandlebarsApplicationMixin(Application
     window: { title: "Study Spellbook" },
     actions: {
       selectWizard: StudySpellbookDialog.#onSelectWizard,
-      transcribe: StudySpellbookDialog.#onTranscribe
+      transcribe: StudySpellbookDialog.#onTranscribe,
+      sort: StudySpellbookDialog.#onSort
     }
   };
 
@@ -62,7 +65,7 @@ export class StudySpellbookDialog extends HandlebarsApplicationMixin(Application
     const wizardLevel = wizard ? getWizardLevel(wizard) : 0;
     const maxLevel = getMaxSpellLevel(wizardLevel);
     const requireGold = game.settings.get("npc-spell-book", "requireGold");
-    const spells = getSpellbookSpells(this.spellbook).map((spell) => {
+    let spells = getSpellbookSpells(this.spellbook).map((spell) => {
       const evaluation = wizard
         ? evaluateTranscription(wizard, spell, { requireGold, checkAfford: requireGold })
         : { canLearn: false, reasonKey: "NPC_SPELLBOOK.Learn.SelectWizard" };
@@ -75,6 +78,20 @@ export class StudySpellbookDialog extends HandlebarsApplicationMixin(Application
       };
     });
 
+    // Apply Sorting
+    spells.sort((a, b) => {
+      let result = 0;
+      if (this.sortBy === "name") {
+        result = a.name.localeCompare(b.name);
+      } else if (this.sortBy === "level") {
+        result = (a.level ?? 0) - (b.level ?? 0) || a.name.localeCompare(b.name);
+      } else if (this.sortBy === "availability") {
+        // Sort learnable spells first, then blocked
+        result = (b.canLearn ? 1 : 0) - (a.canLearn ? 1 : 0) || (a.level ?? 0) - (b.level ?? 0) || a.name.localeCompare(b.name);
+      }
+      return this.sortDir === "asc" ? result : -result;
+    });
+
     return {
       spellbook: this.spellbook,
       wizards: wizards.map((w) => ({ id: w.id, name: w.name, selected: wizard?.id === w.id })),
@@ -82,7 +99,9 @@ export class StudySpellbookDialog extends HandlebarsApplicationMixin(Application
       wizardLevel,
       maxLevel,
       spells,
-      hasWizard: Boolean(wizard)
+      hasWizard: Boolean(wizard),
+      sortBy: this.sortBy,
+      sortDir: this.sortDir
     };
   }
 
@@ -91,6 +110,20 @@ export class StudySpellbookDialog extends HandlebarsApplicationMixin(Application
     const wizardId = target.closest("[data-wizard-id]")?.dataset?.wizardId;
     if (!wizardId) return;
     dialog.selectedWizard = game.actors.get(wizardId) ?? null;
+    dialog.render(false);
+  }
+
+  static #onSort(event, target) {
+    const dialog = /** @type {StudySpellbookDialog} */ (this);
+    const sortBy = target.closest("[data-sort-by]")?.dataset?.sortBy;
+    if (!sortBy) return;
+
+    if (dialog.sortBy === sortBy) {
+      dialog.sortDir = dialog.sortDir === "asc" ? "desc" : "asc";
+    } else {
+      dialog.sortBy = sortBy;
+      dialog.sortDir = "asc";
+    }
     dialog.render(false);
   }
 
