@@ -1,6 +1,12 @@
 @layer npc-spell-book {
 
-  /* Force exact 32px square sizing and override core image resets */
+  /* ==========================================
+     1. SHARED ICON & ROW STYLING
+     ========================================== */
+
+  /* Strict 32x32 square icons across both main sheet and study dialog */
+  .npc-spellbook-sheet .spell-entry img.item-image,
+  .npc-spellbook-sheet .spell-entry .item-image,
   .study-spellbook img,
   .study-spellbook .study-entry img,
   .study-spellbook .item-name img {
@@ -19,13 +25,232 @@
     display: block !important;
   }
 
-  /* Prevent flex items from stretching vertically or horizontally */
+  /* Header Bar Styles (Dark Red Top Bar) */
+  .npc-spellbook-sheet .spell-header,
+  .study-spellbook .spell-header {
+    background: #3e1b1d;
+    color: #ffffff;
+    font-weight: bold;
+    padding: 0.35rem 0.5rem;
+    border-radius: 3px 3px 0 0;
+    align-items: center;
+    font-size: var(--font-size-12);
+    display: flex;
+  }
+
+  .npc-spellbook-sheet .group-label,
+  .study-spellbook .group-label {
+    font-size: 0.9rem;
+    font-weight: bold;
+  }
+
+  .npc-spellbook-sheet .column-title,
+  .study-spellbook .column-title {
+    color: var(--color-text-secondary);
+    font-size: var(--font-size-11);
+    font-weight: bold;
+    text-transform: uppercase;
+  }
+
+
+  /* ==========================================
+     2. MAIN SPELLBOOK SHEET
+     ========================================== */
+
+  .npc-spellbook-sheet .spellbook-header {
+    display: flex;
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
+    align-items: center;
+    padding: 0.5rem;
+  }
+
+  .npc-spellbook-sheet .img-button {
+    position: relative;
+    width: 64px;
+    height: 64px;
+    min-width: 64px;
+    min-height: 64px;
+    padding: 0;
+    border: none;
+    background: none;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+
+  .npc-spellbook-sheet .profile-img {
+    width: 64px;
+    height: 64px;
+    object-fit: cover;
+    border: 1px solid var(--color-border);
+    border-radius: var(--border-radius);
+    display: block;
+  }
+
+  .npc-spellbook-sheet .header-fields {
+    flex: 1;
+  }
+
+  .npc-spellbook-sheet .description {
+    color: var(--color-text-secondary);
+    font-size: var(--font-size-12);
+    margin: 0.25rem 0 0;
+  }
+
+  .npc-spellbook-sheet .spellbook-toolbar {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .npc-spellbook-sheet .spellbook-drop-zone {
+    min-height: 120px;
+    border: 1px dashed var(--color-border);
+    border-radius: var(--border-radius);
+    padding: 0.5rem;
+  }
+
+  .npc-spellbook-sheet .spellbook-drop-zone.drag-over {
+    border-color: var(--color-warm-2);
+    background: var(--color-bg-tertiary);
+  }
+
+  .npc-spellbook-sheet .spell-group {
+    margin-bottom: 1rem;
+  }
+
+  .npc-spellbook-sheet .spell-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .npc-spellbook-sheet .spell-entry {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.35rem 0.5rem;
+    border-bottom: 1px solid var(--color-border-light);
+  }
+
+  .npc-spellbook-sheet .spell-entry .item-name {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    min-width: 0;
+    flex: 2;
+  }
+
+  .npc-spellbook-sheet .name-container {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .npc-spellbook-sheet .spell-name {
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .npc-spellbook-sheet .spell-components {
+    font-size: var(--font-size-11);
+    color: var(--color-text-secondary);
+  }
+
+  /* Main Sheet Column Alignments */
+  .npc-spellbook-sheet .spell-time {
+    flex: 0 0 50px;
+    text-align: center;
+  }
+
+  .npc-spellbook-sheet .spell-range {
+    flex: 0 0 90px;
+    text-align: center;
+  }
+
+  .npc-spellbook-sheet .spell-target {
+    flex: 0 0 110px;
+    text-align: center;
+  }
+
+  .npc-spellbook-sheet .spell-roll {
+    flex: 0 0 60px;
+    text-align: center;
+  }
+
+  .npc-spellbook-sheet .spell-actions {
+    flex: 0 0 40px;
+    text-align: right;
+  }
+
+  .npc-spellbook-sheet .remove-spell {
+    background: none;
+    border: none;
+    color: var(--color-text-secondary);
+    cursor: pointer;
+    opacity: 0.7;
+  }
+
+  .npc-spellbook-sheet .remove-spell:hover {
+    opacity: 1;
+    color: var(--color-negative);
+  }
+
+
+  /* ==========================================
+     3. STUDY SPELLBOOK DIALOG
+     ========================================== */
+
+  .study-spellbook {
+    padding: 0.5rem;
+  }
+
+  .study-spellbook .wizard-select h3 {
+    margin: 0 0 0.5rem 0;
+    font-size: var(--font-size-14);
+    font-weight: bold;
+  }
+
+  .study-spellbook .wizard-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    list-style: none;
+    padding: 0;
+    margin: 0 0 0.5rem 0;
+  }
+
+  .study-spellbook .wizard-list button.active {
+    outline: 2px solid var(--color-warm-2);
+    border-color: var(--color-warm-2);
+  }
+
+  .study-spellbook .wizard-summary {
+    font-size: var(--font-size-12);
+    color: var(--color-text-secondary);
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--color-border-light);
+  }
+
+  .study-spellbook .study-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
   .study-spellbook .study-entry {
     display: flex;
     align-items: center;
     gap: 0.75rem;
     padding: 0.35rem 0.5rem;
     border-bottom: 1px solid var(--color-border-light);
+  }
+
+  .study-spellbook .study-entry.blocked {
+    opacity: 0.7;
   }
 
   .study-spellbook .item-name {
@@ -41,6 +266,44 @@
     flex-direction: column;
     justify-content: center;
     overflow: hidden;
+  }
+
+  .study-spellbook .spell-name {
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .study-spellbook .spell-level {
+    font-size: var(--font-size-11);
+    color: var(--color-text-secondary);
+  }
+
+  /* Study Dialog Column Alignments */
+  .study-spellbook .study-cost {
+    flex: 0 0 100px;
+    text-align: center;
+  }
+
+  .study-spellbook .study-time {
+    flex: 0 0 90px;
+    text-align: center;
+  }
+
+  .study-spellbook .study-status {
+    flex: 0 0 160px;
+    text-align: center;
+  }
+
+  .study-spellbook .status-reason {
+    font-size: var(--font-size-11);
+    color: var(--color-negative);
+  }
+
+  .study-spellbook .transcribe-btn {
+    padding: 2px 8px;
+    font-size: var(--font-size-11);
   }
 
 }
