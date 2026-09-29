@@ -110,54 +110,129 @@ function patchItemDirectoryContextMenu() {
   };
 }
 
-/** Inject Spellbook type into Create Item dialog. */
-Hooks.on("renderDialog", (app, html) => {
+/**
+ * Create a flagged NPC spellbook loot item.
+ * @param {object} [options]
+ * @param {string|null} [options.folder]
+ * @returns {Promise<Item>}
+ */
+async function createNpcSpellbook({ folder = null } = {}) {
+  const item = await Item.implementation.create({
+    name: "New Spellbook",
+    type: "loot",
+    img: SPELLBOOK_ICON,
+    folder
+  });
+  await markAsSpellbook(item);
+  ui.notifications.info(game.i18n.format("NPC_SPELLBOOK.Create.Created", { name: item.name }));
+  item.sheet?.render(true);
+  return item;
+}
+
+/** Resolve the root element from ApplicationV1/V2 render hooks. */
+function resolveAppElement(htmlOrElement) {
+  if (!htmlOrElement) return null;
+  if (htmlOrElement instanceof HTMLElement) return htmlOrElement;
+  if (htmlOrElement[0] instanceof HTMLElement) return htmlOrElement[0];
+  if (htmlOrElement.jquery && htmlOrElement[0]) return htmlOrElement[0];
+  return null;
+}
+
+/**
+ * Inject Spellbook into the Create Item type list (v13 ApplicationV2 + legacy Dialog).
+ * @param {Application} app
+ * @param {HTMLElement|jQuery} htmlOrElement
+ */
+function injectSpellbookChoice(app, htmlOrElement) {
   try {
-    const title = app?.title ?? "";
-    if (!/Create New Item/i.test(title)) return;
-    if (html.find(".npc-spellbook-choice").length) return;
+    const title = String(app?.title ?? app?.options?.window?.title ?? "");
+    const isCreateItem =
+      /Create New Item/i.test(title) ||
+      (app?.documentName === "Item" && /create/i.test(app?.constructor?.name ?? ""));
+    if (!isCreateItem && !app?.element?.querySelector?.('input[name="type"][value="loot"]')) return;
 
-    const submitButton = html.find("button[type='submit'], .dialog-buttons button");
-    if (!submitButton.length) return;
+    const root = resolveAppElement(htmlOrElement) ?? app?.element ?? null;
+    if (!root || root.querySelector(".npc-spellbook-choice")) return;
 
-    const lootLabel = html
-      .find("label")
-      .filter((_, el) => /loot/i.test(el.textContent ?? ""))
-      .first();
+    const lootInput =
+      root.querySelector('input[name="type"][value="loot"]') ??
+      root.querySelector('input[value="loot"]');
+    const lootLabel = lootInput?.closest("label") ?? lootInput?.parentElement;
+    if (!lootLabel) return;
 
-    const spellbookLabel = $(`
-      <label class="npc-spellbook-choice">
-        <input type="radio" name="type" value="__npc_spellbook__">
-        <span class="npc-spellbook-choice-content">
-          <img src="${SPELLBOOK_ICON}" alt="Spellbook">
-          <span class="npc-spellbook-choice-text">${game.i18n.localize("NPC_SPELLBOOK.Create.SpellbookType")}</span>
-        </span>
-      </label>
-    `);
+    const spellbookLabel = document.createElement("label");
+    spellbookLabel.className = "npc-spellbook-choice";
+    spellbookLabel.innerHTML = `
+      <input type="radio" name="type" value="__npc_spellbook__">
+      <span class="npc-spellbook-choice-content">
+        <img src="${SPELLBOOK_ICON}" alt="Spellbook">
+        <span class="npc-spellbook-choice-text">${game.i18n.localize("NPC_SPELLBOOK.Create.SpellbookType")}</span>
+      </span>
+    `;
+    lootLabel.after(spellbookLabel);
 
-    if (lootLabel.length) lootLabel.after(spellbookLabel);
-    else html.find("form").append(spellbookLabel);
+    const form = root.querySelector("form") ?? root;
+    form.addEventListener(
+      "submit",
+      async (event) => {
+        const selected = form.querySelector('input[name="type"]:checked')?.value;
+        if (selected !== "__npc_spellbook__") return;
+        event.preventDefault();
+        event.stopImmediatePropagation();
 
-    submitButton.off("click.npcSpellbook").on("click.npcSpellbook", async (event) => {
-      if (html.find("input[name='type']:checked").val() !== "__npc_spellbook__") return;
-      event.preventDefault();
-      event.stopPropagation();
+        const folder = form.querySelector('[name="folder"]')?.value || null;
+        await createNpcSpellbook({ folder });
+        app.close();
+      },
+      true
+    );
 
-      const item = await Item.create({
-        name: "New Spellbook",
-        type: "loot",
-        img: SPELLBOOK_ICON,
-        folder: html.find("[name='folder']").val() || null
-      });
+    // Also catch ApplicationV2 action buttons that don't use form submit.
+    root.querySelectorAll('button[type="submit"], button[data-action="create"]').forEach((button) => {
+      button.addEventListener(
+        "click",
+        async (event) => {
+          const selected = form.querySelector('input[name="type"]:checked')?.value;
+          if (selected !== "__npc_spellbook__") return;
+          event.preventDefault();
+          event.stopImmediatePropagation();
 
-      await markAsSpellbook(item);
-      ui.notifications.info(game.i18n.format("NPC_SPELLBOOK.Create.Created", { name: item.name }));
-      app.close();
-      item.sheet?.render(true);
+          const folder = form.querySelector('[name="folder"]')?.value || null;
+          await createNpcSpellbook({ folder });
+          app.close();
+        },
+        true
+      );
     });
   } catch (err) {
     console.error("NPC Spellbook | Failed to patch create item dialog", err);
   }
+}
+
+Hooks.on("renderDialog", (app, html) => injectSpellbookChoice(app, html));
+Hooks.on("renderApplicationV2", (app, element) => injectSpellbookChoice(app, element));
+
+/** Add Create Spellbook control on the Items directory header. */
+Hooks.on("renderItemDirectory", (app, htmlOrElement) => {
+  const root = resolveAppElement(htmlOrElement) ?? app?.element;
+  if (!root || root.querySelector(".npc-spellbook-create")) return;
+
+  const header =
+    root.querySelector(".directory-header .header-actions") ??
+    root.querySelector(".header-actions") ??
+    root.querySelector(".directory-header");
+  if (!header) return;
+
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "npc-spellbook-create";
+  button.title = game.i18n.localize("NPC_SPELLBOOK.Create.SpellbookType");
+  button.innerHTML = `<i class="fas fa-book"></i>`;
+  button.addEventListener("click", async (event) => {
+    event.preventDefault();
+    await createNpcSpellbook();
+  });
+  header.append(button);
 });
 
 /** Use NPC spellbook sheet when item is flagged. */
