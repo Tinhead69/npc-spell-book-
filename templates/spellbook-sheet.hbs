@@ -1,12 +1,10 @@
 <div class="npc-spellbook-sheet dnd5e2">
-  <!-- Header -->
-  <header class="spellbook-header flexrow">
+  <header class="spellbook-header">
     <button type="button" class="inline-edit img-button" data-action="editImage" data-edit="img" title="{{document.name}}">
       <img class="profile-img" src="{{document.img}}" alt="{{document.name}}" width="64" height="64" />
       <i class="fas fa-edit edit-icon"></i>
     </button>
-
-    <div class="header-fields flexcol">
+    <div class="header-fields">
       <h1 class="charname">
         <input name="name" type="text" value="{{document.name}}" placeholder="{{localize 'DND5E.ItemName'}}" />
       </h1>
@@ -14,26 +12,24 @@
     </div>
   </header>
 
-  <!-- Toolbar -->
-  <div class="spellbook-toolbar flexrow">
+  <div class="spellbook-toolbar">
     {{#if editable}}
-    <button type="button" class="btn" data-action="addSpell">
+    <button type="button" data-action="addSpell">
       <i class="fas fa-plus"></i> {{localize "NPC_SPELLBOOK.Actions.AddSpell"}}
     </button>
     {{/if}}
-    <button type="button" class="btn" data-action="studySpellbook">
+    <button type="button" data-action="studySpellbook">
       <i class="fas fa-scroll"></i> {{localize "NPC_SPELLBOOK.Actions.StudySpellbook"}}
     </button>
   </div>
 
-  <!-- Main Spells Area -->
   <section class="spellbook-spells spellbook-drop-zone">
     {{#if spellGroups.length}}
       {{#each spellGroups as |group|}}
       <div class="spell-group">
-        <!-- Section Header Bar -->
+        <!-- Header Row with Column Titles -->
         <div class="items-header spell-header flexrow">
-          <span class="group-label flexgroup flex2">{{group.label}}</span>
+          <span class="group-label flex2">{{group.label}}</span>
           <span class="column-title spell-time">TIME</span>
           <span class="column-title spell-range">RANGE</span>
           <span class="column-title spell-target">TARGET</span>
@@ -41,15 +37,17 @@
           <span class="column-title spell-actions"></span>
         </div>
 
-        <!-- Group Spells List -->
-        <ol class="items-list spell-list">
+        <!-- Spell Items in Group -->
+        <ol class="spell-list">
           {{#each group.spells as |spell|}}
-          <li class="item spell-entry flexrow" data-spell-uuid="{{spell.uuid}}">
+          <li class="spell-entry flexrow" data-spell-uuid="{{spell.uuid}}">
             <div class="item-name flexrow flex2">
-              <img class="item-image" src="{{spell.img}}" alt="{{spell.name}}" width="36" height="36" />
-              <div class="name-container flexcol">
+              <img class="item-image" src="{{spell.img}}" alt="{{spell.name}}" />
+              <div class="name-container">
                 <span class="spell-name">{{spell.name}}</span>
+                {{#if spell.components}}
                 <span class="spell-components">{{spell.components}}</span>
+                {{/if}}
               </div>
             </div>
 
@@ -58,11 +56,11 @@
             <span class="item-detail spell-target">{{spell.target}}</span>
             <span class="item-detail spell-roll">{{spell.roll}}</span>
 
-            <div class="item-controls flexrow spell-actions">
+            <div class="item-controls spell-actions">
               {{#if ../../editable}}
-              <a class="item-control remove-spell" data-action="removeSpell" title="{{localize 'NPC_SPELLBOOK.Actions.RemoveSpell'}}">
+              <button type="button" class="remove-spell" data-action="removeSpell" title="{{localize 'NPC_SPELLBOOK.Actions.RemoveSpell'}}">
                 <i class="fas fa-trash"></i>
-              </a>
+              </button>
               {{/if}}
             </div>
           </li>
