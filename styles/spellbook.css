@@ -1,4 +1,7 @@
-/* Main Sheet Layout */
+/* ========================================== */
+/* Item Sheet Layout & Drop Zone              */
+/* ========================================== */
+
 .npc-spellbook-sheet {
   display: flex;
   flex-direction: column;
@@ -7,7 +10,6 @@
   gap: 8px;
 }
 
-/* Header & Profile Image */
 .npc-spellbook-sheet .spellbook-header {
   display: flex;
   flex-direction: row;
@@ -27,6 +29,7 @@
   object-fit: cover;
   border: 1px solid var(--color-border-dark, #4b4a44);
   border-radius: 4px;
+  cursor: pointer;
 }
 
 .npc-spellbook-sheet .header-fields {
@@ -50,7 +53,6 @@
   opacity: 0.8;
 }
 
-/* Toolbar Buttons */
 .npc-spellbook-sheet .spellbook-toolbar {
   display: flex;
   gap: 6px;
@@ -61,7 +63,6 @@
   flex: 1;
 }
 
-/* Scrollable Content Body & Drop Zone */
 .npc-spellbook-sheet .spellbook-body {
   flex: 1;
   overflow-y: auto;
@@ -80,4 +81,182 @@
   min-height: 180px;
   color: #888;
   gap: 8px;
+}
+
+.npc-spellbook-sheet .spell-group {
+  margin-bottom: 12px;
+}
+
+.npc-spellbook-sheet .spell-group .group-label {
+  display: block;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+  padding-bottom: 2px;
+  margin-bottom: 4px;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.npc-spellbook-sheet .spell-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.npc-spellbook-sheet .spell-entry {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 6px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.npc-spellbook-sheet .spell-entry .item-name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.npc-spellbook-sheet .spell-entry img {
+  width: 28px;
+  height: 28px;
+  object-fit: cover;
+  border-radius: 3px;
+}
+
+
+/* ========================================== */
+/* Study Dialog Layout                        */
+/* ========================================== */
+
+.study-spellbook-wrapper {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  gap: 8px;
+  padding: 8px;
+}
+
+.study-spellbook-wrapper .wizard-select h3 {
+  margin: 0 0 4px 0;
+  font-size: 12px;
+  text-transform: uppercase;
+}
+
+.study-spellbook-wrapper .wizard-list {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.study-spellbook-wrapper .wizard-btn {
+  flex: 0 0 auto;
+  padding: 2px 8px;
+  font-size: 12px;
+}
+
+.study-spellbook-wrapper .wizard-btn.active {
+  background: #7a200d;
+  color: #ffffff;
+  border-color: #ff6448;
+}
+
+.study-spellbook-wrapper .wizard-summary {
+  font-size: 12px;
+  padding: 4px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 3px;
+}
+
+.study-spellbook-wrapper .study-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 4px 0;
+  padding: 4px 8px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 4px;
+}
+
+.study-spellbook-wrapper .study-toolbar .sort-label {
+  font-size: 11px;
+  font-weight: bold;
+  white-space: nowrap;
+}
+
+.study-spellbook-wrapper .study-toolbar .btn-group {
+  display: flex;
+  gap: 4px;
+}
+
+.study-spellbook-wrapper .study-toolbar .sort-btn {
+  padding: 2px 8px;
+  font-size: 11px;
+  line-height: 1.2;
+}
+
+.study-spellbook-wrapper .study-toolbar .sort-btn.active {
+  background: #7a200d;
+  color: #ffffff;
+  border-color: #ff6448;
+}
+
+.study-spellbook-wrapper .study-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.study-spellbook-wrapper .study-entry {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.study-spellbook-wrapper .study-entry.blocked {
+  opacity: 0.6;
+}
+
+.study-spellbook-wrapper .study-entry .item-name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+}
+
+.study-spellbook-wrapper .study-entry img {
+  width: 32px;
+  height: 32px;
+  object-fit: cover;
+  border-radius: 3px;
+}
+
+.study-spellbook-wrapper .study-entry .spell-name {
+  font-weight: bold;
+  font-size: 12px;
+}
+
+.study-spellbook-wrapper .study-entry .spell-level {
+  font-size: 10px;
+  opacity: 0.8;
+}
+
+.study-spellbook-wrapper .study-details {
+  font-size: 11px;
+  margin: 0 12px;
+  white-space: nowrap;
+}
+
+.study-spellbook-wrapper .study-status {
+  flex: 0 0 auto;
+}
+
+.study-spellbook-wrapper .status-reason {
+  font-size: 11px;
+  font-style: italic;
+  color: #aaa;
 }
