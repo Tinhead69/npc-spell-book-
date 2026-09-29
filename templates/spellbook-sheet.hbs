@@ -1,113 +1,77 @@
-<form class="{{cssClass}} flexcol spellbook-sheet" autocomplete="off">
+<div class="npc-spellbook-sheet dnd5e2">
+  <!-- Header -->
+  <header class="spellbook-header flexrow">
+    <button type="button" class="inline-edit img-button" data-action="editImage" data-edit="img" title="{{document.name}}">
+      <img class="profile-img" src="{{document.img}}" alt="{{document.name}}" width="64" height="64" />
+      <i class="fas fa-edit edit-icon"></i>
+    </button>
 
-  {{!-- Header: Spellcasting Overview --}}
-  <header class="sheet-header flexrow">
-    <div class="profile-img-container">
-      <img class="profile-img" src="{{actor.img}}" data-edit="img" title="{{actor.name}}" />
-    </div>
-
-    <div class="header-fields">
+    <div class="header-fields flexcol">
       <h1 class="charname">
-        <input name="name" type="text" value="{{actor.name}}" placeholder="Character Name" />
+        <input name="name" type="text" value="{{document.name}}" placeholder="{{localize 'DND5E.ItemName'}}" />
       </h1>
-
-      <div class="stats-grid">
-        <div class="stat-box">
-          <label>Casting Ability</label>
-          <select name="system.attributes.spellcasting">
-            {{#select system.attributes.spellcasting}}
-              <option value="int">Intelligence</option>
-              <option value="wis">Wisdom</option>
-              <option value="cha">Charisma</option>
-            {{/select}}
-          </select>
-        </div>
-
-        <div class="stat-box">
-          <label>Spell DC</label>
-          <input type="number" name="system.attributes.spelldc" value="{{system.attributes.spelldc}}" />
-        </div>
-
-        <div class="stat-box">
-          <label>Attack Bonus</label>
-          <input type="number" name="system.attributes.spellmod" value="{{system.attributes.spellmod}}" />
-        </div>
-      </div>
+      <p class="description">{{localize "NPC_SPELLBOOK.Sheet.Description"}}</p>
     </div>
   </header>
 
-  {{!-- Main Spellbook Section --}}
-  <section class="sheet-body">
-    <div class="spellbook-controls flexrow">
-      <div class="filter-group">
-        <input type="text" class="spell-search" placeholder="Search spells..." />
-      </div>
-      <a class="item-control item-create" data-type="spell" title="Create Spell">
-        <i class="fas fa-plus"></i> Add Spell
-      </a>
-    </div>
+  <!-- Toolbar -->
+  <div class="spellbook-toolbar flexrow">
+    {{#if editable}}
+    <button type="button" class="btn" data-action="addSpell">
+      <i class="fas fa-plus"></i> {{localize "NPC_SPELLBOOK.Actions.AddSpell"}}
+    </button>
+    {{/if}}
+    <button type="button" class="btn" data-action="studySpellbook">
+      <i class="fas fa-scroll"></i> {{localize "NPC_SPELLBOOK.Actions.StudySpellbook"}}
+    </button>
+  </div>
 
-    {{#each spellbook as |section level|}}
-      <div class="spell-level-group" data-level="{{level}}">
-        <div class="spell-level-header flexrow">
-          <h3>{{section.label}}</h3>
-
-          {{#if section.hasSlots}}
-            <div class="spell-slots flexrow">
-              <label>Slots:</label>
-              <input type="number" name="system.spells.spell{{level}}.value" value="{{section.slots.value}}" data-dtype="Number" placeholder="0" />
-              <span>/</span>
-              <input type="number" name="system.spells.spell{{level}}.max" value="{{section.slots.max}}" data-dtype="Number" placeholder="0" />
-            </div>
-          {{/if}}
+  <!-- Main Spells Area -->
+  <section class="spellbook-spells spellbook-drop-zone">
+    {{#if spellGroups.length}}
+      {{#each spellGroups as |group|}}
+      <div class="spell-group">
+        <!-- Section Header Bar -->
+        <div class="items-header spell-header flexrow">
+          <span class="group-label flexgroup flex2">{{group.label}}</span>
+          <span class="column-title spell-time">TIME</span>
+          <span class="column-title spell-range">RANGE</span>
+          <span class="column-title spell-target">TARGET</span>
+          <span class="column-title spell-roll">ROLL</span>
+          <span class="column-title spell-actions"></span>
         </div>
 
-        <ul class="item-list spell-list">
-          <li class="item-header flexrow">
-            <span class="item-name">Name</span>
-            <span class="item-detail">Cast Time</span>
-            <span class="item-detail">Range</span>
-            <span class="item-detail">Components</span>
-            <span class="item-controls">Actions</span>
+        <!-- Group Spells List -->
+        <ol class="items-list spell-list">
+          {{#each group.spells as |spell|}}
+          <li class="item spell-entry flexrow" data-spell-uuid="{{spell.uuid}}">
+            <div class="item-name flexrow flex2">
+              <img class="item-image" src="{{spell.img}}" alt="{{spell.name}}" width="36" height="36" />
+              <div class="name-container flexcol">
+                <span class="spell-name">{{spell.name}}</span>
+                <span class="spell-components">{{spell.components}}</span>
+              </div>
+            </div>
+
+            <span class="item-detail spell-time">{{spell.activation}}</span>
+            <span class="item-detail spell-range">{{spell.range}}</span>
+            <span class="item-detail spell-target">{{spell.target}}</span>
+            <span class="item-detail spell-roll">{{spell.roll}}</span>
+
+            <div class="item-controls flexrow spell-actions">
+              {{#if ../../editable}}
+              <a class="item-control remove-spell" data-action="removeSpell" title="{{localize 'NPC_SPELLBOOK.Actions.RemoveSpell'}}">
+                <i class="fas fa-trash"></i>
+              </a>
+              {{/if}}
+            </div>
           </li>
-
-          {{#each section.spells as |spell|}}
-            <li class="item flexrow" data-item-id="{{spell._id}}">
-              
-              {{!-- Name & Preparation Toggle --}}
-              <div class="item-name flexrow">
-                <a class="item-control item-toggle-prep {{#if spell.system.prepared.value}}prepared{{/if}}" title="Toggle Preparation">
-                  <i class="fas {{#if spell.system.prepared.value}}fa-check-circle{{else}}fa-circle{{/if}}"></i>
-                </a>
-                <div class="item-image" style="background-image: url('{{spell.img}}')"></div>
-                <h4 class="spell-roll-trigger">{{spell.name}}</h4>
-              </div>
-
-              {{!-- Details --}}
-              <span class="item-detail">{{spell.system.activation.cost}} {{spell.system.activation.type}}</span>
-              <span class="item-detail">{{spell.system.range.value}} {{spell.system.range.units}}</span>
-              <span class="item-detail">
-                {{#if spell.system.components.v}}V {{/if}}
-                {{#if spell.system.components.s}}S {{/if}}
-                {{#if spell.system.components.m}}M {{/if}}
-              </span>
-
-              {{!-- Action Icons --}}
-              <div class="item-controls flexrow">
-                <a class="item-control item-edit" title="Edit Spell"><i class="fas fa-edit"></i></a>
-                <a class="item-control item-delete" title="Delete Spell"><i class="fas fa-trash"></i></a>
-              </div>
-            </li>
           {{/each}}
-
-          {{#unless section.spells.length}}
-            <li class="item flexrow empty-section">
-              <span>No {{section.label}} known.</span>
-            </li>
-          {{/unless}}
-        </ul>
+        </ol>
       </div>
-    {{/each}}
+      {{/each}}
+    {{else}}
+      <p class="empty-hint">{{localize "NPC_SPELLBOOK.Sheet.EmptySpells"}}</p>
+    {{/if}}
   </section>
-
-</form>
+</div>
