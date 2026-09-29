@@ -158,14 +158,14 @@ function injectSpellbookChoice(app, htmlOrElement) {
     const lootLabel = lootInput?.closest("label") ?? lootInput?.parentElement;
     if (!lootLabel) return;
 
-    const spellbookLabel = document.createElement("label");
+  const spellbookLabel = document.createElement("label");
     spellbookLabel.className = "npc-spellbook-choice";
     spellbookLabel.innerHTML = `
-      <input type="radio" name="type" value="__npc_spellbook__">
       <span class="npc-spellbook-choice-content">
-        <img src="${SPELLBOOK_ICON || 'icons/svg/book.svg'}" alt="Spellbook" width="24" height="24">
+        <img src="${SPELLBOOK_ICON || 'icons/svg/book.svg'}" alt="Spellbook" class="icon">
         <span class="npc-spellbook-choice-text">${game.i18n.localize("NPC_SPELLBOOK.Create.SpellbookType")}</span>
       </span>
+      <input type="radio" name="type" value="__npc_spellbook__">
     `;
     lootLabel.after(spellbookLabel);
 
