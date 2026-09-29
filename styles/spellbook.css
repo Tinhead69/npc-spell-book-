@@ -1,52 +1,88 @@
-/* Reset list formatting */
-.npc-spellbook-sheet .spell-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
+@layer npc-spell-book {
 
-/* Force every row to display horizontally aligned in a single line */
-.npc-spellbook-sheet .spell-entry {
-  display: flex !important;
-  flex-direction: row !important;
-  align-items: center !important;
-  gap: 10px;
-  padding: 4px 6px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  box-sizing: border-box;
-}
+  /* Spell Groups & Section Header Bar */
+  .npc-spellbook-sheet .spell-group {
+    margin-bottom: 1rem;
+  }
 
-/* Hard-constrain the spell icons so they never blow up */
-.npc-spellbook-sheet .spell-entry img,
-.npc-spellbook-sheet .spell-entry .item-image {
-  width: 32px !important;
-  height: 32px !important;
-  min-width: 32px !important;
-  min-height: 32px !important;
-  max-width: 32px !important;
-  max-height: 32px !important;
-  object-fit: cover;
-  border: 1px solid #191813;
-  border-radius: 3px;
-  margin: 0;
-  flex-shrink: 0;
-}
+  .npc-spellbook-sheet .spell-header {
+    background: #3e1b1d;
+    color: #ffffff;
+    font-weight: bold;
+    padding: 0.35rem 0.5rem;
+    border-radius: 3px 3px 0 0;
+    align-items: center;
+    font-size: var(--font-size-12);
+  }
 
-/* Keep the spell name and detail inline */
-.npc-spellbook-sheet .spell-entry .spell-name,
-.npc-spellbook-sheet .spell-entry .item-name {
-  display: inline-flex;
-  align-items: center;
-  flex: 1;
-  font-weight: 500;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
+  .npc-spellbook-sheet .group-label {
+    font-size: 0.9rem;
+    font-weight: bold;
+  }
 
-/* Move delete button to the far right */
-.npc-spellbook-sheet .spell-entry .remove-spell,
-.npc-spellbook-sheet .spell-entry .spell-actions {
-  margin-left: auto;
-  flex-shrink: 0;
+  /* Define Explicit Widths for Header Titles and Data Columns */
+  .npc-spellbook-sheet .spell-time {
+    flex: 0 0 50px;
+    text-align: center;
+  }
+
+  .npc-spellbook-sheet .spell-range {
+    flex: 0 0 90px;
+    text-align: center;
+  }
+
+  .npc-spellbook-sheet .spell-target {
+    flex: 0 0 110px;
+    text-align: center;
+  }
+
+  .npc-spellbook-sheet .spell-roll {
+    flex: 0 0 60px;
+    text-align: center;
+  }
+
+  .npc-spellbook-sheet .spell-actions {
+    flex: 0 0 40px;
+    text-align: right;
+  }
+
+  /* Row Alignment */
+  .npc-spellbook-sheet .spell-entry {
+    display: flex;
+    align-items: center;
+    padding: 0.35rem 0.5rem;
+    border-bottom: 1px solid var(--color-border-light);
+  }
+
+  .npc-spellbook-sheet .spell-entry .item-name {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-width: 0;
+  }
+
+  .npc-spellbook-sheet .name-container {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .npc-spellbook-sheet .spell-components {
+    font-size: var(--font-size-11);
+    color: var(--color-text-secondary);
+  }
+
+  .npc-spellbook-sheet .item-detail {
+    font-size: var(--font-size-12);
+    color: var(--color-text-primary);
+  }
+
+  .npc-spellbook-sheet .spell-entry img.item-image {
+    width: 32px;
+    height: 32px;
+    object-fit: cover;
+    border-radius: 3px;
+    border: 1px solid var(--color-border);
+    flex-shrink: 0;
+  }
 }
