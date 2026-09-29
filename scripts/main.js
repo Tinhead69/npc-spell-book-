@@ -235,34 +235,107 @@ Hooks.on("renderItemDirectory", (app, htmlOrElement) => {
   header.append(button);
 });
 
-/** Use NPC spellbook sheet when item is flagged. */
+/** Open the transcribed-spells dialog for an actor. */
+async function openTranscribedSpells(actor) {
+  const { TranscribedSpellsDialog } = await import("./learn-dialog.js");
+  new TranscribedSpellsDialog({ actor }).render(true);
+}
+
+/** Open study dialog for a spellbook item. */
+async function openStudySpellbook(item) {
+  const { StudySpellbookDialog } = await import("./learn-dialog.js");
+  new StudySpellbookDialog({ spellbook: item }).render(true);
+}
+
+/** Legacy AppV1 header buttons (older sheets). */
 Hooks.on("getItemSheetHeaderButtons", (app, buttons) => {
   if (!isSpellbook(app.item)) return;
-
   buttons.unshift({
     label: game.i18n.localize("NPC_SPELLBOOK.Actions.StudySpellbook"),
     class: "study-spellbook",
     icon: "fas fa-scroll",
-    onclick: async () => {
-      const { StudySpellbookDialog } = await import("./learn-dialog.js");
-      new StudySpellbookDialog({ spellbook: app.item }).render(true);
-    }
+    onclick: () => openStudySpellbook(app.item)
   });
 });
 
-/** Wizard actors: view independently stored transcribed spells. */
 Hooks.on("getActorSheetHeaderButtons", (app, buttons) => {
   if (app.actor?.type !== "character" || !isWizard(app.actor)) return;
-
   buttons.push({
     label: game.i18n.localize("NPC_SPELLBOOK.Actions.ViewTranscribed"),
     class: "view-transcribed-spells",
     icon: "fas fa-book-open",
-    onclick: async () => {
-      const { TranscribedSpellsDialog } = await import("./learn-dialog.js");
-      new TranscribedSpellsDialog({ actor: app.actor }).render(true);
-    }
+    onclick: () => openTranscribedSpells(app.actor)
   });
+});
+
+/** Foundry v13 ApplicationV2 header controls (sheet window menu). */
+Hooks.on("getHeaderControlsApplicationV2", (app, controls) => {
+  const doc = app.document ?? app.actor ?? app.item;
+  if (!doc) return;
+
+  if (doc.documentName === "Item" && isSpellbook(doc)) {
+    controls.push({
+      action: "npc-spellbook-study",
+      icon: "fas fa-scroll",
+      label: "NPC_SPELLBOOK.Actions.StudySpellbook",
+      onClick: () => openStudySpellbook(doc)
+    });
+  }
+
+  if (doc.documentName === "Actor" && doc.type === "character" && isWizard(doc)) {
+    controls.push({
+      action: "npc-spellbook-transcribed",
+      icon: "fas fa-book-open",
+      label: "NPC_SPELLBOOK.Actions.ViewTranscribed",
+      onClick: () => openTranscribedSpells(doc)
+    });
+  }
+});
+
+/**
+ * Visible button on the character sheet body so players don't have to hunt
+ * the window menu. Appears for wizards only.
+ */
+Hooks.on("renderActorSheetV2", (app, element) => {
+  const actor = app.document ?? app.actor;
+  if (!actor || actor.type !== "character" || !isWizard(actor)) return;
+
+  const root = resolveAppElement(element) ?? app.element;
+  if (!root || root.querySelector(".npc-spellbook-transcribed-btn")) return;
+
+  const anchor =
+    root.querySelector(".sheet-header .right") ??
+    root.querySelector(".sheet-header") ??
+    root.querySelector(".window-content") ??
+    root;
+
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "npc-spellbook-transcribed-btn";
+  button.innerHTML = `<i class="fas fa-book-open"></i> ${game.i18n.localize("NPC_SPELLBOOK.Actions.ViewTranscribed")}`;
+  button.addEventListener("click", (event) => {
+    event.preventDefault();
+    openTranscribedSpells(actor);
+  });
+  anchor.prepend(button);
+});
+
+/** Also support legacy renderActorSheet if present. */
+Hooks.on("renderActorSheet", (app, html) => {
+  const actor = app.actor;
+  if (!actor || actor.type !== "character" || !isWizard(actor)) return;
+  const root = resolveAppElement(html) ?? app.element;
+  if (!root || root.querySelector(".npc-spellbook-transcribed-btn")) return;
+
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "npc-spellbook-transcribed-btn";
+  button.innerHTML = `<i class="fas fa-book-open"></i> ${game.i18n.localize("NPC_SPELLBOOK.Actions.ViewTranscribed")}`;
+  button.addEventListener("click", (event) => {
+    event.preventDefault();
+    openTranscribedSpells(actor);
+  });
+  (root.querySelector(".sheet-header") ?? root).prepend(button);
 });
 
 /** Allow dropping spells onto spellbook sheet from compendium. */

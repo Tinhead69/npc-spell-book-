@@ -43,14 +43,15 @@
       },
       "ConfirmTitle": "Transcribe {spell}?",
       "ConfirmContent": "<p>Transcribing <strong>{spell}</strong> (level {level}) costs <strong>{cost} gp</strong> and takes <strong>{hours} hours</strong> per the 5e Player's Handbook.</p><p>Proceed?</p>",
-      "Success": "{wizard} transcribed {spell} into their spellbook notes.",
+      "Success": "{wizard} copied {spell} into their spellbook.",
       "Failed": "Could not transcribe {spell}."
     },
     "Transcribed": {
       "Title": "Transcribed Spells — {name}",
       "Empty": "No spells transcribed via NPC spellbooks yet.",
       "Source": "From: {source}",
-      "Level": "Level {level}"
+      "Level": "Level {level}",
+      "Hint": "These spells are also in the character's Spells tab / spellbook."
     },
     "Create": {
       "SpellbookType": "Spellbook",
