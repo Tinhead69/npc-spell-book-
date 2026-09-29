@@ -11,8 +11,8 @@ const { ItemSheetV2 } = foundry.applications.sheets;
 export class NpcSpellbookSheet extends HandlebarsApplicationMixin(ItemSheetV2) {
   /** @override */
   static DEFAULT_OPTIONS = {
-    classes: ["npc-spell-book", "sheet", "item"],
-    position: { width: 520, height: 600 },
+    classes: ["npc-spell-book", "sheet", "item", "dnd5e2"],
+    position: { width: 620, height: 680 },
     window: { resizable: true },
     tag: "form",
     form: { submitOnChange: false, closeOnSubmit: false },
@@ -28,7 +28,7 @@ export class NpcSpellbookSheet extends HandlebarsApplicationMixin(ItemSheetV2) {
   static PARTS = {
     body: {
       template: "modules/npc-spell-book/templates/spellbook-sheet.hbs",
-      scrollable: [""]
+      scrollable: [".spellbook-spells"]
     }
   };
 
@@ -45,14 +45,52 @@ export class NpcSpellbookSheet extends HandlebarsApplicationMixin(ItemSheetV2) {
   /** @override */
   async _prepareContext(options) {
     const context = await super._prepareContext(options);
-    const spells = getSpellbookSpells(this.document).sort(
-      (a, b) => a.level - b.level || a.name.localeCompare(b.name)
-    );
+    const rawSpells = getSpellbookSpells(this.document);
+
+    // Group spells strictly by level
+    const groups = {};
+
+    for (const spell of rawSpells) {
+      const level = spell.level ?? 0;
+      const key = `level-${level}`;
+      const label = level === 0 ? "Cantrips" : `${this.#ordinalSuffix(level)} Level`;
+
+      if (!groups[key]) {
+        groups[key] = {
+          order: level,
+          label: label,
+          spells: []
+        };
+      }
+
+      groups[key].spells.push({
+        ...spell,
+        components: spell.components || "V, S",
+        activation: spell.activation || "A",
+        range: spell.range || "Self",
+        target: spell.target || "1 creature",
+        roll: spell.roll || "—"
+      });
+    }
+
+    const sortedGroups = Object.values(groups).sort((a, b) => a.order - b.order);
+
     return {
       ...context,
-      spells,
+      document: this.document,
+      item: this.document,
+      spellGroups: sortedGroups,
+      spells: rawSpells,
       editable: this.isEditable
     };
+  }
+
+  #ordinalSuffix(i) {
+    const j = i % 10, k = i % 100;
+    if (j === 1 && k !== 11) return i + "st";
+    if (j === 2 && k !== 12) return i + "nd";
+    if (j === 3 && k !== 13) return i + "rd";
+    return i + "th";
   }
 
   /** @override */
@@ -91,9 +129,6 @@ export class NpcSpellbookSheet extends HandlebarsApplicationMixin(ItemSheetV2) {
     await this._addSpellEntry(spellItemToEntry(doc));
   }
 
-  /**
-   * @param {import("./data.js").SpellEntry} entry
-   */
   async _addSpellEntry(entry) {
     const spells = getSpellbookSpells(this.document);
     if (spells.some((s) => s.uuid === entry.uuid || s.name === entry.name)) {
@@ -114,17 +149,10 @@ export class NpcSpellbookSheet extends HandlebarsApplicationMixin(ItemSheetV2) {
         ?? globalThis.game?.dnd5e?.applications?.CompendiumBrowser;
 
       if (Browser?.select) {
-        // Lock browser to Item/spell so it doesn't open on Classes.
         const selection = await Browser.select({
           filters: {
-            locked: {
-              documentClass: "Item",
-              types: new Set(["spell"])
-            },
-            initial: {
-              documentClass: "Item",
-              types: new Set(["spell"])
-            }
+            locked: { documentClass: "Item", types: new Set(["spell"]) },
+            initial: { documentClass: "Item", types: new Set(["spell"]) }
           },
           selection: { min: 1, max: 50 }
         });
