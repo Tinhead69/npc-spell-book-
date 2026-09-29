@@ -1,5 +1,5 @@
 export const MODULE_ID = "npc-spell-book";
-export const SPELLBOOK_ICON = "icons/sundries/books/book-symbol-moon-gold-blue.webp";
+export const SPELLBOOK_ICON = "icons/svg/book.svg";
 
 /** @typedef {{ uuid: string, name: string, level: number, img?: string }} SpellEntry */
 /** @typedef {{ uuid: string, name: string, level: number, img?: string, sourceItemId: string, sourceItemName: string, transcribedAt: number }} TranscribedEntry */
