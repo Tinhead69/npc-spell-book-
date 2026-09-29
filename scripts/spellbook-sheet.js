@@ -19,7 +19,8 @@ export class NpcSpellbookSheet extends HandlebarsApplicationMixin(ItemSheetV2) {
     actions: {
       addSpell: NpcSpellbookSheet.#onAddSpell,
       removeSpell: NpcSpellbookSheet.#onRemoveSpell,
-      studySpellbook: NpcSpellbookSheet.#onStudySpellbook
+      studySpellbook: NpcSpellbookSheet.#onStudySpellbook,
+      editImage: NpcSpellbookSheet.#onEditImage
     }
   };
 
@@ -166,5 +167,25 @@ export class NpcSpellbookSheet extends HandlebarsApplicationMixin(ItemSheetV2) {
     const sheet = /** @type {NpcSpellbookSheet} */ (this);
     const { StudySpellbookDialog } = await import("./learn-dialog.js");
     new StudySpellbookDialog({ spellbook: sheet.document }).render(true);
+  }
+
+  static async #onEditImage(event, target) {
+    const sheet = /** @type {NpcSpellbookSheet} */ (this);
+    if (!sheet.isEditable) return;
+
+    const current = sheet.document.img;
+
+    const fp = new FilePicker({
+      type: "image",
+      current: current,
+      field: target,
+      callback: async (path) => {
+        await sheet.document.update({ img: path });
+      },
+      top: sheet.position.top + 40,
+      left: sheet.position.left + 10
+    });
+
+    return fp.browse(current);
   }
 }
