@@ -122,7 +122,7 @@ async function createNpcSpellbook({ folder = null } = {}) {
   const item = await Item.implementation.create({
     name: "New Spellbook",
     type: "loot",
-    img: SPELLBOOK_ICON,
+    img: SPELLBOOK_ICON || "icons/svg/book.svg",
     folder
   });
   await markAsSpellbook(item);
@@ -163,7 +163,7 @@ function injectSpellbookChoice(app, htmlOrElement) {
     spellbookLabel.innerHTML = `
       <input type="radio" name="type" value="__npc_spellbook__">
       <span class="npc-spellbook-choice-content">
-        <img src="${SPELLBOOK_ICON}" alt="Spellbook">
+        <img src="${SPELLBOOK_ICON || 'icons/svg/book.svg'}" alt="Spellbook" width="24" height="24">
         <span class="npc-spellbook-choice-text">${game.i18n.localize("NPC_SPELLBOOK.Create.SpellbookType")}</span>
       </span>
     `;
