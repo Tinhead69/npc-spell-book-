@@ -1,4 +1,5 @@
 <div class="npc-spellbook-sheet dnd5e2">
+  <!-- Sheet Header -->
   <header class="spellbook-header">
     <button type="button" class="inline-edit img-button" data-action="editImage" data-edit="img" title="{{document.name}}">
       <img class="profile-img" src="{{document.img}}" alt="{{document.name}}" width="64" height="64" />
@@ -12,6 +13,7 @@
     </div>
   </header>
 
+  <!-- Toolbar -->
   <div class="spellbook-toolbar">
     {{#if editable}}
     <button type="button" data-action="addSpell">
@@ -23,11 +25,12 @@
     </button>
   </div>
 
+  <!-- Spells Section -->
   <section class="spellbook-spells spellbook-drop-zone">
     {{#if spellGroups.length}}
       {{#each spellGroups as |group|}}
       <div class="spell-group">
-        <!-- Header Row with Column Titles -->
+        <!-- Group Header Bar with Tabular Column Titles -->
         <div class="items-header spell-header flexrow">
           <span class="group-label flex2">{{group.label}}</span>
           <span class="column-title spell-time">TIME</span>
