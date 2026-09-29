@@ -1,34 +1,52 @@
-/* Ensure the header container allows room for the icon */
-.spellbook-header {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 10px 8px 6px 8px; /* Adds top padding to prevent window frame clipping */
-  overflow: visible;
-}
-
-/* Constrain the button container */
-.spellbook-header .img-button {
-  position: relative;
-  width: 64px;
-  height: 64px;
-  min-width: 64px;
-  min-height: 64px;
+/* Reset list formatting */
+.npc-spellbook-sheet .spell-list {
+  list-style: none;
+  margin: 0;
   padding: 0;
-  border: none;
-  background: none;
-  cursor: pointer;
-  flex-shrink: 0;
-  display: block;
 }
 
-/* Force the image to fit cleanly inside the 64x64 container without stretching or spilling */
-.spellbook-header .profile-img {
-  width: 100%;
-  height: 100%;
+/* Force every row to display horizontally aligned in a single line */
+.npc-spellbook-sheet .spell-entry {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  gap: 10px;
+  padding: 4px 6px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  box-sizing: border-box;
+}
+
+/* Hard-constrain the spell icons so they never blow up */
+.npc-spellbook-sheet .spell-entry img,
+.npc-spellbook-sheet .spell-entry .item-image {
+  width: 32px !important;
+  height: 32px !important;
+  min-width: 32px !important;
+  min-height: 32px !important;
+  max-width: 32px !important;
+  max-height: 32px !important;
   object-fit: cover;
-  object-position: center;
-  border-radius: 4px;
-  display: block;
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border: 1px solid #191813;
+  border-radius: 3px;
+  margin: 0;
+  flex-shrink: 0;
+}
+
+/* Keep the spell name and detail inline */
+.npc-spellbook-sheet .spell-entry .spell-name,
+.npc-spellbook-sheet .spell-entry .item-name {
+  display: inline-flex;
+  align-items: center;
+  flex: 1;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Move delete button to the far right */
+.npc-spellbook-sheet .spell-entry .remove-spell,
+.npc-spellbook-sheet .spell-entry .spell-actions {
+  margin-left: auto;
+  flex-shrink: 0;
 }
