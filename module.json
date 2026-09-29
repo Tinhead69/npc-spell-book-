@@ -1,77 +1,42 @@
-<div class="npc-spellbook-sheet dnd5e2">
-  <!-- Header -->
-  <header class="spellbook-header flexrow">
-    <button type="button" class="inline-edit img-button" data-action="editImage" data-edit="img" title="{{document.name}}">
-      <img class="profile-img" src="{{document.img}}" alt="{{document.name}}" width="64" height="64" />
-      <i class="fas fa-edit edit-icon"></i>
-    </button>
-
-    <div class="header-fields flexcol">
-      <h1 class="charname">
-        <input name="name" type="text" value="{{document.name}}" placeholder="{{localize 'DND5E.ItemName'}}" />
-      </h1>
-      <p class="description">{{localize "NPC_SPELLBOOK.Sheet.Description"}}</p>
-    </div>
-  </header>
-
-  <!-- Toolbar -->
-  <div class="spellbook-toolbar flexrow">
-    {{#if editable}}
-    <button type="button" class="btn" data-action="addSpell">
-      <i class="fas fa-plus"></i> {{localize "NPC_SPELLBOOK.Actions.AddSpell"}}
-    </button>
-    {{/if}}
-    <button type="button" class="btn" data-action="studySpellbook">
-      <i class="fas fa-scroll"></i> {{localize "NPC_SPELLBOOK.Actions.StudySpellbook"}}
-    </button>
-  </div>
-
-  <!-- Main Spells Area -->
-  <section class="spellbook-spells spellbook-drop-zone">
-    {{#if spellGroups.length}}
-      {{#each spellGroups as |group|}}
-      <div class="spell-group">
-        <!-- Section Header Bar -->
-        <div class="items-header spell-header flexrow">
-          <span class="group-label flexgroup flex2">{{group.label}}</span>
-          <span class="column-title spell-time">TIME</span>
-          <span class="column-title spell-range">RANGE</span>
-          <span class="column-title spell-target">TARGET</span>
-          <span class="column-title spell-roll">ROLL</span>
-          <span class="column-title spell-actions"></span>
-        </div>
-
-        <!-- Group Spells List -->
-        <ol class="items-list spell-list">
-          {{#each group.spells as |spell|}}
-          <li class="item spell-entry flexrow" data-spell-uuid="{{spell.uuid}}">
-            <div class="item-name flexrow flex2">
-              <img class="item-image" src="{{spell.img}}" alt="{{spell.name}}" width="36" height="36" />
-              <div class="name-container flexcol">
-                <span class="spell-name">{{spell.name}}</span>
-                <span class="spell-components">{{spell.components}}</span>
-              </div>
-            </div>
-
-            <span class="item-detail spell-time">{{spell.activation}}</span>
-            <span class="item-detail spell-range">{{spell.range}}</span>
-            <span class="item-detail spell-target">{{spell.target}}</span>
-            <span class="item-detail spell-roll">{{spell.roll}}</span>
-
-            <div class="item-controls flexrow spell-actions">
-              {{#if ../../editable}}
-              <a class="item-control remove-spell" data-action="removeSpell" title="{{localize 'NPC_SPELLBOOK.Actions.RemoveSpell'}}">
-                <i class="fas fa-trash"></i>
-              </a>
-              {{/if}}
-            </div>
-          </li>
-          {{/each}}
-        </ol>
-      </div>
-      {{/each}}
-    {{else}}
-      <p class="empty-hint">{{localize "NPC_SPELLBOOK.Sheet.EmptySpells"}}</p>
-    {{/if}}
-  </section>
-</div>
+{
+  "id": "npc-spell-book",
+  "title": "NPC Spellbook",
+  "description": "Lootable NPC wizard spellbooks that let wizard PCs transcribe spells using 5e 2014 rules, independent of the built-in spellbook.",
+  "version": "0.2.4",
+  "compatibility": {
+    "minimum": "13",
+    "verified": "13.351"
+  },
+  "authors": [
+    {
+      "name": "Martin Zealey"
+    }
+  ],
+  "relationships": {
+    "systems": [
+      {
+        "id": "dnd5e",
+        "type": "system",
+        "compatibility": {
+          "minimum": "3.0.0"
+        }
+      }
+    ]
+  },
+  "esmodules": [
+    "scripts/main.js"
+  ],
+  "styles": [
+    "styles/spellbook.css"
+  ],
+  "languages": [
+    {
+      "lang": "en",
+      "name": "English",
+      "path": "lang/en.json"
+    }
+  ],
+  "url": "https://github.com/Tinhead69/npc-spell-book-",
+  "manifest": "https://raw.githubusercontent.com/Tinhead69/npc-spell-book-/main/module.json",
+  "download": "https://github.com/Tinhead69/npc-spell-book-/archive/refs/heads/main.zip"
+}
