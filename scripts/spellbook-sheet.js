@@ -125,7 +125,7 @@ export class NpcSpellbookSheet extends HandlebarsApplicationMixin(ItemSheetV2) {
               types: new Set(["spell"])
             }
           },
-          selection: { min: 1, max: 20 }
+          selection: { min: 1, max: 50 }
         });
 
         if (!selection) return;
