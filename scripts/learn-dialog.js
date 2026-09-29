@@ -31,8 +31,8 @@ export class StudySpellbookDialog extends HandlebarsApplicationMixin(Application
   static DEFAULT_OPTIONS = {
     id: "study-spellbook",
     classes: ["npc-spell-book", "study-spellbook"],
-    position: { width: 560, height: 640 },
-    window: { title: "Study Spellbook" },
+    position: { width: 620, height: 680 },
+    window: { title: "Study Spellbook", resizable: true },
     actions: {
       selectWizard: StudySpellbookDialog.#onSelectWizard,
       transcribe: StudySpellbookDialog.#onTranscribe,
@@ -42,7 +42,10 @@ export class StudySpellbookDialog extends HandlebarsApplicationMixin(Application
 
   /** @override */
   static PARTS = {
-    body: { template: "modules/npc-spell-book/templates/learn-spells.hbs" }
+    body: {
+      template: "modules/npc-spell-book/templates/learn-spells.hbs",
+      scrollable: [".spell-study-list"]
+    }
   };
 
   /** @override */
@@ -58,6 +61,14 @@ export class StudySpellbookDialog extends HandlebarsApplicationMixin(Application
     return [...new Map(all.map((a) => [a.id, a])).values()];
   }
 
+  #ordinalSuffix(i) {
+    const j = i % 10, k = i % 100;
+    if (j === 1 && k !== 11) return i + "st";
+    if (j === 2 && k !== 12) return i + "nd";
+    if (j === 3 && k !== 13) return i + "rd";
+    return i + "th";
+  }
+
   /** @override */
   async _prepareContext() {
     const wizards = this._getAvailableWizards();
@@ -65,12 +76,14 @@ export class StudySpellbookDialog extends HandlebarsApplicationMixin(Application
     const wizardLevel = wizard ? getWizardLevel(wizard) : 0;
     const maxLevel = getMaxSpellLevel(wizardLevel);
     const requireGold = game.settings.get("npc-spell-book", "requireGold");
-    let spells = getSpellbookSpells(this.spellbook).map((spell) => {
+
+    let rawSpells = getSpellbookSpells(this.spellbook).map((spell) => {
       const evaluation = wizard
         ? evaluateTranscription(wizard, spell, { requireGold, checkAfford: requireGold })
         : { canLearn: false, reasonKey: "NPC_SPELLBOOK.Learn.SelectWizard" };
       return {
         ...spell,
+        components: spell.components || "V, S",
         cost: getTranscriptionCost(spell.level),
         hours: getTranscriptionHours(spell.level),
         canLearn: evaluation.canLearn,
@@ -79,18 +92,36 @@ export class StudySpellbookDialog extends HandlebarsApplicationMixin(Application
     });
 
     // Apply Sorting
-    spells.sort((a, b) => {
+    rawSpells.sort((a, b) => {
       let result = 0;
       if (this.sortBy === "name") {
         result = a.name.localeCompare(b.name);
       } else if (this.sortBy === "level") {
         result = (a.level ?? 0) - (b.level ?? 0) || a.name.localeCompare(b.name);
       } else if (this.sortBy === "availability") {
-        // Sort learnable spells first, then blocked
         result = (b.canLearn ? 1 : 0) - (a.canLearn ? 1 : 0) || (a.level ?? 0) - (b.level ?? 0) || a.name.localeCompare(b.name);
       }
       return this.sortDir === "asc" ? result : -result;
     });
+
+    // Group spells by level to mirror the Spellbook Sheet design
+    const groups = {};
+    for (const spell of rawSpells) {
+      const level = spell.level ?? 0;
+      const key = `level-${level}`;
+      const label = level === 0 ? "Cantrips" : `${this.#ordinalSuffix(level)} Level`;
+
+      if (!groups[key]) {
+        groups[key] = {
+          order: level,
+          label: label,
+          spells: []
+        };
+      }
+      groups[key].spells.push(spell);
+    }
+
+    const sortedGroups = Object.values(groups).sort((a, b) => a.order - b.order);
 
     return {
       spellbook: this.spellbook,
@@ -98,7 +129,7 @@ export class StudySpellbookDialog extends HandlebarsApplicationMixin(Application
       wizard,
       wizardLevel,
       maxLevel,
-      spells,
+      spellGroups: sortedGroups,
       hasWizard: Boolean(wizard),
       sortBy: this.sortBy,
       sortDir: this.sortDir
