@@ -27,12 +27,23 @@
   <!-- Spells Tabular Section -->
   <section class="spell-study-list">
     <div class="spell-group">
-      <!-- Table Column Headers -->
+      <!-- Table Column Headers with Interactive Sorting -->
       <div class="items-header spell-header flexrow">
-        <span class="group-label flex2">SPELL</span>
+        <div class="group-label flex2 header-sort-group">
+          <button type="button" class="sort-btn {{#if (eq sortBy 'name')}}active{{/if}}" data-action="sort" data-sort-by="name">
+            SPELL {{#if (eq sortBy 'name')}}<i class="fas fa-sort-{{#if (eq sortDir 'asc')}}up{{else}}down{{/if}}"></i>{{/if}}
+          </button>
+          <button type="button" class="sort-btn level-sort {{#if (eq sortBy 'level')}}active{{/if}}" data-action="sort" data-sort-by="level" title="Sort by Level">
+            LVL {{#if (eq sortBy 'level')}}<i class="fas fa-sort-{{#if (eq sortDir 'asc')}}up{{else}}down{{/if}}"></i>{{/if}}
+          </button>
+        </div>
         <span class="column-title study-cost">COST</span>
         <span class="column-title study-time">TIME</span>
-        <span class="column-title study-status">STATUS / ACTION</span>
+        <span class="column-title study-status">
+          <button type="button" class="sort-btn {{#if (eq sortBy 'availability')}}active{{/if}}" data-action="sort" data-sort-by="availability">
+            STATUS {{#if (eq sortBy 'availability')}}<i class="fas fa-sort-{{#if (eq sortDir 'asc')}}up{{else}}down{{/if}}"></i>{{/if}}
+          </button>
+        </span>
       </div>
 
       <!-- Spells List -->
