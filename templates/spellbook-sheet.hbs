@@ -1,8 +1,14 @@
 <div class="npc-spellbook-sheet">
   <header class="spellbook-header">
-    <img class="profile-img" src="{{item.img}}" alt="{{item.name}}">
+    <button type="button" class="inline-edit img-button" data-action="editImage" data-edit="img" title="{{item.name}}">
+      <img class="profile-img" src="{{item.img}}" alt="{{item.name}}" width="64" height="64" />
+      <i class="fas fa-edit edit-icon"></i>
+    </button>
+
     <div class="header-fields">
-      <h1 class="charname">{{item.name}}</h1>
+      <h1 class="charname">
+        <input name="name" type="text" value="{{item.name}}" placeholder="Spellbook Name" />
+      </h1>
       <p class="description">{{localize "NPC_SPELLBOOK.Sheet.Description"}}</p>
     </div>
   </header>
