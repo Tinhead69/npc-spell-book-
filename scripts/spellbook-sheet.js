@@ -74,20 +74,32 @@ export class NpcSpellbookSheet extends HandlebarsApplicationMixin(ItemSheetV2) {
   }
 
   static async _onDeleteSpell(event, target) {
-    event.preventDefault();
-    event.stopPropagation();
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
 
-    // Find the spell ID from target or nearest element containing dataset
-    const btn = target.closest("[data-spell-id]");
-    const spellId = btn?.dataset?.spellId || target.dataset?.spellId;
-    
-    if (!spellId || !Data.getSpellbookSpells || !Data.setSpellbookSpells) return;
+    // Traverse up to find the element holding data attributes or row data
+    const element = target.closest("[data-spell-id]") || target.closest("[data-spell-name]") || target;
+    const spellId = element?.dataset?.spellId;
+    const spellName = element?.dataset?.spellName;
+
+    if (!Data.getSpellbookSpells || !Data.setSpellbookSpells) return;
 
     let spells = Data.getSpellbookSpells(this.document);
-    spells = spells.filter((s) => s.id !== spellId && s.uuid !== spellId);
     
-    await Data.setSpellbookSpells(this.document, spells);
-    this.render(false);
+    // Filter out by ID, UUID, or exact Name match
+    const initialCount = spells.length;
+    spells = spells.filter((s) => {
+      if (spellId && (s.id === spellId || s.uuid === spellId)) return false;
+      if (spellName && s.name?.toLowerCase() === spellName.toLowerCase()) return false;
+      return true;
+    });
+
+    if (spells.length < initialCount) {
+      await Data.setSpellbookSpells(this.document, spells);
+      this.render(false);
+    }
   }
 
   static async _onStudySpellbook(event, target) {
@@ -118,8 +130,8 @@ export class NpcSpellbookSheet extends HandlebarsApplicationMixin(ItemSheetV2) {
       });
     });
 
-    // 2. Delete Spell Button listeners (Trashcan icons / buttons)
-    html.querySelectorAll(".delete-spell, .spell-delete, [data-action='deleteSpell']").forEach((btn) => {
+    // 2. Delete Spell Button listeners (Attach click handlers directly to all trashcan icons/buttons)
+    html.querySelectorAll(".delete-spell, .spell-delete, [data-action='deleteSpell'], .fa-trash, .fa-trash-can").forEach((btn) => {
       btn.addEventListener("click", (e) => NpcSpellbookSheet._onDeleteSpell.call(this, e, e.currentTarget));
     });
 
