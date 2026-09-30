@@ -5,24 +5,29 @@ const { ItemSheetV2 } = foundry.applications.sheets;
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
 
 /**
- * Dialog to display installed compendiums containing Wizard spells
+ * Dialog to select multiple compendiums containing Wizard spells and import them
  */
 class CompendiumPickerDialog extends ApplicationV2 {
+  constructor(options = {}) {
+    super(options);
+    this.spellbook = options.spellbook;
+    this.onImportComplete = options.onImportComplete;
+  }
+
   static DEFAULT_OPTIONS = {
     id: "compendium-picker-dialog",
     classes: ["compendium-picker"],
-    position: { width: 420, height: 480 },
+    position: { width: 460, height: 520 },
     tag: "div"
   };
 
   get title() {
-    return "Select Wizard Spell Compendium";
+    return "Select Wizard Spell Compendiums";
   }
 
   async _prepareContext(options) {
     const context = await super._prepareContext(options);
 
-    // Find all Item compendiums
     const itemPacks = game.packs.filter((p) => p.metadata.type === "Item");
     const validPacks = [];
 
@@ -45,19 +50,24 @@ class CompendiumPickerDialog extends ApplicationV2 {
 
   async _renderHTML(context, options) {
     const templateSource = `
-      <div class="compendium-picker-content" style="padding: 12px;">
+      <div class="compendium-picker-content" style="padding: 12px; display: flex; flex-direction: column; height: 100%;">
         <p class="notes" style="margin-bottom: 12px; font-weight: bold;">
-          <i class="fas fa-book"></i> Select a compendium to browse Wizard spells:
+          <i class="fas fa-book"></i> Check the compendiums to import Wizard spells from:
         </p>
-        <ul class="compendium-list" style="list-style: none; padding: 0; margin: 0; max-height: 360px; overflow-y: auto;">
+        <div class="compendium-list" style="flex: 1; max-height: 340px; overflow-y: auto; border: 1px solid #ccc; padding: 8px; border-radius: 4px; margin-bottom: 12px;">
           {{#each packs}}
-            <li style="margin-bottom: 8px;">
-              <button type="button" class="pack-link" data-pack-id="{{this.collection}}" style="width: 100%; text-align: left; padding: 8px 12px; cursor: pointer;">
-                <i class="fas fa-atlas"></i> <strong>{{this.title}}</strong> <small style="opacity: 0.7;">({{this.package}})</small>
-              </button>
-            </li>
+            <div style="margin-bottom: 8px; display: flex; align-items: center; gap: 8px;">
+              <input type="checkbox" id="pack-{{@index}}" class="pack-checkbox" value="{{this.collection}}" style="cursor: pointer;" />
+              <label for="pack-{{@index}}" style="cursor: pointer; flex: 1;">
+                <strong>{{this.title}}</strong> <small style="opacity: 0.7;">({{this.package}})</small>
+              </label>
+            </div>
           {{/each}}
-        </ul>
+        </div>
+        <div style="display: flex; gap: 8px; justify-content: flex-end;">
+          <button type="button" class="select-all-btn" style="flex: 1;"><i class="fas fa-check-square"></i> Select All</button>
+          <button type="button" class="import-spells-btn" style="flex: 2; font-weight: bold;"><i class="fas fa-download"></i> Import Spells</button>
+        </div>
       </div>
     `;
     const compiled = Handlebars.compile(templateSource);
@@ -71,27 +81,77 @@ class CompendiumPickerDialog extends ApplicationV2 {
   _onRender(context, options) {
     super._onRender(context, options);
 
-    this.element.querySelectorAll(".pack-link").forEach((link) => {
-      link.addEventListener("click", async (e) => {
-        e.preventDefault();
-        const packId = e.currentTarget.dataset.packId;
+    const html = this.element;
+
+    // Toggle Select All / Deselect All
+    const selectAllBtn = html.querySelector(".select-all-btn");
+    selectAllBtn?.addEventListener("click", () => {
+      const checkboxes = html.querySelectorAll(".pack-checkbox");
+      const allChecked = Array.from(checkboxes).every((cb) => cb.checked);
+      checkboxes.forEach((cb) => (cb.checked = !allChecked));
+    });
+
+    // Import Spells Handler
+    const importBtn = html.querySelector(".import-spells-btn");
+    importBtn?.addEventListener("click", async () => {
+      const checkedPacks = Array.from(html.querySelectorAll(".pack-checkbox:checked")).map((cb) => cb.value);
+
+      if (checkedPacks.length === 0) {
+        ui.notifications.warn("Please select at least one compendium.");
+        return;
+      }
+
+      let addedCount = 0;
+      let existingSpells = Data.getSpellbookSpells(this.spellbook);
+
+      for (const packId of checkedPacks) {
         const pack = game.packs.get(packId);
+        if (!pack) continue;
 
-        if (pack) {
-          const compendiumWindow = await pack.render(true);
+        // Fetch documents from pack
+        const documents = await pack.getDocuments();
 
-          if (compendiumWindow?.element) {
-            setTimeout(() => {
-              const searchInput = compendiumWindow.element.querySelector("input[type='search'], input[name='search'], .filter-search");
-              if (searchInput) {
-                searchInput.value = "wizard";
-                searchInput.dispatchEvent(new Event("input", { bubbles: true }));
-              }
-            }, 100);
+        for (const item of documents) {
+          // Verify item is a spell
+          if (item.type !== "spell") continue;
+
+          // Check if it's a wizard spell (handles dnd5e spell filtering)
+          const isWizardSpell = 
+            item.system?.sourceClass?.toLowerCase() === "wizard" ||
+            item.system?.spellcastingClass?.toLowerCase() === "wizard" ||
+            item.labels?.spellcastingClass?.toLowerCase() === "wizard" ||
+            (Array.isArray(item.system?.classes) && item.system.classes.includes("wizard"));
+
+          if (!isWizardSpell) continue;
+
+          // Check duplicates
+          const isDuplicate = existingSpells.some(
+            (s) => s.uuid === item.uuid || (s.name.toLowerCase() === item.name.toLowerCase() && Number(s.level) === Number(item.system?.level ?? 0))
+          );
+
+          if (!isDuplicate) {
+            existingSpells.push({
+              id: item.id ?? foundry.utils.randomID(),
+              uuid: item.uuid,
+              name: item.name,
+              img: item.img,
+              level: item.system?.level ?? 0,
+              components: item.labels?.components?.vsm ?? ""
+            });
+            addedCount++;
           }
-          this.close();
         }
-      });
+      }
+
+      if (addedCount > 0) {
+        await Data.setSpellbookSpells(this.spellbook, existingSpells);
+        ui.notifications.info(`Successfully added ${addedCount} wizard spell(s) to ${this.spellbook.name}.`);
+      } else {
+        ui.notifications.info("No new wizard spells were found or added.");
+      }
+
+      if (this.onImportComplete) this.onImportComplete();
+      this.close();
     });
   }
 }
@@ -208,7 +268,10 @@ export class NpcSpellbookSheet extends HandlebarsApplicationMixin(ItemSheetV2) {
     html.querySelectorAll(".add-spell, .add-spell-btn").forEach((btn) => {
       btn.addEventListener("click", (e) => {
         e.preventDefault();
-        new CompendiumPickerDialog().render(true);
+        new CompendiumPickerDialog({
+          spellbook: this.document,
+          onImportComplete: () => this.render(false)
+        }).render(true);
       });
     });
 
