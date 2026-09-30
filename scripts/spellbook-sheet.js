@@ -190,7 +190,7 @@ class CompendiumPickerDialog extends ApplicationV2 {
         <!-- LEFT COLUMN -->
         <div style="width: 320px; display: flex; flex-direction: column; gap: 8px; height: 100%;">
           
-          <!-- TOP LEFT: LEVEL & SCHOOL FILTERS (SIDE-BY-SIDE VERTICAL LISTS) -->
+          <!-- TOP LEFT: LEVEL & SCHOOL FILTERS -->
           <div style="flex: 1.4; border: 1px solid #7a7971; border-radius: 4px; padding: 8px; background: rgba(0,0,0,0.05); overflow-y: auto;">
             <h5 style="margin: 0 0 6px 0; border-bottom: 1px solid #ccc; padding-bottom: 3px; font-size: 12px; font-weight: bold; text-transform: uppercase;">
               <i class="fas fa-filter"></i> Spell Filters
@@ -198,23 +198,23 @@ class CompendiumPickerDialog extends ApplicationV2 {
             
             <div style="display: flex; gap: 12px; font-size: 11px;">
               
-              <!-- SPELL LEVEL COLUMN (Vertical) -->
-              <div style="flex: 1; display: flex; flex-direction: column; gap: 3px;">
-                <strong style="font-size: 11px; text-transform: uppercase; color: #bbb; margin-bottom: 2px; border-bottom: 1px dashed rgba(255,255,255,0.2); padding-bottom: 2px;">Spell Level</strong>
+              <!-- SPELL LEVEL COLUMN -->
+              <div style="flex: 1; display: flex; flex-direction: column; gap: 5px;">
+                <strong style="font-size: 11px; text-transform: uppercase; color: #bbb; text-align: center; display: block; margin-bottom: 2px; border-bottom: 1px dashed rgba(255,255,255,0.2); padding-bottom: 2px;">Spell Level</strong>
                 {{#each levelsList}}
                   <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; line-height: 1.2;">
-                    <input type="checkbox" class="filter-level" value="{{this.id}}" style="width: 14px; height: 14px; margin: 0; flex-shrink: 0;" {{#if (includes ../selectedLevels this.id)}}checked{{/if}} />
+                    <input type="checkbox" class="filter-level" value="{{this.id}}" style="appearance: auto; -webkit-appearance: checkbox; width: 14px; height: 14px; min-height: 14px; min-width: 14px; max-height: 14px; max-width: 14px; margin: 0; padding: 0; flex-shrink: 0; accent-color: #d97724;" {{#if (includes ../selectedLevels this.id)}}checked{{/if}} />
                     <span>{{this.label}}</span>
                   </label>
                 {{/each}}
               </div>
 
-              <!-- SCHOOL OF MAGIC COLUMN (Vertical) -->
-              <div style="flex: 1; display: flex; flex-direction: column; gap: 3px;">
-                <strong style="font-size: 11px; text-transform: uppercase; color: #bbb; margin-bottom: 2px; border-bottom: 1px dashed rgba(255,255,255,0.2); padding-bottom: 2px;">School</strong>
+              <!-- SCHOOL OF MAGIC COLUMN -->
+              <div style="flex: 1; display: flex; flex-direction: column; gap: 5px;">
+                <strong style="font-size: 11px; text-transform: uppercase; color: #bbb; text-align: center; display: block; margin-bottom: 2px; border-bottom: 1px dashed rgba(255,255,255,0.2); padding-bottom: 2px;">School</strong>
                 {{#each schoolsList}}
                   <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; line-height: 1.2;">
-                    <input type="checkbox" class="filter-school" value="{{this.id}}" style="width: 14px; height: 14px; margin: 0; flex-shrink: 0;" {{#if (includes ../selectedSchools this.id)}}checked{{/if}} />
+                    <input type="checkbox" class="filter-school" value="{{this.id}}" style="appearance: auto; -webkit-appearance: checkbox; width: 14px; height: 14px; min-height: 14px; min-width: 14px; max-height: 14px; max-width: 14px; margin: 0; padding: 0; flex-shrink: 0; accent-color: #d97724;" {{#if (includes ../selectedSchools this.id)}}checked{{/if}} />
                     <span>{{this.label}}</span>
                   </label>
                 {{/each}}
@@ -231,7 +231,7 @@ class CompendiumPickerDialog extends ApplicationV2 {
             <div style="display: flex; flex-direction: column; gap: 5px; font-size: 11px;">
               {{#each packs}}
                 <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; line-height: 1.2;">
-                  <input type="checkbox" class="filter-pack" value="{{this.collection}}" style="width: 14px; height: 14px; margin: 0; flex-shrink: 0;" {{#if (includes ../selectedPacks this.collection)}}checked{{/if}} />
+                  <input type="checkbox" class="filter-pack" value="{{this.collection}}" style="appearance: auto; -webkit-appearance: checkbox; width: 14px; height: 14px; min-height: 14px; min-width: 14px; max-height: 14px; max-width: 14px; margin: 0; padding: 0; flex-shrink: 0; accent-color: #d97724;" {{#if (includes ../selectedPacks this.collection)}}checked{{/if}} />
                   <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                     <strong style="font-size: 11px;">{{this.title}}</strong> <small style="opacity:0.75; font-size: 10px;">({{this.package}})</small>
                   </span>
