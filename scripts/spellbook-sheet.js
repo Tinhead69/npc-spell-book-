@@ -8,7 +8,7 @@ export class NpcSpellbookSheet extends HandlebarsApplicationMixin(ItemSheetV2) {
     classes: ["npc-spellbook", "sheet", "item"],
     position: {
       width: 600,
-      height: 600
+      height: 650
     },
     form: {
       handler: NpcSpellbookSheet.#onSubmitForm,
@@ -32,7 +32,6 @@ export class NpcSpellbookSheet extends HandlebarsApplicationMixin(ItemSheetV2) {
     context.item = this.document;
     context.isGM = game.user.isGM;
 
-    // Group spells by level
     const spells = getSpellbookSpells(this.document);
     const levels = {};
     for (const spell of spells) {
@@ -71,7 +70,6 @@ export class NpcSpellbookSheet extends HandlebarsApplicationMixin(ItemSheetV2) {
 
     const html = this.element;
 
-    // Delete spell click handler fallback
     html.querySelectorAll(".delete-spell").forEach((btn) => {
       btn.addEventListener("click", (e) => {
         e.preventDefault();
@@ -79,7 +77,6 @@ export class NpcSpellbookSheet extends HandlebarsApplicationMixin(ItemSheetV2) {
       });
     });
 
-    // Study spellbook click handler fallback
     html.querySelectorAll(".study-spellbook").forEach((btn) => {
       btn.addEventListener("click", (e) => {
         e.preventDefault();
