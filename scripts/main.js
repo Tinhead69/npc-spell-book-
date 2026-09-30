@@ -59,7 +59,7 @@ async function openStudySpellbook(item) {
   }
 }
 
-/** Patch item directory right-click menu. */
+/** Patch item directory context menu safely. */
 function patchItemDirectoryContextMenu() {
   const ItemDirectoryClass =
     foundry?.applications?.sidebar?.tabs?.ItemDirectory ?? globalThis.ItemDirectory;
@@ -123,11 +123,17 @@ async function createNpcSpellbook({ folder = null } = {}) {
     name: "New Spellbook",
     type: "loot",
     img: SPELLBOOK_ICON || "icons/svg/book.svg",
-    folder
+    folder,
+    flags: {
+      "npc-spell-book": {
+        isSpellbook: true,
+        spells: []
+      }
+    }
   });
-  await markAsSpellbook(item);
+
   ui.notifications.info(game.i18n.format("NPC_SPELLBOOK.Create.Created", { name: item.name }));
-  item.sheet?.render(true);
+  new NpcSpellbookSheet({ document: item }).render(true);
   return item;
 }
 
@@ -158,7 +164,7 @@ function injectSpellbookChoice(app, htmlOrElement) {
     const lootLabel = lootInput?.closest("label") ?? lootInput?.parentElement;
     if (!lootLabel) return;
 
-  const spellbookLabel = document.createElement("label");
+    const spellbookLabel = document.createElement("label");
     spellbookLabel.className = "npc-spellbook-choice";
     spellbookLabel.innerHTML = `
       <span class="npc-spellbook-choice-content">
@@ -232,7 +238,25 @@ Hooks.on("renderItemDirectory", (app, htmlOrElement) => {
   header.append(button);
 });
 
-/** Header button for item sheets */
+/** Override default sheet rendering for spellbook items on double click */
+Hooks.on("renderItemDirectory", (app, html) => {
+  const root = resolveAppElement(html) ?? app?.element;
+  if (!root) return;
+
+  root.querySelectorAll(".directory-item.document").forEach((el) => {
+    const documentId = el.dataset.documentId || el.dataset.entryId;
+    const item = game.items.get(documentId);
+    if (item && isSpellbook(item)) {
+      el.addEventListener("dblclick", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        new NpcSpellbookSheet({ document: item }).render(true);
+      }, true);
+    }
+  });
+});
+
+/** Header button for standard item sheets */
 Hooks.on("getItemSheetHeaderButtons", (app, buttons) => {
   if (!isSpellbook(app.item)) return;
   buttons.unshift({
@@ -243,7 +267,7 @@ Hooks.on("getItemSheetHeaderButtons", (app, buttons) => {
   });
 });
 
-/** Foundry ApplicationV2 header controls */
+/** Header controls for ApplicationV2 sheets */
 Hooks.on("getHeaderControlsApplicationV2", (app, controls) => {
   const doc = app.document ?? app.actor ?? app.item;
   if (!doc) return;
