@@ -199,22 +199,28 @@ class CompendiumPickerDialog extends ApplicationV2 {
             <div style="display: flex; gap: 12px; font-size: 11px;">
               
               <!-- SPELL LEVEL COLUMN -->
-              <div style="flex: 1; display: flex; flex-direction: column; gap: 5px;">
+              <div style="flex: 1; display: flex; flex-direction: column; gap: 6px;">
                 <strong style="font-size: 11px; text-transform: uppercase; color: #bbb; text-align: center; display: block; margin-bottom: 2px; border-bottom: 1px dashed rgba(255,255,255,0.2); padding-bottom: 2px;">Spell Level</strong>
                 {{#each levelsList}}
-                  <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; line-height: 1.2;">
-                    <input type="checkbox" class="filter-level" value="{{this.id}}" style="appearance: auto; -webkit-appearance: checkbox; width: 14px; height: 14px; min-height: 14px; min-width: 14px; max-height: 14px; max-width: 14px; margin: 0; padding: 0; flex-shrink: 0; accent-color: #d97724;" {{#if (includes ../selectedLevels this.id)}}checked{{/if}} />
+                  <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; line-height: 1.2; user-select: none;">
+                    <input type="checkbox" class="filter-level" value="{{this.id}}" style="position: absolute; opacity: 0; width: 0; height: 0; margin: 0; pointer-events: none;" {{#if (includes ../selectedLevels this.id)}}checked{{/if}} />
+                    <span class="custom-box" style="width: 15px; height: 15px; min-width: 15px; border: 1px solid #7a7971; border-radius: 3px; background: {{#if (includes ../selectedLevels this.id)}}#d97724{{else}}rgba(0,0,0,0.3){{/if}}; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 10px;">
+                      {{#if (includes ../selectedLevels this.id)}}<i class="fas fa-check"></i>{{/if}}
+                    </span>
                     <span>{{this.label}}</span>
                   </label>
                 {{/each}}
               </div>
 
               <!-- SCHOOL OF MAGIC COLUMN -->
-              <div style="flex: 1; display: flex; flex-direction: column; gap: 5px;">
+              <div style="flex: 1; display: flex; flex-direction: column; gap: 6px;">
                 <strong style="font-size: 11px; text-transform: uppercase; color: #bbb; text-align: center; display: block; margin-bottom: 2px; border-bottom: 1px dashed rgba(255,255,255,0.2); padding-bottom: 2px;">School</strong>
                 {{#each schoolsList}}
-                  <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; line-height: 1.2;">
-                    <input type="checkbox" class="filter-school" value="{{this.id}}" style="appearance: auto; -webkit-appearance: checkbox; width: 14px; height: 14px; min-height: 14px; min-width: 14px; max-height: 14px; max-width: 14px; margin: 0; padding: 0; flex-shrink: 0; accent-color: #d97724;" {{#if (includes ../selectedSchools this.id)}}checked{{/if}} />
+                  <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; line-height: 1.2; user-select: none;">
+                    <input type="checkbox" class="filter-school" value="{{this.id}}" style="position: absolute; opacity: 0; width: 0; height: 0; margin: 0; pointer-events: none;" {{#if (includes ../selectedSchools this.id)}}checked{{/if}} />
+                    <span class="custom-box" style="width: 15px; height: 15px; min-width: 15px; border: 1px solid #7a7971; border-radius: 3px; background: {{#if (includes ../selectedSchools this.id)}}#d97724{{else}}rgba(0,0,0,0.3){{/if}}; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 10px;">
+                      {{#if (includes ../selectedSchools this.id)}}<i class="fas fa-check"></i>{{/if}}
+                    </span>
                     <span>{{this.label}}</span>
                   </label>
                 {{/each}}
@@ -228,10 +234,13 @@ class CompendiumPickerDialog extends ApplicationV2 {
             <h5 style="margin: 0 0 6px 0; border-bottom: 1px solid #ccc; padding-bottom: 3px; font-size: 12px; font-weight: bold; text-transform: uppercase;">
               <i class="fas fa-atlas"></i> Compendiums
             </h5>
-            <div style="display: flex; flex-direction: column; gap: 5px; font-size: 11px;">
+            <div style="display: flex; flex-direction: column; gap: 6px; font-size: 11px;">
               {{#each packs}}
-                <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; line-height: 1.2;">
-                  <input type="checkbox" class="filter-pack" value="{{this.collection}}" style="appearance: auto; -webkit-appearance: checkbox; width: 14px; height: 14px; min-height: 14px; min-width: 14px; max-height: 14px; max-width: 14px; margin: 0; padding: 0; flex-shrink: 0; accent-color: #d97724;" {{#if (includes ../selectedPacks this.collection)}}checked{{/if}} />
+                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; line-height: 1.2; user-select: none;">
+                  <input type="checkbox" class="filter-pack" value="{{this.collection}}" style="position: absolute; opacity: 0; width: 0; height: 0; margin: 0; pointer-events: none;" {{#if (includes ../selectedPacks this.collection)}}checked{{/if}} />
+                  <span class="custom-box" style="width: 15px; height: 15px; min-width: 15px; border: 1px solid #7a7971; border-radius: 3px; background: {{#if (includes ../selectedPacks this.collection)}}#d97724{{else}}rgba(0,0,0,0.3){{/if}}; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 10px;">
+                    {{#if (includes ../selectedPacks this.collection)}}<i class="fas fa-check"></i>{{/if}}
+                  </span>
                   <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                     <strong style="font-size: 11px;">{{this.title}}</strong> <small style="opacity:0.75; font-size: 10px;">({{this.package}})</small>
                   </span>
