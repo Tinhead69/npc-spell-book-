@@ -1,242 +1,169 @@
 import { getSpellbookSpells } from "./data.js";
 import {
-  evaluateTranscription,
+  getWizardLevel,
   getMaxSpellLevel,
+  getGold,
   getTranscriptionCost,
   getTranscriptionHours,
-  getWizardLevel,
-  isWizard,
+  evaluateTranscription,
   transcribeSpell
 } from "./mechanics.js";
 
-const { HandlebarsApplicationMixin, ApplicationV2, DialogV2 } = foundry.applications.api;
-
-/**
- * @typedef {object} StudySpellbookOptions
- * @property {Item} spellbook
- * @property {Actor} [wizard]
- */
+const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
 
 export class StudySpellbookDialog extends HandlebarsApplicationMixin(ApplicationV2) {
-  /** @param {StudySpellbookOptions} options */
-  constructor(options) {
+  constructor(options = {}) {
     super(options);
     this.spellbook = options.spellbook;
-    this.selectedWizard = options.wizard ?? null;
-    this.sortBy = "level"; // Default sort: "level" | "name" | "availability"
-    this.sortDir = "asc";  // "asc" | "desc"
+    this.selectedWizardId = options.selectedWizardId ?? null;
   }
 
-  /** @override */
   static DEFAULT_OPTIONS = {
-    id: "study-spellbook",
-    classes: ["npc-spell-book", "study-spellbook"],
-    position: { width: 620, height: 680 },
-    window: { title: "Study Spellbook", resizable: true },
-    actions: {
-      selectWizard: StudySpellbookDialog.#onSelectWizard,
-      transcribe: StudySpellbookDialog.#onTranscribe,
-      sort: StudySpellbookDialog.#onSort
-    }
+    id: "study-spellbook-dialog",
+    classes: ["study-spellbook"],
+    position: {
+      width: 620,
+      height: 650
+    },
+    tag: "div"
   };
 
-  /** @override */
   static PARTS = {
-    body: {
-      template: "modules/npc-spell-book/templates/learn-spells.hbs",
-      scrollable: [".spell-study-list"]
+    main: {
+      template: "modules/npc-spell-book/templates/learn-spells.hbs"
     }
   };
 
-  /** @override */
   get title() {
-    return game.i18n.format("NPC_SPELLBOOK.Learn.Title", { name: this.spellbook.name });
+    return `Study Spellbook: ${this.spellbook?.name ?? "Spellbook"}`;
   }
 
-  /** @returns {Actor[]} */
-  _getAvailableWizards() {
-    const owned = game.user.character && isWizard(game.user.character) ? [game.user.character] : [];
-    const party = game.actors.filter((a) => a.type === "character" && a.hasPlayerOwner && isWizard(a));
-    const all = [...owned, ...party];
-    return [...new Map(all.map((a) => [a.id, a])).values()];
-  }
+  async _prepareContext(options) {
+    const context = await super._prepareContext(options);
 
-  #ordinalSuffix(i) {
-    const j = i % 10, k = i % 100;
-    if (j === 1 && k !== 11) return i + "st";
-    if (j === 2 && k !== 12) return i + "nd";
-    if (j === 3 && k !== 13) return i + "rd";
-    return i + "th";
-  }
+    // 1. Find all available wizard actors
+    const wizards = game.actors.filter((a) => {
+      if (a.type !== "character") return false;
+      return getWizardLevel(a) > 0 || a.isOwner;
+    });
 
-  /** @override */
-  async _prepareContext() {
-    const wizards = this._getAvailableWizards();
-    const wizard = this.selectedWizard ?? wizards[0] ?? null;
-    const wizardLevel = wizard ? getWizardLevel(wizard) : 0;
-    const maxLevel = getMaxSpellLevel(wizardLevel);
-    const requireGold = game.settings.get("npc-spell-book", "requireGold");
+    // Auto-select first wizard if none selected
+    if (!this.selectedWizardId && wizards.length > 0) {
+      this.selectedWizardId = wizards[0].id;
+    }
 
-    let rawSpells = getSpellbookSpells(this.spellbook).map((spell) => {
-      const evaluation = wizard
-        ? evaluateTranscription(wizard, spell, { requireGold, checkAfford: requireGold })
-        : { canLearn: false, reasonKey: "NPC_SPELLBOOK.Learn.SelectWizard" };
-      return {
-        ...spell,
-        components: spell.components || "V, S",
-        cost: getTranscriptionCost(spell.level),
-        hours: getTranscriptionHours(spell.level),
-        canLearn: evaluation.canLearn,
-        statusLabel: game.i18n.format(evaluation.reasonKey, evaluation.reasonData ?? {})
+    const currentWizard = wizards.find((w) => w.id === this.selectedWizardId) ?? null;
+
+    context.wizards = wizards.map((w) => ({
+      id: w.id,
+      name: w.name,
+      selected: w.id === this.selectedWizardId
+    }));
+
+    if (currentWizard) {
+      const wizardLevel = getWizardLevel(currentWizard);
+      context.currentWizard = {
+        id: currentWizard.id,
+        name: currentWizard.name,
+        level: wizardLevel,
+        maxSpellLevel: getMaxSpellLevel(wizardLevel),
+        gold: getGold(currentWizard)
       };
-    });
+    } else {
+      context.currentWizard = null;
+    }
 
-    // Apply Sorting
-    rawSpells.sort((a, b) => {
-      let result = 0;
-      if (this.sortBy === "name") {
-        result = a.name.localeCompare(b.name);
-      } else if (this.sortBy === "level") {
-        result = (a.level ?? 0) - (b.level ?? 0) || a.name.localeCompare(b.name);
-      } else if (this.sortBy === "availability") {
-        result = (b.canLearn ? 1 : 0) - (a.canLearn ? 1 : 0) || (a.level ?? 0) - (b.level ?? 0) || a.name.localeCompare(b.name);
-      }
-      return this.sortDir === "asc" ? result : -result;
-    });
+    // 2. Fetch raw spells from the spellbook
+    const rawSpells = getSpellbookSpells(this.spellbook);
 
-    // Group spells by level to mirror the Spellbook Sheet design
-    const groups = {};
+    // 3. Group spells by level into an object { "0": [...], "1": [...] }
+    const spellLevels = {};
+
     for (const spell of rawSpells) {
-      const level = spell.level ?? 0;
-      const key = `level-${level}`;
-      const label = level === 0 ? "Cantrips" : `${this.#ordinalSuffix(level)} Level`;
+      const level = Number(spell.level ?? 0);
+      if (!spellLevels[level]) spellLevels[level] = [];
 
-      if (!groups[key]) {
-        groups[key] = {
-          order: level,
-          label: label,
-          spells: []
-        };
+      let canLearn = false;
+      let statusText = "";
+
+      if (currentWizard) {
+        const evalResult = evaluateTranscription(currentWizard, spell);
+        canLearn = evalResult.canLearn;
+        
+        // Human-readable status texts
+        if (level === 0) {
+          statusText = "Cantrips cannot be transcribed (PHB 2014)";
+        } else if (evalResult.reasonKey) {
+          if (evalResult.reasonKey.includes("AlreadyKnown")) {
+            statusText = "Already transcribed";
+          } else if (evalResult.reasonKey.includes("TooHighLevel")) {
+            statusText = `Spell level too high (Max: ${context.currentWizard?.maxSpellLevel})`;
+          } else if (evalResult.reasonKey.includes("CannotAfford")) {
+            statusText = "Cannot afford gold cost";
+          } else if (evalResult.reasonKey.includes("NotWizard")) {
+            statusText = "Not a Wizard";
+          } else if (evalResult.canLearn) {
+            statusText = "Ready to transcribe";
+          } else {
+            statusText = "Cannot transcribe";
+          }
+        }
+      } else {
+        statusText = "Select a wizard";
       }
-      groups[key].spells.push(spell);
+
+      spellLevels[level].push({
+        id: spell.id ?? spell.uuid,
+        uuid: spell.uuid,
+        name: spell.name,
+        img: spell.img || "icons/svg/spell-magic.svg",
+        level: level,
+        components: spell.components ?? "",
+        cost: getTranscriptionCost(level),
+        hours: getTranscriptionHours(level),
+        canLearn: canLearn,
+        statusText: statusText
+      });
     }
 
-    const sortedGroups = Object.values(groups).sort((a, b) => a.order - b.order);
-
-    return {
-      spellbook: this.spellbook,
-      wizards: wizards.map((w) => ({ id: w.id, name: w.name, selected: wizard?.id === w.id })),
-      wizard,
-      wizardLevel,
-      maxLevel,
-      spellGroups: sortedGroups,
-      hasWizard: Boolean(wizard),
-      sortBy: this.sortBy,
-      sortDir: this.sortDir
-    };
+    context.spellLevels = spellLevels;
+    return context;
   }
 
-  static #onSelectWizard(event, target) {
-    const dialog = /** @type {StudySpellbookDialog} */ (this);
-    const wizardId = target.closest("[data-wizard-id]")?.dataset?.wizardId;
-    if (!wizardId) return;
-    dialog.selectedWizard = game.actors.get(wizardId) ?? null;
-    dialog.render(false);
-  }
+  _onRender(context, options) {
+    super._onRender(context, options);
+    const html = this.element;
 
-  static #onSort(event, target) {
-    const dialog = /** @type {StudySpellbookDialog} */ (this);
-    const sortBy = target.closest("[data-sort-by]")?.dataset?.sortBy;
-    if (!sortBy) return;
-
-    if (dialog.sortBy === sortBy) {
-      dialog.sortDir = dialog.sortDir === "asc" ? "desc" : "asc";
-    } else {
-      dialog.sortBy = sortBy;
-      dialog.sortDir = "asc";
-    }
-    dialog.render(false);
-  }
-
-  static async #onTranscribe(event, target) {
-    const dialog = /** @type {StudySpellbookDialog} */ (this);
-    const spellUuid = target.closest("[data-spell-uuid]")?.dataset?.spellUuid;
-    const wizard = dialog.selectedWizard ?? dialog._getAvailableWizards()[0];
-    if (!wizard || !spellUuid) return;
-
-    const spell = getSpellbookSpells(dialog.spellbook).find((s) => s.uuid === spellUuid);
-    if (!spell) return;
-
-    const requireGold = game.settings.get("npc-spell-book", "requireGold");
-    const deductGold = game.settings.get("npc-spell-book", "deductGold");
-    const evaluation = evaluateTranscription(wizard, spell, { requireGold, checkAfford: requireGold });
-    if (!evaluation.canLearn) {
-      ui.notifications.warn(game.i18n.format(evaluation.reasonKey, evaluation.reasonData ?? {}));
-      return;
+    // Handle Wizard selection change
+    const select = html.querySelector("#wizard-select");
+    if (select) {
+      select.addEventListener("change", (e) => {
+        this.selectedWizardId = e.target.value;
+        this.render(false);
+      });
     }
 
-    const cost = getTranscriptionCost(spell.level);
-    const hours = getTranscriptionHours(spell.level);
-    const confirmed = await DialogV2.confirm({
-      window: { title: game.i18n.format("NPC_SPELLBOOK.Learn.ConfirmTitle", { spell: spell.name }) },
-      content: game.i18n.format("NPC_SPELLBOOK.Learn.ConfirmContent", {
-        spell: spell.name,
-        level: spell.level,
-        cost,
-        hours
-      })
+    // Handle Transcribe / Copy button clicks
+    html.querySelectorAll(".transcribe-btn").forEach((btn) => {
+      btn.addEventListener("click", async (e) => {
+        e.preventDefault();
+        const spellId = e.currentTarget.dataset.spellId;
+        const currentWizard = game.actors.get(this.selectedWizardId);
+
+        if (!currentWizard || !this.spellbook) return;
+
+        const rawSpells = getSpellbookSpells(this.spellbook);
+        const spellEntry = rawSpells.find((s) => (s.id ?? s.uuid) === spellId);
+
+        if (spellEntry) {
+          btn.disabled = true;
+          const success = await transcribeSpell(currentWizard, spellEntry, this.spellbook);
+          if (success) {
+            ui.notifications.info(`Successfully transcribed "${spellEntry.name}" to ${currentWizard.name}'s spellbook.`);
+          }
+          this.render(false);
+        }
+      });
     });
-
-    if (!confirmed) return;
-
-    const success = await transcribeSpell(wizard, spell, dialog.spellbook, { deductGold, requireGold });
-    if (success) {
-      ui.notifications.info(
-        game.i18n.format("NPC_SPELLBOOK.Learn.Success", { wizard: wizard.name, spell: spell.name })
-      );
-      dialog.render(false);
-    } else {
-      ui.notifications.error(game.i18n.format("NPC_SPELLBOOK.Learn.Failed", { spell: spell.name }));
-    }
-  }
-}
-
-export class TranscribedSpellsDialog extends HandlebarsApplicationMixin(ApplicationV2) {
-  /** @param {{ actor: Actor }} options */
-  constructor(options) {
-    super(options);
-    this.actor = options.actor;
-  }
-
-  /** @override */
-  static DEFAULT_OPTIONS = {
-    id: "transcribed-spells",
-    classes: ["npc-spell-book", "transcribed-spells"],
-    position: { width: 480, height: 520 },
-    window: { title: "Transcribed Spells" }
-  };
-
-  /** @override */
-  static PARTS = {
-    body: { template: "modules/npc-spell-book/templates/transcribed-spells.hbs" }
-  };
-
-  /** @override */
-  get title() {
-    return game.i18n.format("NPC_SPELLBOOK.Transcribed.Title", { name: this.actor.name });
-  }
-
-  /** @override */
-  async _prepareContext() {
-    const spells = (this.actor.getFlag("npc-spell-book", "transcribedSpells") ?? [])
-      .slice()
-      .sort((a, b) => a.level - b.level || a.name.localeCompare(b.name))
-      .map((s) => ({
-        ...s,
-        sourceLabel: game.i18n.format("NPC_SPELLBOOK.Transcribed.Source", { source: s.sourceItemName }),
-        levelLabel: game.i18n.format("NPC_SPELLBOOK.Transcribed.Level", { level: s.level })
-      }));
-
-    return { actor: this.actor, spells, empty: spells.length === 0 };
   }
 }
