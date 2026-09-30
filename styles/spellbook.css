@@ -3,36 +3,38 @@
 .study-spellbook-container {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
-  padding: 0.5rem;
+  padding: 0.25rem 0.5rem 0.5rem 0.5rem;
   width: 100%;
   height: 100%;
   box-sizing: border-box;
   font-family: var(--font-primary, sans-serif);
+  min-height: 0; /* Crucial for nested flex scrolling */
 }
 
-/* Sheet Header */
+/* Header - Moved closer to title bar */
 .npc-spellbook-container .sheet-header {
   display: flex;
   flex-direction: row;
   align-items: center;
-  gap: 1rem;
-  padding: 0.5rem;
+  gap: 0.75rem;
+  padding: 0.25rem 0.5rem;
   background: rgba(0, 0, 0, 0.2);
   border-radius: 4px;
+  margin-top: 0;
+  margin-bottom: 0.5rem;
 }
 
 .npc-spellbook-container .profile-img {
-  width: 50px !important;
-  height: 50px !important;
-  min-width: 50px;
-  min-height: 50px;
-  max-width: 50px;
-  max-height: 50px;
+  width: 48px !important;
+  height: 48px !important;
+  min-width: 48px;
+  min-height: 48px;
+  max-width: 48px;
+  max-height: 48px;
   object-fit: cover;
   border: 1px solid var(--color-border-dark, #444);
   border-radius: 4px;
-  flex: 0 0 50px;
+  flex: 0 0 48px;
 }
 
 .npc-spellbook-container .header-fields {
@@ -42,29 +44,42 @@
 .npc-spellbook-container .header-fields h1.charname {
   margin: 0;
   border: none;
+  padding: 0;
 }
 
 .npc-spellbook-container .header-fields input[name="name"] {
   width: 100%;
-  font-size: 1.3rem;
+  font-size: 1.25rem;
   font-weight: bold;
   text-transform: uppercase;
   background: transparent;
   border: none;
   border-bottom: 1px solid rgba(255, 255, 255, 0.2);
   color: var(--color-text-light, #fff);
+  padding: 0 0 2px 0;
 }
 
 .npc-spellbook-container .notes {
-  margin: 0.25rem 0 0 0;
-  font-size: 0.85rem;
-  opacity: 0.8;
+  margin: 0.2rem 0 0 0;
+  font-size: 0.8rem;
+  line-height: 1.2;
+  opacity: 0.85;
 }
 
-/* Action Header Buttons */
+/* Sheet Body Flex Alignment */
+.npc-spellbook-container .sheet-body {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0; /* Allows body to yield scroll space */
+}
+
+/* Action Header Buttons & Gap before Level 0 */
 .npc-spellbook-container .sheet-actions {
   display: flex;
   gap: 0.5rem;
+  margin-bottom: 1rem; /* Gap between buttons and Level 0 */
+  flex-shrink: 0;
 }
 
 .npc-spellbook-container .sheet-actions button {
@@ -73,7 +88,7 @@
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  padding: 0.35rem 0.5rem;
+  padding: 0.4rem 0.5rem;
   font-weight: bold;
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.15);
@@ -85,26 +100,29 @@
   background: rgba(255, 255, 255, 0.15);
 }
 
-/* Spells List & Level Headers */
+/* Spells List & Scroll Control */
 .spells-list {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 0.85rem;
+  padding-right: 4px;
 }
 
 .spell-level-block {
   border-radius: 4px;
   overflow: hidden;
+  flex-shrink: 0;
 }
 
 .spell-level-header {
-  background: #4a1c1d; /* dnd5e red-header style */
+  background: #4a1c1d;
   color: #ffffff;
   padding: 0.35rem 0.6rem;
   font-weight: bold;
-  font-size: 0.95rem;
+  font-size: 0.9rem;
   letter-spacing: 0.03em;
   text-transform: uppercase;
 }
@@ -118,7 +136,7 @@
 }
 
 .spells-table th {
-  padding: 0.4rem 0.5rem;
+  padding: 0.35rem 0.5rem;
   font-size: 0.75rem;
   font-weight: bold;
   text-transform: uppercase;
@@ -164,26 +182,25 @@
   text-align: right;
 }
 
-/* Spell Row Details & Icon Alignment */
+/* Spell Row Details & Icon Sizing */
 .spell-item .spell-name-cell {
   display: flex;
   align-items: center;
   gap: 0.6rem;
 }
 
-/* Strictly sizing the icon frame as per screenshot 2 */
 .spell-item .spell-icon {
-  width: 36px !important;
-  height: 36px !important;
-  min-width: 36px;
-  min-height: 36px;
-  max-width: 36px;
-  max-height: 36px;
+  width: 32px !important;
+  height: 32px !important;
+  min-width: 32px;
+  min-height: 32px;
+  max-width: 32px;
+  max-height: 32px;
   object-fit: cover;
   border-radius: 4px;
   border: 1px solid #7a6238;
   box-shadow: 0 0 3px rgba(0, 0, 0, 0.5);
-  flex: 0 0 36px;
+  flex: 0 0 32px;
 }
 
 .spell-item .spell-details {
@@ -194,7 +211,7 @@
 
 .spell-item .spell-title {
   font-weight: bold;
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   color: #ffffff;
   line-height: 1.1;
 }
@@ -202,7 +219,7 @@
 .spell-item .spell-components {
   font-size: 0.7rem;
   color: rgba(255, 255, 255, 0.5);
-  margin-top: 0.15rem;
+  margin-top: 0.1rem;
 }
 
 .delete-spell {
