@@ -10,7 +10,7 @@ const { ApplicationV2, HandlebarsApplicationMixin, DialogV2 } = foundry.applicat
  * - Left Bottom: Select Compendiums
  * - Right Main: Compact Wizard Spell List with individual Add buttons
  */
-class CompendiumPickerDialog extends HandlebarsApplicationMixin(ApplicationV2) {
+class CompendiumPickerDialog extends ApplicationV2 {
   constructor(options = {}) {
     super(options);
     this.spellbook = options.spellbook;
@@ -28,12 +28,6 @@ class CompendiumPickerDialog extends HandlebarsApplicationMixin(ApplicationV2) {
     classes: ["compendium-picker-advanced"],
     position: { width: 880, height: 640 },
     tag: "div"
-  };
-
-  static PARTS = {
-    body: {
-      template: "modules/npc-spell-book/templates/compendium-picker.hbs" // Or inline context rendering
-    }
   };
 
   get title() {
@@ -166,7 +160,7 @@ class CompendiumPickerDialog extends HandlebarsApplicationMixin(ApplicationV2) {
               <i class="fas fa-filter"></i> Spell Filters
             </h5>
             
-            <strong style="font-size: 11px; text-transform: uppercase; color: #444; display: block; margin-bottom: 4px;">Spell Level</strong>
+            <strong style="font-size: 11px; text-transform: uppercase; color: #bbb; display: block; margin-bottom: 4px;">Spell Level</strong>
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px 8px; margin-bottom: 8px; font-size: 12px;">
               {{#each levelsList}}
                 <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; line-height: 1.2;">
@@ -176,7 +170,7 @@ class CompendiumPickerDialog extends HandlebarsApplicationMixin(ApplicationV2) {
               {{/each}}
             </div>
 
-            <strong style="font-size: 11px; text-transform: uppercase; color: #444; display: block; margin-bottom: 4px;">School of Magic</strong>
+            <strong style="font-size: 11px; text-transform: uppercase; color: #bbb; display: block; margin-bottom: 4px;">School of Magic</strong>
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px 8px; font-size: 12px;">
               {{#each schoolsList}}
                 <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; line-height: 1.2;">
@@ -216,7 +210,7 @@ class CompendiumPickerDialog extends HandlebarsApplicationMixin(ApplicationV2) {
             {{#if filteredSpells.length}}
               <ul style="list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 4px;">
                 {{#each filteredSpells}}
-                  <li style="display: flex; align-items: center; gap: 8px; border: 1px solid rgba(0,0,0,0.15); padding: 4px 8px; border-radius: 4px; background: rgba(255,255,255,0.4);">
+                  <li style="display: flex; align-items: center; gap: 8px; border: 1px solid rgba(255,255,255,0.1); padding: 4px 8px; border-radius: 4px; background: rgba(0,0,0,0.2);">
                     <img src="{{this.img}}" width="28" height="28" style="border: none; border-radius: 3px;" />
                     <div style="flex: 1; line-height: 1.2; overflow: hidden;">
                       <div style="font-size: 12px; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{this.name}}</div>
