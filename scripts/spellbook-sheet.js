@@ -71,14 +71,14 @@ export class NpcSpellbookSheet extends HandlebarsApplicationMixin(ItemSheetV2) {
 
     const html = this.element;
 
-    // 1. Add Spell Button listener (Opens compendium sidebar tab safely)
+    // 1. Add Spell Button listener
     html.querySelectorAll(".add-spell, .add-spell-btn").forEach((btn) => {
       btn.addEventListener("click", (e) => {
         e.preventDefault();
         
-        // Open Compendiums Tab in Sidebar
+        // V13 ApplicationV2 requires tab and group identifier ("primary")
         if (typeof ui.sidebar?.changeTab === "function") {
-          ui.sidebar.changeTab("compendium");
+          ui.sidebar.changeTab("compendium", "primary");
         } else if (typeof ui.sidebar?.activateTab === "function") {
           ui.sidebar.activateTab("compendium");
         }
