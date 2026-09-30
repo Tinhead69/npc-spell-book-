@@ -1,16 +1,22 @@
+import * as Data from "./data.js";
+import { StudySpellbookDialog } from "./learn-dialog.js";
+
+const { ItemSheetV2 } = foundry.applications.sheets;
+const { ApplicationV2, HandlebarsApplicationMixin, DialogV2 } = foundry.applications.api;
+
 /**
  * Custom Browser Dialog featuring a 2-column layout:
  * - Left Top: Filter by Spell Level (1st–9th) & School of Magic
  * - Left Bottom: Select Compendiums
  * - Right Main: Compact Wizard Spell List with individual Add buttons
  */
-class CompendiumPickerDialog extends ApplicationV2 {
+class CompendiumPickerDialog extends HandlebarsApplicationMixin(ApplicationV2) {
   constructor(options = {}) {
     super(options);
     this.spellbook = options.spellbook;
     this.onImportComplete = options.onImportComplete;
     this.cachedSpells = []; // Stores indexed/loaded wizard spells
-    
+
     // Default: ALL boxes are unticked
     this.selectedPacks = new Set();
     this.selectedLevels = new Set();
@@ -22,6 +28,12 @@ class CompendiumPickerDialog extends ApplicationV2 {
     classes: ["compendium-picker-advanced"],
     position: { width: 880, height: 640 },
     tag: "div"
+  };
+
+  static PARTS = {
+    body: {
+      template: "modules/npc-spell-book/templates/compendium-picker.hbs" // Or inline context rendering
+    }
   };
 
   get title() {
@@ -154,7 +166,7 @@ class CompendiumPickerDialog extends ApplicationV2 {
               <i class="fas fa-filter"></i> Spell Filters
             </h5>
             
-            <strong style="font-size: 11px; text-transform: uppercase; color: #bbb; display: block; margin-bottom: 4px;">Spell Level</strong>
+            <strong style="font-size: 11px; text-transform: uppercase; color: #444; display: block; margin-bottom: 4px;">Spell Level</strong>
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px 8px; margin-bottom: 8px; font-size: 12px;">
               {{#each levelsList}}
                 <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; line-height: 1.2;">
@@ -164,7 +176,7 @@ class CompendiumPickerDialog extends ApplicationV2 {
               {{/each}}
             </div>
 
-            <strong style="font-size: 11px; text-transform: uppercase; color: #bbb; display: block; margin-bottom: 4px;">School of Magic</strong>
+            <strong style="font-size: 11px; text-transform: uppercase; color: #444; display: block; margin-bottom: 4px;">School of Magic</strong>
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px 8px; font-size: 12px;">
               {{#each schoolsList}}
                 <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; line-height: 1.2;">
@@ -204,7 +216,7 @@ class CompendiumPickerDialog extends ApplicationV2 {
             {{#if filteredSpells.length}}
               <ul style="list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 4px;">
                 {{#each filteredSpells}}
-                  <li style="display: flex; align-items: center; gap: 8px; border: 1px solid rgba(255,255,255,0.1); padding: 4px 8px; border-radius: 4px; background: rgba(0,0,0,0.2);">
+                  <li style="display: flex; align-items: center; gap: 8px; border: 1px solid rgba(0,0,0,0.15); padding: 4px 8px; border-radius: 4px; background: rgba(255,255,255,0.4);">
                     <img src="{{this.img}}" width="28" height="28" style="border: none; border-radius: 3px;" />
                     <div style="flex: 1; line-height: 1.2; overflow: hidden;">
                       <div style="font-size: 12px; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{this.name}}</div>
@@ -320,5 +332,219 @@ class CompendiumPickerDialog extends ApplicationV2 {
     } else {
       ui.notifications.warn("Selected spell is already in this spellbook.");
     }
+  }
+}
+
+export class NpcSpellbookSheet extends HandlebarsApplicationMixin(ItemSheetV2) {
+  static DEFAULT_OPTIONS = {
+    classes: ["npc-spellbook", "sheet", "item"],
+    position: {
+      width: 600,
+      height: 650
+    },
+    form: {
+      handler: NpcSpellbookSheet._onSubmitForm,
+      submitOnChange: true,
+      closeOnSubmit: false
+    },
+    actions: {
+      deleteSpell: NpcSpellbookSheet._onDeleteSpell,
+      studySpellbook: NpcSpellbookSheet._onStudySpellbook,
+      clearSpellbook: NpcSpellbookSheet._onClearSpellbook
+    }
+  };
+
+  static PARTS = {
+    body: {
+      template: "modules/npc-spell-book/templates/spellbook-sheet.hbs"
+    }
+  };
+
+  async _prepareContext(options) {
+    const context = await super._prepareContext(options);
+    context.item = this.document;
+    context.isGM = game.user.isGM;
+
+    let spells = Data.getSpellbookSpells ? Data.getSpellbookSpells(this.document) : [];
+
+    // Automatic Duplicate Deduplication
+    const seenKeys = new Set();
+    const cleanSpells = [];
+    let hasDuplicates = false;
+
+    for (const spell of spells) {
+      const key = spell.uuid ? spell.uuid : `${spell.name?.toLowerCase()}-${spell.level}`;
+
+      if (seenKeys.has(key)) {
+        hasDuplicates = true;
+      } else {
+        seenKeys.add(key);
+        cleanSpells.push(spell);
+      }
+    }
+
+    if (hasDuplicates && Data.setSpellbookSpells) {
+      spells = cleanSpells;
+      await Data.setSpellbookSpells(this.document, cleanSpells);
+      ui.notifications.info(`Cleaned up duplicate spells in ${this.document.name}.`);
+    }
+
+    const levels = {};
+    for (const spell of spells) {
+      const lvl = Number(spell.level ?? 0);
+      if (!levels[lvl]) levels[lvl] = [];
+      levels[lvl].push(spell);
+    }
+    context.spellLevels = levels;
+
+    return context;
+  }
+
+  static async _onSubmitForm(event, form, formData) {
+    await this.document.update(formData.object);
+  }
+
+  static async _onDeleteSpell(event, target) {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+
+    const element = target.closest("[data-spell-id]") || target.closest("[data-spell-name]") || target;
+    const spellId = element?.dataset?.spellId;
+    const spellName = element?.dataset?.spellName;
+
+    if (!Data.getSpellbookSpells || !Data.setSpellbookSpells) return;
+
+    let spells = Data.getSpellbookSpells(this.document);
+
+    const initialCount = spells.length;
+    spells = spells.filter((s) => {
+      if (spellId && (s.id === spellId || s.uuid === spellId)) return false;
+      if (spellName && s.name?.toLowerCase() === spellName.toLowerCase()) return false;
+      return true;
+    });
+
+    if (spells.length < initialCount) {
+      await Data.setSpellbookSpells(this.document, spells);
+      this.render(false);
+    }
+  }
+
+  static async _onClearSpellbook(event, target) {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+
+    const spells = Data.getSpellbookSpells ? Data.getSpellbookSpells(this.document) : [];
+    if (!spells.length) {
+      ui.notifications.info("This spellbook is already empty.");
+      return;
+    }
+
+    const confirm = await DialogV2.confirm({
+      window: { title: "Clear Spellbook" },
+      content: `<p>Are you sure you want to remove all <strong>${spells.length}</strong> spell(s) from <em>${this.document.name}</em>?</p>`,
+      rejectClose: false,
+      modal: true
+    });
+
+    if (confirm) {
+      await Data.setSpellbookSpells(this.document, []);
+      ui.notifications.info(`Cleared all spells from ${this.document.name}.`);
+      this.render(false);
+    }
+  }
+
+  static async _onStudySpellbook(event, target) {
+    try {
+      new StudySpellbookDialog({ spellbook: this.document }).render(true);
+    } catch (err) {
+      console.error("NPC Spellbook | Failed to open Study Dialog:", err);
+    }
+  }
+
+  _onRender(context, options) {
+    super._onRender(context, options);
+
+    const html = this.element;
+
+    // Add Spell Button listener
+    html.querySelectorAll(".add-spell, .add-spell-btn").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        e.preventDefault();
+        new CompendiumPickerDialog({
+          spellbook: this.document,
+          onImportComplete: () => this.render(false)
+        }).render(true);
+      });
+    });
+
+    // Clear Spellbook Button listener
+    html.querySelectorAll(".clear-spellbook-btn, [data-action='clearSpellbook']").forEach((btn) => {
+      btn.addEventListener("click", (e) => NpcSpellbookSheet._onClearSpellbook.call(this, e, e.currentTarget));
+    });
+
+    // Delete Spell Button listeners
+    html.querySelectorAll(".delete-spell, .spell-delete, [data-action='deleteSpell'], .fa-trash, .fa-trash-can").forEach((btn) => {
+      btn.addEventListener("click", (e) => NpcSpellbookSheet._onDeleteSpell.call(this, e, e.currentTarget));
+    });
+
+    // Drag & Drop Listener
+    if (this._dropHandler) {
+      html.removeEventListener("drop", this._dropHandler);
+    }
+
+    this._dropHandler = async (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+
+      let data;
+      try {
+        data = JSON.parse(e.dataTransfer.getData("text/plain"));
+      } catch (err) {
+        return;
+      }
+
+      if (data?.type === "Item") {
+        const item = await Item.implementation.fromDropData(data);
+        if (item && item.type === "spell") {
+          const level = Number(item.system?.level ?? 0);
+          if (level === 0) {
+            ui.notifications.warn(`"${item.name}" is a cantrip. Cantrips cannot be written into a spellbook.`);
+            return;
+          }
+
+          const existing = Data.getSpellbookSpells(this.document);
+
+          const isDuplicate = existing.some((s) => s.uuid === item.uuid || (s.name.toLowerCase() === item.name.toLowerCase() && Number(s.level) === level));
+          if (isDuplicate) {
+            ui.notifications.warn(`"${item.name}" is already in this spellbook.`);
+            return;
+          }
+
+          if (typeof Data.addSpellToSpellbook === "function") {
+            await Data.addSpellToSpellbook(this.document, item);
+          } else if (typeof Data.getSpellbookSpells === "function" && typeof Data.setSpellbookSpells === "function") {
+            existing.push({
+              id: item.id ?? foundry.utils.randomID(),
+              uuid: item.uuid,
+              name: item.name,
+              img: item.img,
+              level: level,
+              components: item.labels?.components?.vsm ?? ""
+            });
+            await Data.setSpellbookSpells(this.document, existing);
+          }
+          this.render(false);
+        } else {
+          ui.notifications.warn("Only 1st level or higher spells can be added to a spellbook.");
+        }
+      }
+    };
+
+    html.addEventListener("dragover", (e) => e.preventDefault());
+    html.addEventListener("drop", this._dropHandler);
   }
 }
