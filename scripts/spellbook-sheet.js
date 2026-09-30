@@ -71,24 +71,23 @@ export class NpcSpellbookSheet extends HandlebarsApplicationMixin(ItemSheetV2) {
 
     const html = this.element;
 
-    // 1. Add Spell Button listener (Opens compendiums tab/browser)
+    // 1. Add Spell Button listener (Opens compendium sidebar tab safely)
     html.querySelectorAll(".add-spell, .add-spell-btn").forEach((btn) => {
       btn.addEventListener("click", (e) => {
         e.preventDefault();
         
-        // Check if dnd5e compendium browser exists
-        if (game.dnd5e?.applications?.compendiumBrowser) {
-          game.dnd5e.applications.compendiumBrowser.openTab("spells");
-        } else {
-          // Open Compendium Sidebar Tab so user can pick from ANY spell compendium
-          ui.sidebar.activateTab("compendiums");
+        // Open Compendiums Tab in Sidebar
+        if (typeof ui.sidebar?.changeTab === "function") {
+          ui.sidebar.changeTab("compendium");
+        } else if (typeof ui.sidebar?.activateTab === "function") {
+          ui.sidebar.activateTab("compendium");
         }
+
         ui.notifications.info("Drag and drop spells from any compendium into this spellbook.");
       });
     });
 
-    // 2. Drag & Drop Listener with Duplicate Guard
-    // Remove existing drop listener if re-rendering to prevent duplicate handlers
+    // 2. Drag & Drop Listener with Duplicate Prevention
     if (this._dropHandler) {
       html.removeEventListener("drop", this._dropHandler);
     }
@@ -109,8 +108,8 @@ export class NpcSpellbookSheet extends HandlebarsApplicationMixin(ItemSheetV2) {
         if (item && item.type === "spell") {
           const existing = Data.getSpellbookSpells(this.document);
           
-          // Check if spell already exists in the book
-          const isDuplicate = existing.some((s) => s.uuid === item.uuid || (s.name === item.name && s.level === (item.system?.level ?? 0)));
+          // Check for existing duplicate spell
+          const isDuplicate = existing.some((s) => s.uuid === item.uuid || (s.name === item.name && Number(s.level) === Number(item.system?.level ?? 0)));
           if (isDuplicate) {
             ui.notifications.warn(`"${item.name}" is already in this spellbook.`);
             return;
