@@ -21,38 +21,47 @@
 
     <div class="spells-list">
       {{#each spellLevels as |spells level|}}
-        <div class="spell-level-header">
-          <h3>{{#if (eq level 0)}}Cantrips{{else}}Level {{level}}{{/if}}</h3>
-        </div>
-        <table class="spells-table">
-          <thead>
-            <tr>
-              <th class="spell-name">Name</th>
-              <th class="spell-time">Time</th>
-              <th class="spell-range">Range</th>
-              <th class="spell-target">Target</th>
-              <th class="spell-actions"></th>
-            </tr>
-          </thead>
-          <tbody>
-            {{#each spells as |spell|}}
-              <tr class="spell-item" data-spell-id="{{spell.id}}">
-                <td class="spell-name flexrow">
-                  <img src="{{spell.img}}" class="spell-icon" width="24" height="24"/>
-                  <span>{{spell.name}}</span>
-                </td>
-                <td class="spell-time">{{spell.activation.cost}} {{spell.activation.type}}</td>
-                <td class="spell-range">{{spell.range.value}} {{spell.range.units}}</td>
-                <td class="spell-target">{{spell.target.value}} {{spell.target.units}}</td>
-                <td class="spell-actions">
-                  <a class="delete-spell" data-spell-id="{{spell.id}}" title="Delete Spell">
-                    <i class="fas fa-trash"></i>
-                  </a>
-                </td>
+        <div class="spell-level-block">
+          <div class="spell-level-header">
+            {{#if (eq level 0)}}Cantrips{{else}}Level {{level}}{{/if}}
+          </div>
+          <table class="spells-table">
+            <thead>
+              <tr>
+                <th class="col-name">Name</th>
+                <th class="col-time">Time</th>
+                <th class="col-range">Range</th>
+                <th class="col-target">Target</th>
+                <th class="col-actions"></th>
               </tr>
-            {{/each}}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {{#each spells as |spell|}}
+                <tr class="spell-item" data-spell-id="{{spell.id}}">
+                  <td class="col-name">
+                    <div class="spell-name-cell">
+                      <img src="{{spell.img}}" class="spell-icon" />
+                      <div class="spell-details">
+                        <span class="spell-title">{{spell.name}}</span>
+                        {{#if spell.components}}
+                          <span class="spell-components">{{spell.components}}</span>
+                        {{/if}}
+                      </div>
+                    </div>
+                  </td>
+                  <td class="col-time">{{#if spell.activation.cost}}{{spell.activation.cost}} {{spell.activation.type}}{{else}}A{{/if}}</td>
+                  <td class="col-range">{{#if spell.range.value}}{{spell.range.value}} {{spell.range.units}}{{else}}—{{/if}}</td>
+                  <td class="col-target">{{#if spell.target.value}}{{spell.target.value}} {{spell.target.units}}{{else}}—{{/if}}</td>
+                  <td class="col-actions">
+                    <a class="delete-spell" data-spell-id="{{spell.id}}" title="Delete Spell">
+                      <i class="fas fa-trash"></i>
+                    </a>
+                  </td>
+                </tr>
+              {{/each}}
+            </tbody>
+          </table>
+        </div>
       {{else}}
         <p class="empty-notice">No spells recorded in this spellbook yet. Drop spell items here to add them.</p>
       {{/each}}
