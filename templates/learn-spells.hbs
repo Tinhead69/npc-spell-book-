@@ -1,101 +1,78 @@
-<div class="study-spellbook dnd5e2 flexcol">
-  <!-- Top Non-Scrolling Content -->
-  <div class="study-header-container flexcol">
-    <!-- Wizard Selection Section -->
-    <section class="wizard-select">
-      <h3>{{localize "NPC_SPELLBOOK.Learn.SelectWizard"}}</h3>
-      {{#if wizards.length}}
-      <ul class="wizard-list">
-        {{#each wizards as |w|}}
-        <li>
-          <button type="button" class="btn {{#if w.selected}}active{{/if}}" data-action="selectWizard" data-wizard-id="{{w.id}}">
-            {{w.name}}
-          </button>
-        </li>
+<div class="study-spellbook-container flexcol">
+  <header class="wizard-selection-header flexcol">
+    <div class="wizard-select-row flexrow">
+      <label for="wizard-select"><strong>Select Wizard:</strong></label>
+      <select id="wizard-select" name="wizardId">
+        {{#each wizards}}
+          <option value="{{this.id}}" {{#if this.selected}}selected{{/if}}>
+            {{this.name}}
+          </option>
         {{/each}}
-      </ul>
-      {{else}}
-      <p class="hint">Assign a wizard PC to your user, or ensure party wizards are owned by players.</p>
-      {{/if}}
-    </section>
+      </select>
+    </div>
 
-    {{#if hasWizard}}
-    <section class="wizard-summary">
-      <span><strong>Level:</strong> {{wizardLevel}}</span> | 
-      <span><strong>Max Spell Level:</strong> {{maxLevel}}</span>
-    </section>
-    {{/if}}
-  </div>
-
-  <!-- Scrollable Spells Section -->
-  <section class="spell-study-list spellbook-spells flex1">
-    {{#if spellGroups.length}}
-      {{#each spellGroups as |group|}}
-      <div class="spell-group">
-        <!-- Group Header Bar matching Spellbook Sheet layout -->
-        <div class="items-header spell-header flexrow">
-          <span class="group-label flex2">
-            <button type="button" class="sort-btn {{#if (eq ../sortBy 'name')}}active{{/if}}" data-action="sort" data-sort-by="name">
-              {{group.label}} {{#if (eq ../sortBy 'name')}}<i class="fas fa-sort-{{#if (eq ../sortDir 'asc')}}up{{else}}down{{/if}}"></i>{{/if}}
-            </button>
-          </span>
-          <span class="column-title study-cost">
-            <button type="button" class="sort-btn {{#if (eq ../sortBy 'level')}}active{{/if}}" data-action="sort" data-sort-by="level">
-              COST {{#if (eq ../sortBy 'level')}}<i class="fas fa-sort-{{#if (eq ../sortDir 'asc')}}up{{else}}down{{/if}}"></i>{{/if}}
-            </button>
-          </span>
-          <span class="column-title study-time">TIME</span>
-          <span class="column-title study-status">
-            <button type="button" class="sort-btn {{#if (eq ../sortBy 'availability')}}active{{/if}}" data-action="sort" data-sort-by="availability">
-              STATUS {{#if (eq ../sortBy 'availability')}}<i class="fas fa-sort-{{#if (eq ../sortDir 'asc')}}up{{else}}down{{/if}}"></i>{{/if}}
-            </button>
-          </span>
-        </div>
-
-        <!-- Spell Items in Group -->
-        <ol class="study-list spell-list">
-          {{#each group.spells as |spell|}}
-          <li class="study-entry spell-entry flexrow {{#if spell.canLearn}}learnable{{else}}blocked{{/if}}" data-spell-uuid="{{spell.uuid}}">
-            
-            <!-- Spell Image, Name & Components Column -->
-            <div class="item-name flexrow flex2">
-              <img class="item-image" src="{{spell.img}}" alt="{{spell.name}}">
-              <div class="name-container">
-                <span class="spell-name">{{spell.name}}</span>
-                {{#if spell.components}}
-                <span class="spell-components">{{spell.components}}</span>
-                {{/if}}
-              </div>
-            </div>
-
-            <!-- Cost Column -->
-            <span class="item-detail study-cost">
-              {{spell.cost}} gp
-            </span>
-
-            <!-- Time Column -->
-            <span class="item-detail study-time">
-              {{spell.hours}} {{#if (eq spell.hours 1)}}hour{{else}}hours{{/if}}
-            </span>
-
-            <!-- Status / Action Column -->
-            <div class="item-detail study-status">
-              {{#if spell.canLearn}}
-              <button type="button" class="btn transcribe-btn" data-action="transcribe">
-                <i class="fas fa-feather-alt"></i> {{localize "NPC_SPELLBOOK.Actions.TranscribeSpell"}}
-              </button>
-              {{else}}
-              <span class="status-reason">{{spell.statusLabel}}</span>
-              {{/if}}
-            </div>
-
-          </li>
-          {{/each}}
-        </ol>
+    {{#if currentWizard}}
+      <div class="wizard-stats-bar">
+        <span><strong>Level:</strong> {{currentWizard.level}}</span>
+        <span class="sep">|</span>
+        <span><strong>Max Spell Level:</strong> {{currentWizard.maxSpellLevel}}</span>
+        <span class="sep">|</span>
+        <span><strong>Gold Available:</strong> {{currentWizard.gold}} gp</span>
       </div>
-      {{/each}}
-    {{else}}
-      <p class="empty-hint">{{localize "NPC_SPELLBOOK.Sheet.EmptySpells"}}</p>
     {{/if}}
-  </section>
+  </header>
+
+  <div class="spells-list">
+    {{#each spellLevels as |spells level|}}
+      <div class="spell-level-block">
+        <div class="spell-level-header">
+          {{#if (eq level 0)}}Cantrips{{else}}Level {{level}}{{/if}}
+        </div>
+        <table class="spells-table study-spells-table">
+          <thead>
+            <tr>
+              <th class="col-name">Name</th>
+              <th class="col-cost">Cost</th>
+              <th class="col-time">Time</th>
+              <th class="col-status">Status</th>
+              <th class="col-actions"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {{#each spells as |spell|}}
+              <tr class="spell-item {{#unless spell.canLearn}}cannot-transcribe{{/unless}}" data-spell-id="{{spell.id}}">
+                <td class="col-name">
+                  <div class="spell-name-cell">
+                    <img src="{{spell.img}}" class="spell-icon" />
+                    <div class="spell-details">
+                      <span class="spell-title">{{spell.name}}</span>
+                      {{#if spell.components}}
+                        <span class="spell-components">{{spell.components}}</span>
+                      {{/if}}
+                    </div>
+                  </div>
+                </td>
+                <td class="col-cost">{{#if (gt spell.level 0)}}{{spell.cost}} gp{{else}}0 gp{{/if}}</td>
+                <td class="col-time">{{#if (gt spell.level 0)}}{{spell.hours}} hrs{{else}}0 hrs{{/if}}</td>
+                <td class="col-status">
+                  <span class="status-badge {{#if spell.canLearn}}learnable{{else}}blocked{{/if}}">
+                    {{spell.statusText}}
+                  </span>
+                </td>
+                <td class="col-actions">
+                  {{#if spell.canLearn}}
+                    <button type="button" class="transcribe-btn" data-spell-id="{{spell.id}}" title="Transcribe Spell">
+                      <i class="fas fa-book-open"></i> Copy
+                    </button>
+                  {{/if}}
+                </td>
+              </tr>
+            {{/each}}
+          </tbody>
+        </table>
+      </div>
+    {{else}}
+      <p class="empty-notice">No spells recorded in this spellbook yet.</p>
+    {{/each}}
+  </div>
 </div>
