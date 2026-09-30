@@ -134,11 +134,11 @@ class CompendiumPickerDialog extends ApplicationV2 {
         const level = Number(item.system?.level ?? 0);
         if (level === 0) continue; // Skip cantrips
 
-        // Extract class metadata safely across various dnd5e versions / modules
-        const sourceClass = String(item.system?.sourceClass ?? "").toLowerCase();
-        const spellcastingClass = String(item.system?.spellcastingClass ?? item.labels?.spellcastingClass ?? "").toLowerCase();
+        // Safely retrieve sourceItem (without touching deprecated sourceClass getter)
+        const sourceItem = String(item.system?.sourceItem ?? "").toLowerCase();
+        const identifier = String(item.identifier ?? item.system?.identifier ?? "").toLowerCase();
         
-        // Handle dnd5e classes data (Can be Set, Array, or Object)
+        // Check modern classes / spellcasting properties
         let classesList = [];
         const rawClasses = item.system?.classes;
         if (rawClasses instanceof Set) {
@@ -149,11 +149,20 @@ class CompendiumPickerDialog extends ApplicationV2 {
           classesList = Object.keys(rawClasses);
         }
 
-        const isWizardSpell =
-          sourceClass.includes("wizard") ||
-          spellcastingClass.includes("wizard") ||
+        // Check if spell belongs to Wizard
+        const isWizardExplicit =
+          sourceItem.includes("wizard") ||
           classesList.some((c) => String(c).toLowerCase().includes("wizard")) ||
           Boolean(item.system?.properties?.has?.("wizard"));
+
+        // Fallback: Check if dnd5e spell list includes it or if item has wizard tags
+        const isWizardFallback = 
+          classesList.length === 0 && 
+          !sourceItem && 
+          (CONFIG.DND5E?.spellComps?.wizard?.has?.(identifier) || CONFIG.DND5E?.spellcastingTypes?.wizard);
+
+        // If the spell is explicitly marked for Wizard, OR if it has no class flags (SRD compatibility)
+        const isWizardSpell = isWizardExplicit || isWizardFallback || (!sourceItem && classesList.length === 0);
 
         if (isWizardSpell) {
           this.cachedSpells.push({
