@@ -342,7 +342,8 @@ export class NpcSpellbookSheet extends HandlebarsApplicationMixin(ItemSheetV2) {
     },
     actions: {
       deleteSpell: NpcSpellbookSheet._onDeleteSpell,
-      studySpellbook: NpcSpellbookSheet._onStudySpellbook
+      studySpellbook: NpcSpellbookSheet._onStudySpellbook,
+      clearSpellbook: NpcSpellbookSheet._onClearSpellbook
     }
   };
 
@@ -423,6 +424,33 @@ export class NpcSpellbookSheet extends HandlebarsApplicationMixin(ItemSheetV2) {
     }
   }
 
+  static async _onClearSpellbook(event, target) {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+
+    const spells = Data.getSpellbookSpells ? Data.getSpellbookSpells(this.document) : [];
+    if (!spells.length) {
+      ui.notifications.info("This spellbook is already empty.");
+      return;
+    }
+
+    const confirm = await Dialog.confirm({
+      title: "Clear Spellbook",
+      content: `<p>Are you sure you want to remove all <strong>${spells.length}</strong> spell(s) from <em>${this.document.name}</em>?</p>`,
+      yes: () => true,
+      no: () => false,
+      defaultYes: false
+    });
+
+    if (confirm) {
+      await Data.setSpellbookSpells(this.document, []);
+      ui.notifications.info(`Cleared all spells from ${this.document.name}.`);
+      this.render(false);
+    }
+  }
+
   static async _onStudySpellbook(event, target) {
     try {
       new StudySpellbookDialog({ spellbook: this.document }).render(true);
@@ -445,6 +473,11 @@ export class NpcSpellbookSheet extends HandlebarsApplicationMixin(ItemSheetV2) {
           onImportComplete: () => this.render(false)
         }).render(true);
       });
+    });
+
+    // Clear Spellbook Button listener
+    html.querySelectorAll(".clear-spellbook-btn, [data-action='clearSpellbook']").forEach((btn) => {
+      btn.addEventListener("click", (e) => NpcSpellbookSheet._onClearSpellbook.call(this, e, e.currentTarget));
     });
 
     // Delete Spell Button listeners
