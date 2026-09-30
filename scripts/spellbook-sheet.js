@@ -6,9 +6,9 @@ const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
 
 /**
  * Custom Browser Dialog featuring a 2-column layout:
- * - Left Top: Filter by Spell Level & School of Magic
+ * - Left Top: Filter by Spell Level (1st–9th) & School of Magic
  * - Left Bottom: Select Compendiums
- * - Right Main: Filtered Wizard Spell List with Add buttons
+ * - Right Main: Compact Wizard Spell List with individual Add buttons
  */
 class CompendiumPickerDialog extends ApplicationV2 {
   constructor(options = {}) {
@@ -17,7 +17,7 @@ class CompendiumPickerDialog extends ApplicationV2 {
     this.onImportComplete = options.onImportComplete;
     this.cachedSpells = []; // Stores indexed/loaded wizard spells
     this.selectedPacks = new Set();
-    this.selectedLevels = new Set([0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
+    this.selectedLevels = new Set([1, 2, 3, 4, 5, 6, 7, 8, 9]); // Cantrips (Level 0) excluded
     this.selectedSchools = new Set(["abj", "con", "div", "enc", "evo", "ill", "nec", "trs"]);
   }
 
@@ -79,17 +79,17 @@ class CompendiumPickerDialog extends ApplicationV2 {
       { id: "trs", label: "Transmutation" }
     ];
 
+    // Cantrips (Level 0) removed
     context.levelsList = [
-      { id: 0, label: "Cantrip" },
-      { id: 1, label: "1st Level" },
-      { id: 2, label: "2nd Level" },
-      { id: 3, label: "3rd Level" },
-      { id: 4, label: "4th Level" },
-      { id: 5, label: "5th Level" },
-      { id: 6, label: "6th Level" },
-      { id: 7, label: "7th Level" },
-      { id: 8, label: "8th Level" },
-      { id: 9, label: "9th Level" }
+      { id: 1, label: "1st Lvl" },
+      { id: 2, label: "2nd Lvl" },
+      { id: 3, label: "3rd Lvl" },
+      { id: 4, label: "4th Lvl" },
+      { id: 5, label: "5th Lvl" },
+      { id: 6, label: "6th Lvl" },
+      { id: 7, label: "7th Lvl" },
+      { id: 8, label: "8th Lvl" },
+      { id: 9, label: "9th Lvl" }
     ];
 
     return context;
@@ -107,6 +107,10 @@ class CompendiumPickerDialog extends ApplicationV2 {
       for (const item of docs) {
         if (item.type !== "spell") continue;
 
+        const level = Number(item.system?.level ?? 0);
+        // Cantrips (Level 0) cannot be added to spellbooks
+        if (level === 0) continue;
+
         // Check if spell is usable by Wizards
         const sourceItem = item.system?.sourceItem ?? item.system?._source?.sourceClass ?? "";
         const spellcastingClass = item.system?.spellcastingClass ?? item.labels?.spellcastingClass ?? "";
@@ -117,7 +121,7 @@ class CompendiumPickerDialog extends ApplicationV2 {
           spellcastingClass.toLowerCase().includes("wizard") ||
           classes.some((c) => String(c).toLowerCase().includes("wizard")) ||
           item.system?.properties?.has?.("wizard") ||
-          item.system?.school; // Fallback inclusion if system lists standard spells
+          item.system?.school;
 
         if (isWizardSpell) {
           this.cachedSpells.push({
@@ -125,7 +129,7 @@ class CompendiumPickerDialog extends ApplicationV2 {
             uuid: item.uuid,
             name: item.name,
             img: item.img,
-            level: Number(item.system?.level ?? 0),
+            level: level,
             school: item.system?.school ?? "",
             components: item.labels?.components?.vsm ?? "",
             packTitle: pack.metadata.label,
@@ -146,32 +150,32 @@ class CompendiumPickerDialog extends ApplicationV2 {
 
   async _renderHTML(context, options) {
     const templateSource = `
-      <div style="display: flex; height: 560px; width: 100%; gap: 10px; padding: 8px; font-family: Roboto, sans-serif;">
+      <div style="display: flex; height: 560px; width: 100%; gap: 8px; padding: 6px; font-family: Roboto, sans-serif;">
         
         <!-- LEFT COLUMN -->
-        <div style="width: 280px; display: flex; flex-direction: column; gap: 8px; height: 100%;">
+        <div style="width: 250px; display: flex; flex-direction: column; gap: 6px; height: 100%;">
           
           <!-- TOP LEFT: LEVEL & SCHOOL FILTERS -->
-          <div style="flex: 1; border: 1px solid #7a7971; border-radius: 4px; padding: 8px; background: rgba(0,0,0,0.05); overflow-y: auto;">
-            <h4 style="margin: 0 0 6px 0; border-bottom: 1px solid #ccc; padding-bottom: 4px;">
+          <div style="flex: 1; border: 1px solid #7a7971; border-radius: 4px; padding: 6px; background: rgba(0,0,0,0.05); overflow-y: auto;">
+            <h5 style="margin: 0 0 4px 0; border-bottom: 1px solid #ccc; padding-bottom: 2px; font-size: 11px; text-transform: uppercase;">
               <i class="fas fa-filter"></i> Spell Filters
-            </h4>
+            </h5>
             
-            <strong>Spell Level</strong>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin-bottom: 10px; font-size: 12px;">
+            <strong style="font-size: 10px; text-transform: uppercase; color: #444;">Spell Level</strong>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2px; margin-bottom: 6px; font-size: 10px;">
               {{#each levelsList}}
-                <label style="display: flex; align-items: center; gap: 4px; cursor: pointer;">
-                  <input type="checkbox" class="filter-level" value="{{this.id}}" {{#if (includes ../selectedLevels this.id)}}checked{{/if}} />
+                <label style="display: flex; align-items: center; gap: 3px; cursor: pointer; line-height: 1.1;">
+                  <input type="checkbox" class="filter-level" value="{{this.id}}" style="width: 11px; height: 11px; margin: 0;" {{#if (includes ../selectedLevels this.id)}}checked{{/if}} />
                   {{this.label}}
                 </label>
               {{/each}}
             </div>
 
-            <strong>School of Magic</strong>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; font-size: 12px;">
+            <strong style="font-size: 10px; text-transform: uppercase; color: #444;">School of Magic</strong>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2px; font-size: 10px;">
               {{#each schoolsList}}
-                <label style="display: flex; align-items: center; gap: 4px; cursor: pointer;">
-                  <input type="checkbox" class="filter-school" value="{{this.id}}" {{#if (includes ../selectedSchools this.id)}}checked{{/if}} />
+                <label style="display: flex; align-items: center; gap: 3px; cursor: pointer; line-height: 1.1;">
+                  <input type="checkbox" class="filter-school" value="{{this.id}}" style="width: 11px; height: 11px; margin: 0;" {{#if (includes ../selectedSchools this.id)}}checked{{/if}} />
                   {{this.label}}
                 </label>
               {{/each}}
@@ -179,15 +183,15 @@ class CompendiumPickerDialog extends ApplicationV2 {
           </div>
 
           <!-- BOTTOM LEFT: COMPENDIUM SELECTOR -->
-          <div style="flex: 1; border: 1px solid #7a7971; border-radius: 4px; padding: 8px; background: rgba(0,0,0,0.05); overflow-y: auto;">
-            <h4 style="margin: 0 0 6px 0; border-bottom: 1px solid #ccc; padding-bottom: 4px;">
+          <div style="flex: 1; border: 1px solid #7a7971; border-radius: 4px; padding: 6px; background: rgba(0,0,0,0.05); overflow-y: auto;">
+            <h5 style="margin: 0 0 4px 0; border-bottom: 1px solid #ccc; padding-bottom: 2px; font-size: 11px; text-transform: uppercase;">
               <i class="fas fa-atlas"></i> Compendiums
-            </h4>
-            <div style="display: flex; flex-direction: column; gap: 6px; font-size: 12px;">
+            </h5>
+            <div style="display: flex; flex-direction: column; gap: 3px; font-size: 10px;">
               {{#each packs}}
-                <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
-                  <input type="checkbox" class="filter-pack" value="{{this.collection}}" {{#if (includes ../selectedPacks this.collection)}}checked{{/if}} />
-                  <span><strong>{{this.title}}</strong> <small style="opacity:0.7;">({{this.package}})</small></span>
+                <label style="display: flex; align-items: center; gap: 4px; cursor: pointer; line-height: 1.1;">
+                  <input type="checkbox" class="filter-pack" value="{{this.collection}}" style="width: 11px; height: 11px; margin: 0;" {{#if (includes ../selectedPacks this.collection)}}checked{{/if}} />
+                  <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"><strong>{{this.title}}</strong> <small style="opacity:0.7;">({{this.package}})</small></span>
                 </label>
               {{/each}}
             </div>
@@ -196,30 +200,29 @@ class CompendiumPickerDialog extends ApplicationV2 {
         </div>
 
         <!-- RIGHT MAIN COLUMN: SPELL LIST -->
-        <div style="flex: 1; border: 1px solid #7a7971; border-radius: 4px; padding: 8px; display: flex; flex-direction: column; background: rgba(0,0,0,0.02);">
-          <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #ccc; padding-bottom: 6px; margin-bottom: 8px;">
-            <h3 style="margin: 0;"><i class="fas fa-list"></i> Wizard Spells ({{filteredSpells.length}})</h3>
-            <button type="button" class="add-all-filtered" style="width: auto; padding: 4px 10px; font-weight: bold;"><i class="fas fa-download"></i> Add All Filtered</button>
+        <div style="flex: 1; border: 1px solid #7a7971; border-radius: 4px; padding: 6px; display: flex; flex-direction: column; background: rgba(0,0,0,0.02);">
+          <div style="border-bottom: 1px solid #ccc; padding-bottom: 4px; margin-bottom: 6px;">
+            <h4 style="margin: 0; font-size: 12px;"><i class="fas fa-list"></i> Wizard Spells ({{filteredSpells.length}})</h4>
           </div>
 
           <div class="spell-list" style="flex: 1; overflow-y: auto;">
             {{#if filteredSpells.length}}
-              <ul style="list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 6px;">
+              <ul style="list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 3px;">
                 {{#each filteredSpells}}
-                  <li style="display: flex; align-items: center; gap: 10px; border: 1px solid rgba(0,0,0,0.15); padding: 6px; border-radius: 4px; background: #fff;">
-                    <img src="{{this.img}}" width="32" height="32" style="border: none; border-radius: 3px;" />
-                    <div style="flex: 1; line-height: 1.2;">
-                      <strong>{{this.name}}</strong>
-                      <div style="font-size: 11px; opacity: 0.8;">Lvl {{this.level}} • {{this.school}} • <small>{{this.packTitle}}</small></div>
+                  <li style="display: flex; align-items: center; gap: 6px; border: 1px solid rgba(0,0,0,0.12); padding: 3px 6px; border-radius: 3px; background: #fff;">
+                    <img src="{{this.img}}" width="24" height="24" style="border: none; border-radius: 2px;" />
+                    <div style="flex: 1; line-height: 1.1; overflow: hidden;">
+                      <div style="font-size: 11px; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{this.name}}</div>
+                      <div style="font-size: 9px; opacity: 0.75;">Lvl {{this.level}} • {{this.school}} • {{this.packTitle}}</div>
                     </div>
-                    <button type="button" class="add-single-spell" data-uuid="{{this.uuid}}" style="width: auto; padding: 4px 8px; font-size: 12px;">
+                    <button type="button" class="add-single-spell" data-uuid="{{this.uuid}}" style="width: auto; padding: 2px 6px; font-size: 10px; line-height: 1.2;">
                       <i class="fas fa-plus"></i> Add
                     </button>
                   </li>
                 {{/each}}
               </ul>
             {{else}}
-              <div style="text-align: center; margin-top: 40px; opacity: 0.6;">No Wizard spells match the selected filters.</div>
+              <div style="text-align: center; margin-top: 40px; opacity: 0.6; font-size: 11px;">No Wizard spells match the selected filters.</div>
             {{/if}}
           </div>
         </div>
@@ -227,7 +230,6 @@ class CompendiumPickerDialog extends ApplicationV2 {
       </div>
     `;
 
-    // Helper to evaluate inclusion in sets for handlebars
     const helpers = {
       includes: (arr, val) => Array.isArray(arr) && arr.includes(val)
     };
@@ -284,13 +286,6 @@ class CompendiumPickerDialog extends ApplicationV2 {
         }
       });
     });
-
-    // Add All Filtered Spells Handler
-    html.querySelector(".add-all-filtered")?.addEventListener("click", async () => {
-      const filtered = this._getFilteredSpells();
-      const items = filtered.map((f) => f.itemDoc);
-      await this._addSpellsToSpellbook(items);
-    });
   }
 
   async _addSpellsToSpellbook(items) {
@@ -300,8 +295,14 @@ class CompendiumPickerDialog extends ApplicationV2 {
     let addedCount = 0;
 
     for (const item of items) {
+      const level = Number(item.system?.level ?? 0);
+      if (level === 0) {
+        ui.notifications.warn(`"${item.name}" is a cantrip and cannot be added to a spellbook.`);
+        continue;
+      }
+
       const isDuplicate = existingSpells.some(
-        (s) => s.uuid === item.uuid || (s.name.toLowerCase() === item.name.toLowerCase() && Number(s.level) === Number(item.system?.level ?? 0))
+        (s) => s.uuid === item.uuid || (s.name.toLowerCase() === item.name.toLowerCase() && Number(s.level) === level)
       );
 
       if (!isDuplicate) {
@@ -310,7 +311,7 @@ class CompendiumPickerDialog extends ApplicationV2 {
           uuid: item.uuid,
           name: item.name,
           img: item.img,
-          level: item.system?.level ?? 0,
+          level: level,
           components: item.labels?.components?.vsm ?? ""
         });
         addedCount++;
@@ -322,7 +323,7 @@ class CompendiumPickerDialog extends ApplicationV2 {
       ui.notifications.info(`Added ${addedCount} spell(s) to ${this.spellbook.name}.`);
       if (this.onImportComplete) this.onImportComplete();
     } else {
-      ui.notifications.warn("Selected spell(s) are already in this spellbook.");
+      ui.notifications.warn("Selected spell is already in this spellbook.");
     }
   }
 }
@@ -470,9 +471,15 @@ export class NpcSpellbookSheet extends HandlebarsApplicationMixin(ItemSheetV2) {
       if (data?.type === "Item") {
         const item = await Item.implementation.fromDropData(data);
         if (item && item.type === "spell") {
+          const level = Number(item.system?.level ?? 0);
+          if (level === 0) {
+            ui.notifications.warn(`"${item.name}" is a cantrip. Cantrips cannot be written into a spellbook.`);
+            return;
+          }
+
           const existing = Data.getSpellbookSpells(this.document);
 
-          const isDuplicate = existing.some((s) => s.uuid === item.uuid || (s.name.toLowerCase() === item.name.toLowerCase() && Number(s.level) === Number(item.system?.level ?? 0)));
+          const isDuplicate = existing.some((s) => s.uuid === item.uuid || (s.name.toLowerCase() === item.name.toLowerCase() && Number(s.level) === level));
           if (isDuplicate) {
             ui.notifications.warn(`"${item.name}" is already in this spellbook.`);
             return;
@@ -486,14 +493,14 @@ export class NpcSpellbookSheet extends HandlebarsApplicationMixin(ItemSheetV2) {
               uuid: item.uuid,
               name: item.name,
               img: item.img,
-              level: item.system?.level ?? 0,
+              level: level,
               components: item.labels?.components?.vsm ?? ""
             });
             await Data.setSpellbookSpells(this.document, existing);
           }
           this.render(false);
         } else {
-          ui.notifications.warn("Only spells can be added to a spellbook.");
+          ui.notifications.warn("Only 1st level or higher spells can be added to a spellbook.");
         }
       }
     };
