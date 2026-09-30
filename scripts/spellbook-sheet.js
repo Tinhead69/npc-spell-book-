@@ -8,7 +8,7 @@ const { ApplicationV2, HandlebarsApplicationMixin, DialogV2 } = foundry.applicat
  * Custom Browser Dialog featuring a 2-column layout:
  * - Left Top: Filter by Spell Level (1st–9th) & School of Magic
  * - Left Bottom: Select Compendiums
- * - Right Main: Compact Wizard Spell List with individual Add buttons
+ * - Right Main: Compact Wizard Spell List sorted by Level with red header bars
  */
 class CompendiumPickerDialog extends ApplicationV2 {
   constructor(options = {}) {
@@ -59,8 +59,40 @@ class CompendiumPickerDialog extends ApplicationV2 {
     // 2. Fetch and Cache Spells from selected compendiums
     await this._loadSpellsFromSelectedPacks();
 
-    // 3. Filter spells based on current criteria
-    context.filteredSpells = this._getFilteredSpells();
+    // 3. Filter and Group Spells by Level
+    const filteredSpells = this._getFilteredSpells();
+
+    // Sort by level ascending, then name alphabetically
+    filteredSpells.sort((a, b) => a.level - b.level || a.name.localeCompare(b.name));
+
+    // Group into Level sections for grouped rendering
+    const levelLabels = {
+      1: "1st Level Spells",
+      2: "2nd Level Spells",
+      3: "3rd Level Spells",
+      4: "4th Level Spells",
+      5: "5th Level Spells",
+      6: "6th Level Spells",
+      7: "7th Level Spells",
+      8: "8th Level Spells",
+      9: "9th Level Spells"
+    };
+
+    const groupedLevels = {};
+    for (const spell of filteredSpells) {
+      if (!groupedLevels[spell.level]) {
+        groupedLevels[spell.level] = {
+          level: spell.level,
+          label: levelLabels[spell.level] || `Level ${spell.level} Spells`,
+          spells: []
+        };
+      }
+      groupedLevels[spell.level].spells.push(spell);
+    }
+
+    context.groupedLevels = Object.values(groupedLevels);
+    context.totalSpellCount = filteredSpells.length;
+
     context.selectedLevels = Array.from(this.selectedLevels);
     context.selectedSchools = Array.from(this.selectedSchools);
     context.selectedPacks = Array.from(this.selectedPacks);
@@ -203,25 +235,33 @@ class CompendiumPickerDialog extends ApplicationV2 {
         <!-- RIGHT MAIN COLUMN: SPELL LIST -->
         <div style="flex: 1; border: 1px solid #7a7971; border-radius: 4px; padding: 8px; display: flex; flex-direction: column; background: rgba(0,0,0,0.02);">
           <div style="border-bottom: 1px solid #ccc; padding-bottom: 6px; margin-bottom: 8px;">
-            <h4 style="margin: 0; font-size: 13px; font-weight: bold;"><i class="fas fa-list"></i> Wizard Spells ({{filteredSpells.length}})</h4>
+            <h4 style="margin: 0; font-size: 13px; font-weight: bold;"><i class="fas fa-list"></i> Wizard Spells ({{totalSpellCount}})</h4>
           </div>
 
           <div class="spell-list" style="flex: 1; overflow-y: auto;">
-            {{#if filteredSpells.length}}
-              <ul style="list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 4px;">
-                {{#each filteredSpells}}
-                  <li style="display: flex; align-items: center; gap: 8px; border: 1px solid rgba(255,255,255,0.1); padding: 4px 8px; border-radius: 4px; background: rgba(0,0,0,0.2);">
-                    <img src="{{this.img}}" width="28" height="28" style="border: none; border-radius: 3px;" />
-                    <div style="flex: 1; line-height: 1.2; overflow: hidden;">
-                      <div style="font-size: 12px; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{this.name}}</div>
-                      <div style="font-size: 10px; opacity: 0.8;">Lvl {{this.level}} • {{this.school}} • {{this.packTitle}}</div>
-                    </div>
-                    <button type="button" class="add-single-spell" data-uuid="{{this.uuid}}" style="width: auto; padding: 3px 8px; font-size: 11px; line-height: 1.2;">
-                      <i class="fas fa-plus"></i> Add
-                    </button>
-                  </li>
-                {{/each}}
-              </ul>
+            {{#if groupedLevels.length}}
+              {{#each groupedLevels}}
+                <!-- LEVEL HEADER BAR (Red flash banner) -->
+                <div style="background: linear-gradient(90deg, #7a2021 0%, #4a1213 100%); color: #f0f0f0; padding: 4px 8px; font-size: 11px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; border-radius: 3px; margin: 8px 0 4px 0; border-bottom: 1px solid #8b0000; box-shadow: 0 1px 3px rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: space-between;">
+                  <span><i class="fas fa-book-open" style="margin-right: 5px; opacity: 0.8;"></i> {{this.label}}</span>
+                  <span style="font-size: 10px; opacity: 0.8; font-weight: normal;">({{this.spells.length}})</span>
+                </div>
+
+                <ul style="list-style: none; padding: 0; margin: 0 0 6px 0; display: flex; flex-direction: column; gap: 4px;">
+                  {{#each this.spells}}
+                    <li style="display: flex; align-items: center; gap: 8px; border: 1px solid rgba(255,255,255,0.1); padding: 4px 8px; border-radius: 4px; background: rgba(0,0,0,0.2);">
+                      <img src="{{this.img}}" width="28" height="28" style="border: none; border-radius: 3px;" />
+                      <div style="flex: 1; line-height: 1.2; overflow: hidden;">
+                        <div style="font-size: 12px; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{this.name}}</div>
+                        <div style="font-size: 10px; opacity: 0.8;">Lvl {{this.level}} • {{this.school}} • {{this.packTitle}}</div>
+                      </div>
+                      <button type="button" class="add-single-spell" data-uuid="{{this.uuid}}" style="width: auto; padding: 3px 8px; font-size: 11px; line-height: 1.2;">
+                        <i class="fas fa-plus"></i> Add
+                      </button>
+                    </li>
+                  {{/each}}
+                </ul>
+              {{/each}}
             {{else}}
               <div style="text-align: center; margin-top: 50px; opacity: 0.7; font-size: 12px;">Select filters and compendiums on the left to browse spells.</div>
             {{/if}}
