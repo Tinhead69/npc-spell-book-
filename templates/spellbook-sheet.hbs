@@ -1,6 +1,6 @@
 <div class="npc-spellbook-container flexcol">
   <header class="sheet-header flexrow">
-    <img class="profile-img" src="{{item.img}}" data-edit="img" title="{{item.name}}"/>
+    <img class="profile-img" src="{{#if item.img}}{{item.img}}{{else}}icons/svg/book.svg{{/if}}" data-edit="img" title="{{item.name}}"/>
     <div class="header-fields">
       <h1 class="charname">
         <input name="name" type="text" value="{{item.name}}" placeholder="Spellbook Name"/>
@@ -16,7 +16,7 @@
       {{#if isGM}}
         <button type="button" class="add-spell"><i class="fas fa-plus"></i> Add Spell</button>
       {{/if}}
-      <button type="button" class="study-spellbook"><i class="fas fa-scroll"></i> Study Spellbook</button>
+      <button type="button" class="study-spellbook" data-action="studySpellbook"><i class="fas fa-scroll"></i> Study Spellbook</button>
     </div>
 
     <div class="spells-list">
