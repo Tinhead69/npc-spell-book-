@@ -1,4 +1,4 @@
-import { getSpellbookSpells, setSpellbookSpells, addSpellToSpellbook } from "./data.js";
+import * as Data from "./data.js";
 import { StudySpellbookDialog } from "./learn-dialog.js";
 
 const { ItemSheetV2 } = foundry.applications.sheets;
@@ -12,13 +12,13 @@ export class NpcSpellbookSheet extends HandlebarsApplicationMixin(ItemSheetV2) {
       height: 650
     },
     form: {
-      handler: NpcSpellbookSheet.#onSubmitForm,
+      handler: NpcSpellbookSheet._onSubmitForm,
       submitOnChange: true,
       closeOnSubmit: false
     },
     actions: {
-      deleteSpell: NpcSpellbookSheet.#onDeleteSpell,
-      studySpellbook: NpcSpellbookSheet.#onStudySpellbook
+      deleteSpell: NpcSpellbookSheet._onDeleteSpell,
+      studySpellbook: NpcSpellbookSheet._onStudySpellbook
     }
   };
 
@@ -33,7 +33,7 @@ export class NpcSpellbookSheet extends HandlebarsApplicationMixin(ItemSheetV2) {
     context.item = this.document;
     context.isGM = game.user.isGM;
 
-    const spells = getSpellbookSpells(this.document);
+    const spells = Data.getSpellbookSpells ? Data.getSpellbookSpells(this.document) : [];
     const levels = {};
     for (const spell of spells) {
       const lvl = Number(spell.level ?? 0);
@@ -45,19 +45,20 @@ export class NpcSpellbookSheet extends HandlebarsApplicationMixin(ItemSheetV2) {
     return context;
   }
 
-  static async #onSubmitForm(event, form, formData) {
+  static async _onSubmitForm(event, form, formData) {
     await this.document.update(formData.object);
   }
 
-  static async #onDeleteSpell(event, target) {
+  static async _onDeleteSpell(event, target) {
     const spellId = target.dataset.spellId;
-    let spells = getSpellbookSpells(this.document);
+    if (!Data.getSpellbookSpells || !Data.setSpellbookSpells) return;
+    let spells = Data.getSpellbookSpells(this.document);
     spells = spells.filter((s) => s.id !== spellId && s.uuid !== spellId);
-    await setSpellbookSpells(this.document, spells);
+    await Data.setSpellbookSpells(this.document, spells);
     this.render(false);
   }
 
-  static async #onStudySpellbook(event, target) {
+  static async _onStudySpellbook(event, target) {
     try {
       new StudySpellbookDialog({ spellbook: this.document }).render(true);
     } catch (err) {
@@ -70,8 +71,8 @@ export class NpcSpellbookSheet extends HandlebarsApplicationMixin(ItemSheetV2) {
 
     const html = this.element;
 
-    // 1. Add Spell Button
-    html.querySelectorAll(".add-spell").forEach((btn) => {
+    // 1. Add Spell Button listener
+    html.querySelectorAll(".add-spell, .add-spell-btn").forEach((btn) => {
       btn.addEventListener("click", (e) => {
         e.preventDefault();
         const spellPack = game.packs.get("dnd5e.spells") || 
@@ -87,23 +88,7 @@ export class NpcSpellbookSheet extends HandlebarsApplicationMixin(ItemSheetV2) {
       });
     });
 
-    // 2. Delete Spell Buttons
-    html.querySelectorAll(".delete-spell").forEach((btn) => {
-      btn.addEventListener("click", (e) => {
-        e.preventDefault();
-        NpcSpellbookSheet.#onDeleteSpell.call(this, e, e.currentTarget);
-      });
-    });
-
-    // 3. Study Spellbook Button
-    html.querySelectorAll(".study-spellbook").forEach((btn) => {
-      btn.addEventListener("click", (e) => {
-        e.preventDefault();
-        NpcSpellbookSheet.#onStudySpellbook.call(this, e, e.currentTarget);
-      });
-    });
-
-    // 4. Drag & Drop Event Listeners
+    // 2. Drag & Drop Listener for adding spells directly to sheet
     html.addEventListener("dragover", (e) => e.preventDefault());
     html.addEventListener("drop", async (e) => {
       e.preventDefault();
@@ -117,7 +102,20 @@ export class NpcSpellbookSheet extends HandlebarsApplicationMixin(ItemSheetV2) {
       if (data?.type === "Item") {
         const item = await Item.implementation.fromDropData(data);
         if (item && item.type === "spell") {
-          await addSpellToSpellbook(this.document, item);
+          if (typeof Data.addSpellToSpellbook === "function") {
+            await Data.addSpellToSpellbook(this.document, item);
+          } else if (typeof Data.getSpellbookSpells === "function" && typeof Data.setSpellbookSpells === "function") {
+            const spells = Data.getSpellbookSpells(this.document);
+            spells.push({
+              id: item.id,
+              uuid: item.uuid,
+              name: item.name,
+              img: item.img,
+              level: item.system?.level ?? 0,
+              components: item.labels?.components?.vsm ?? ""
+            });
+            await Data.setSpellbookSpells(this.document, spells);
+          }
           this.render(false);
         } else {
           ui.notifications.warn("Only spells can be added to a spellbook.");
