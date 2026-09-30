@@ -1,10 +1,11 @@
-<form class="{{cssClass}} flexcol" autocomplete="off" style="padding: 10px; height: 100%; box-sizing: border-box; font-family: Roboto, sans-serif;">
+<div class="{{cssClass}} flexcol" style="padding: 10px; height: 100%; box-sizing: border-box; font-family: Roboto, sans-serif;">
   
   <!-- ITEM HEADER: ICON & TITLE -->
   <header class="sheet-header" style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px; border-bottom: 1px solid rgba(255,255,255,0.15); padding-bottom: 8px;">
     <img class="profile-img" src="{{item.img}}" data-edit="img" title="{{item.name}}" height="48" width="48" style="border: none; border-radius: 4px; background: rgba(0,0,0,0.3); object-fit: cover;" />
     <div class="header-fields" style="flex: 1;">
       <h1 class="charname" style="margin: 0; border: none;">
+        <!-- Directly target item.name -->
         <input name="name" type="text" value="{{item.name}}" placeholder="Spellbook Name" style="font-family: 'Modesto Elementum', 'Cinzel', serif; font-size: 24px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; color: #f0f0f0; background: transparent; border: none; width: 100%; text-shadow: 0 2px 4px rgba(0,0,0,0.8);" />
       </h1>
     </div>
@@ -31,7 +32,7 @@
       {{#each spellLevels as |spells level|}}
         <div class="spell-level-group" style="display: flex; flex-direction: column; gap: 2px;">
           
-          <!-- CRIMSON HEADER BAR (Matching Study Spellbook layout) -->
+          <!-- CRIMSON HEADER BAR -->
           <div class="level-header" style="background: linear-gradient(90deg, #601819 0%, #3a0d0e 100%); color: #f0f0f0; padding: 5px 10px; font-size: 12px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.8px; border-radius: 3px 3px 0 0; border-bottom: 1px solid #8b0000; box-shadow: 0 1px 3px rgba(0,0,0,0.4);">
             LEVEL {{level}}
           </div>
@@ -80,4 +81,4 @@
     {{/if}}
   </section>
 
-</form>
+</div>
