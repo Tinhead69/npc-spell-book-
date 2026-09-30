@@ -6,9 +6,9 @@ const { ApplicationV2, HandlebarsApplicationMixin, DialogV2 } = foundry.applicat
 
 /**
  * Custom Browser Dialog featuring a 2-column layout:
- * - Left Top: Filter by Spell Level (1st–9th) & School of Magic
+ * - Left Top: Filter by Spell Level & School of Magic (Side-by-side vertical lists)
  * - Left Bottom: Select Compendiums
- * - Right Main: Compact Wizard Spell List sorted by Level with red header bars
+ * - Right Main: Compact Wizard Spell List sorted by Level with collapsible red headers
  */
 class CompendiumPickerDialog extends ApplicationV2 {
   constructor(options = {}) {
@@ -21,6 +21,9 @@ class CompendiumPickerDialog extends ApplicationV2 {
     this.selectedPacks = new Set();
     this.selectedLevels = new Set();
     this.selectedSchools = new Set();
+
+    // Track collapsed level header IDs (1-9)
+    this.collapsedLevels = new Set();
   }
 
   static DEFAULT_OPTIONS = {
@@ -84,6 +87,7 @@ class CompendiumPickerDialog extends ApplicationV2 {
         groupedLevels[spell.level] = {
           level: spell.level,
           label: levelLabels[spell.level] || `Level ${spell.level} Spells`,
+          isCollapsed: this.collapsedLevels.has(spell.level),
           spells: []
         };
       }
@@ -109,15 +113,15 @@ class CompendiumPickerDialog extends ApplicationV2 {
     ];
 
     context.levelsList = [
-      { id: 1, label: "1st Lvl" },
-      { id: 2, label: "2nd Lvl" },
-      { id: 3, label: "3rd Lvl" },
-      { id: 4, label: "4th Lvl" },
-      { id: 5, label: "5th Lvl" },
-      { id: 6, label: "6th Lvl" },
-      { id: 7, label: "7th Lvl" },
-      { id: 8, label: "8th Lvl" },
-      { id: 9, label: "9th Lvl" }
+      { id: 1, label: "1st Level" },
+      { id: 2, label: "2nd Level" },
+      { id: 3, label: "3rd Level" },
+      { id: 4, label: "4th Level" },
+      { id: 5, label: "5th Level" },
+      { id: 6, label: "6th Level" },
+      { id: 7, label: "7th Level" },
+      { id: 8, label: "8th Level" },
+      { id: 9, label: "9th Level" }
     ];
 
     return context;
@@ -184,32 +188,38 @@ class CompendiumPickerDialog extends ApplicationV2 {
       <div style="display: flex; height: 580px; width: 100%; gap: 10px; padding: 6px; font-family: Roboto, sans-serif;">
         
         <!-- LEFT COLUMN -->
-        <div style="width: 280px; display: flex; flex-direction: column; gap: 8px; height: 100%;">
+        <div style="width: 320px; display: flex; flex-direction: column; gap: 8px; height: 100%;">
           
-          <!-- TOP LEFT: LEVEL & SCHOOL FILTERS -->
-          <div style="flex: 1.2; border: 1px solid #7a7971; border-radius: 4px; padding: 8px; background: rgba(0,0,0,0.05); overflow-y: auto;">
+          <!-- TOP LEFT: LEVEL & SCHOOL FILTERS (SIDE-BY-SIDE VERTICAL LISTS) -->
+          <div style="flex: 1.4; border: 1px solid #7a7971; border-radius: 4px; padding: 8px; background: rgba(0,0,0,0.05); overflow-y: auto;">
             <h5 style="margin: 0 0 6px 0; border-bottom: 1px solid #ccc; padding-bottom: 3px; font-size: 12px; font-weight: bold; text-transform: uppercase;">
               <i class="fas fa-filter"></i> Spell Filters
             </h5>
             
-            <strong style="font-size: 11px; text-transform: uppercase; color: #bbb; display: block; margin-bottom: 4px;">Spell Level</strong>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px 8px; margin-bottom: 8px; font-size: 12px;">
-              {{#each levelsList}}
-                <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; line-height: 1.2;">
-                  <input type="checkbox" class="filter-level" value="{{this.id}}" style="width: 14px; height: 14px; margin: 0; flex-shrink: 0;" {{#if (includes ../selectedLevels this.id)}}checked{{/if}} />
-                  <span>{{this.label}}</span>
-                </label>
-              {{/each}}
-            </div>
+            <div style="display: flex; gap: 12px; font-size: 11px;">
+              
+              <!-- SPELL LEVEL COLUMN (Vertical) -->
+              <div style="flex: 1; display: flex; flex-direction: column; gap: 3px;">
+                <strong style="font-size: 11px; text-transform: uppercase; color: #bbb; margin-bottom: 2px; border-bottom: 1px dashed rgba(255,255,255,0.2); padding-bottom: 2px;">Spell Level</strong>
+                {{#each levelsList}}
+                  <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; line-height: 1.2;">
+                    <input type="checkbox" class="filter-level" value="{{this.id}}" style="width: 14px; height: 14px; margin: 0; flex-shrink: 0;" {{#if (includes ../selectedLevels this.id)}}checked{{/if}} />
+                    <span>{{this.label}}</span>
+                  </label>
+                {{/each}}
+              </div>
 
-            <strong style="font-size: 11px; text-transform: uppercase; color: #bbb; display: block; margin-bottom: 4px;">School of Magic</strong>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px 8px; font-size: 12px;">
-              {{#each schoolsList}}
-                <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; line-height: 1.2;">
-                  <input type="checkbox" class="filter-school" value="{{this.id}}" style="width: 14px; height: 14px; margin: 0; flex-shrink: 0;" {{#if (includes ../selectedSchools this.id)}}checked{{/if}} />
-                  <span>{{this.label}}</span>
-                </label>
-              {{/each}}
+              <!-- SCHOOL OF MAGIC COLUMN (Vertical) -->
+              <div style="flex: 1; display: flex; flex-direction: column; gap: 3px;">
+                <strong style="font-size: 11px; text-transform: uppercase; color: #bbb; margin-bottom: 2px; border-bottom: 1px dashed rgba(255,255,255,0.2); padding-bottom: 2px;">School</strong>
+                {{#each schoolsList}}
+                  <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; line-height: 1.2;">
+                    <input type="checkbox" class="filter-school" value="{{this.id}}" style="width: 14px; height: 14px; margin: 0; flex-shrink: 0;" {{#if (includes ../selectedSchools this.id)}}checked{{/if}} />
+                    <span>{{this.label}}</span>
+                  </label>
+                {{/each}}
+              </div>
+
             </div>
           </div>
 
@@ -241,26 +251,32 @@ class CompendiumPickerDialog extends ApplicationV2 {
           <div class="spell-list" style="flex: 1; overflow-y: auto;">
             {{#if groupedLevels.length}}
               {{#each groupedLevels}}
-                <!-- LEVEL HEADER BAR (Red flash banner) -->
-                <div style="background: linear-gradient(90deg, #7a2021 0%, #4a1213 100%); color: #f0f0f0; padding: 4px 8px; font-size: 11px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; border-radius: 3px; margin: 8px 0 4px 0; border-bottom: 1px solid #8b0000; box-shadow: 0 1px 3px rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: space-between;">
-                  <span><i class="fas fa-book-open" style="margin-right: 5px; opacity: 0.8;"></i> {{this.label}}</span>
+                <!-- COLLAPSIBLE LEVEL HEADER BAR -->
+                <div class="level-header-toggle" data-level="{{this.level}}" style="background: linear-gradient(90deg, #7a2021 0%, #4a1213 100%); color: #f0f0f0; padding: 4px 8px; font-size: 11px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; border-radius: 3px; margin: 8px 0 4px 0; border-bottom: 1px solid #8b0000; box-shadow: 0 1px 3px rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: space-between; cursor: pointer; user-select: none;">
+                  <span>
+                    <i class="fas {{#if this.isCollapsed}}fa-chevron-right{{else}}fa-chevron-down{{/if}}" style="margin-right: 6px; width: 12px; text-align: center;"></i>
+                    <i class="fas fa-book-open" style="margin-right: 5px; opacity: 0.8;"></i> 
+                    {{this.label}}
+                  </span>
                   <span style="font-size: 10px; opacity: 0.8; font-weight: normal;">({{this.spells.length}})</span>
                 </div>
 
-                <ul style="list-style: none; padding: 0; margin: 0 0 6px 0; display: flex; flex-direction: column; gap: 4px;">
-                  {{#each this.spells}}
-                    <li style="display: flex; align-items: center; gap: 8px; border: 1px solid rgba(255,255,255,0.1); padding: 4px 8px; border-radius: 4px; background: rgba(0,0,0,0.2);">
-                      <img src="{{this.img}}" width="28" height="28" style="border: none; border-radius: 3px;" />
-                      <div style="flex: 1; line-height: 1.2; overflow: hidden;">
-                        <div style="font-size: 12px; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{this.name}}</div>
-                        <div style="font-size: 10px; opacity: 0.8;">Lvl {{this.level}} • {{this.school}} • {{this.packTitle}}</div>
-                      </div>
-                      <button type="button" class="add-single-spell" data-uuid="{{this.uuid}}" style="width: auto; padding: 3px 8px; font-size: 11px; line-height: 1.2;">
-                        <i class="fas fa-plus"></i> Add
-                      </button>
-                    </li>
-                  {{/each}}
-                </ul>
+                {{#unless this.isCollapsed}}
+                  <ul style="list-style: none; padding: 0; margin: 0 0 6px 0; display: flex; flex-direction: column; gap: 4px;">
+                    {{#each this.spells}}
+                      <li style="display: flex; align-items: center; gap: 8px; border: 1px solid rgba(255,255,255,0.1); padding: 4px 8px; border-radius: 4px; background: rgba(0,0,0,0.2);">
+                        <img src="{{this.img}}" width="28" height="28" style="border: none; border-radius: 3px;" />
+                        <div style="flex: 1; line-height: 1.2; overflow: hidden;">
+                          <div style="font-size: 12px; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{this.name}}</div>
+                          <div style="font-size: 10px; opacity: 0.8;">Lvl {{this.level}} • {{this.school}} • {{this.packTitle}}</div>
+                        </div>
+                        <button type="button" class="add-single-spell" data-uuid="{{this.uuid}}" style="width: auto; padding: 3px 8px; font-size: 11px; line-height: 1.2;">
+                          <i class="fas fa-plus"></i> Add
+                        </button>
+                      </li>
+                    {{/each}}
+                  </ul>
+                {{/unless}}
               {{/each}}
             {{else}}
               <div style="text-align: center; margin-top: 50px; opacity: 0.7; font-size: 12px;">Select filters and compendiums on the left to browse spells.</div>
@@ -286,6 +302,19 @@ class CompendiumPickerDialog extends ApplicationV2 {
   _onRender(context, options) {
     super._onRender(context, options);
     const html = this.element;
+
+    // Collapsible Level Header Listener
+    html.querySelectorAll(".level-header-toggle").forEach((header) => {
+      header.addEventListener("click", (e) => {
+        const lvl = Number(e.currentTarget.dataset.level);
+        if (this.collapsedLevels.has(lvl)) {
+          this.collapsedLevels.delete(lvl);
+        } else {
+          this.collapsedLevels.add(lvl);
+        }
+        this.render(false);
+      });
+    });
 
     // Level Filter Listeners
     html.querySelectorAll(".filter-level").forEach((cb) => {
