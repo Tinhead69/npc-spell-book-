@@ -6,7 +6,8 @@ import {
   getTranscriptionCost,
   getTranscriptionHours,
   evaluateTranscription,
-  transcribeSpell
+  transcribeSpell,
+  isWizard
 } from "./mechanics.js";
 
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
@@ -41,10 +42,10 @@ export class StudySpellbookDialog extends HandlebarsApplicationMixin(Application
   async _prepareContext(options) {
     const context = await super._prepareContext(options);
 
-    // 1. Find all available wizard actors
+    // 1. Find all available wizard actors (strictly wizards only)
     const wizards = game.actors.filter((a) => {
       if (a.type !== "character") return false;
-      return getWizardLevel(a) > 0 || a.isOwner;
+      return isWizard(a);
     });
 
     // Auto-select first wizard if none selected
