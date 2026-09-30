@@ -16,7 +16,8 @@ export class NpcSpellbookSheet extends HandlebarsApplicationMixin(ItemSheetV2) {
       closeOnSubmit: false
     },
     actions: {
-      deleteSpell: NpcSpellbookSheet.#onDeleteSpell
+      deleteSpell: NpcSpellbookSheet.#onDeleteSpell,
+      studySpellbook: NpcSpellbookSheet.#onStudySpellbook
     }
   };
 
@@ -56,15 +57,33 @@ export class NpcSpellbookSheet extends HandlebarsApplicationMixin(ItemSheetV2) {
     this.render(false);
   }
 
+  static async #onStudySpellbook(event, target) {
+    try {
+      const { StudySpellbookDialog } = await import("./learn-dialog.js");
+      new StudySpellbookDialog({ spellbook: this.document }).render(true);
+    } catch (err) {
+      console.error("NPC Spellbook | Failed to open Study Dialog:", err);
+    }
+  }
+
   _onRender(context, options) {
     super._onRender(context, options);
 
-    // Fallback click handler for delete icons
     const html = this.element;
+
+    // Delete spell click handler fallback
     html.querySelectorAll(".delete-spell").forEach((btn) => {
       btn.addEventListener("click", (e) => {
         e.preventDefault();
         NpcSpellbookSheet.#onDeleteSpell.call(this, e, e.currentTarget);
+      });
+    });
+
+    // Study spellbook click handler fallback
+    html.querySelectorAll(".study-spellbook").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        e.preventDefault();
+        NpcSpellbookSheet.#onStudySpellbook.call(this, e, e.currentTarget);
       });
     });
   }
