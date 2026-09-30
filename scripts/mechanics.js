@@ -106,10 +106,11 @@ export function actorKnowsSpell(actor, spellEntry) {
     if (item.type !== "spell") return false;
     if (item.name?.toLowerCase() === targetName) return true;
 
-    const sourceId = item.getFlag?.("core", "sourceId") ?? item.flags?.core?.sourceId ?? "";
-    if (targetUuid && sourceId && sourceId === targetUuid) return true;
+    // Modern V12/V13 compendium source property check without calling deprecated core.sourceId flag
+    const sourceUuid = item._stats?.compendiumSource ?? item.flags?.core?.sourceId ?? "";
+    if (targetUuid && sourceUuid && sourceUuid === targetUuid) return true;
 
-    const moduleSource = item.getFlag?.(MODULE_ID, "sourceSpellUuid");
+    const moduleSource = item.flags?.[MODULE_ID]?.sourceSpellUuid;
     if (targetUuid && moduleSource === targetUuid) return true;
 
     return false;
