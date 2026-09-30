@@ -2,7 +2,81 @@ import * as Data from "./data.js";
 import { StudySpellbookDialog } from "./learn-dialog.js";
 
 const { ItemSheetV2 } = foundry.applications.sheets;
-const { HandlebarsApplicationMixin } = foundry.applications.api;
+const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
+
+/**
+ * Dialog to display installed compendiums containing Wizard spells
+ */
+class CompendiumPickerDialog extends HandlebarsApplicationMixin(ApplicationV2) {
+  static DEFAULT_OPTIONS = {
+    id: "compendium-picker-dialog",
+    classes: ["compendium-picker"],
+    position: { width: 400, height: 450 },
+    tag: "div"
+  };
+
+  static PARTS = {
+    main: {
+      template: "modules/npc-spell-book/templates/compendium-picker.hbs"
+    }
+  };
+
+  get title() {
+    return "Select Wizard Spell Compendium";
+  }
+
+  async _prepareContext(options) {
+    const context = await super._prepareContext(options);
+    
+    // Find all Item compendiums
+    const itemPacks = game.packs.filter((p) => p.metadata.type === "Item");
+    const validPacks = [];
+
+    for (const pack of itemPacks) {
+      // Load index if not cached
+      const index = await pack.getIndex({ fields: ["type", "system.sourceClass"] });
+      const hasSpells = index.some((i) => i.type === "spell");
+
+      if (hasSpells) {
+        validPacks.push({
+          collection: pack.collection,
+          title: pack.metadata.label,
+          package: pack.metadata.packageName
+        });
+      }
+    }
+
+    context.packs = validPacks;
+    return context;
+  }
+
+  _onRender(context, options) {
+    super._onRender(context, options);
+    
+    // Attach click listeners to open selected compendium with wizard filter applied
+    this.element.querySelectorAll(".pack-link").forEach((link) => {
+      link.addEventListener("click", async (e) => {
+        e.preventDefault();
+        const packId = e.currentTarget.dataset.packId;
+        const pack = game.packs.get(packId);
+
+        if (pack) {
+          const compendiumWindow = await pack.render(true);
+          
+          // Apply Wizard class filter if supported by dnd5e compendium view
+          if (compendiumWindow?.element) {
+            const searchInput = compendiumWindow.element.querySelector("input[type='search'], .filter-search");
+            if (searchInput) {
+              searchInput.value = "wizard";
+              searchInput.dispatchEvent(new Event("input", { bubbles: true }));
+            }
+          }
+          this.close();
+        }
+      });
+    });
+  }
+}
 
 export class NpcSpellbookSheet extends HandlebarsApplicationMixin(ItemSheetV2) {
   static DEFAULT_OPTIONS = {
@@ -79,7 +153,6 @@ export class NpcSpellbookSheet extends HandlebarsApplicationMixin(ItemSheetV2) {
       event.stopPropagation();
     }
 
-    // Traverse up to find the element holding data attributes or row data
     const element = target.closest("[data-spell-id]") || target.closest("[data-spell-name]") || target;
     const spellId = element?.dataset?.spellId;
     const spellName = element?.dataset?.spellName;
@@ -88,7 +161,6 @@ export class NpcSpellbookSheet extends HandlebarsApplicationMixin(ItemSheetV2) {
 
     let spells = Data.getSpellbookSpells(this.document);
     
-    // Filter out by ID, UUID, or exact Name match
     const initialCount = spells.length;
     spells = spells.filter((s) => {
       if (spellId && (s.id === spellId || s.uuid === spellId)) return false;
@@ -115,22 +187,15 @@ export class NpcSpellbookSheet extends HandlebarsApplicationMixin(ItemSheetV2) {
 
     const html = this.element;
 
-    // 1. Add Spell Button listener
+    // 1. Add Spell Button listener (Opens custom compendium picker dialog)
     html.querySelectorAll(".add-spell, .add-spell-btn").forEach((btn) => {
       btn.addEventListener("click", (e) => {
         e.preventDefault();
-        
-        if (typeof ui.sidebar?.changeTab === "function") {
-          ui.sidebar.changeTab("compendium", "primary");
-        } else if (typeof ui.sidebar?.activateTab === "function") {
-          ui.sidebar.activateTab("compendium");
-        }
-
-        ui.notifications.info("Drag and drop spells from any compendium into this spellbook.");
+        new CompendiumPickerDialog().render(true);
       });
     });
 
-    // 2. Delete Spell Button listeners (Attach click handlers directly to all trashcan icons/buttons)
+    // 2. Delete Spell Button listeners
     html.querySelectorAll(".delete-spell, .spell-delete, [data-action='deleteSpell'], .fa-trash, .fa-trash-can").forEach((btn) => {
       btn.addEventListener("click", (e) => NpcSpellbookSheet._onDeleteSpell.call(this, e, e.currentTarget));
     });
