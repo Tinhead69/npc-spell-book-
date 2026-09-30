@@ -7,18 +7,12 @@ const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
 /**
  * Dialog to display installed compendiums containing Wizard spells
  */
-class CompendiumPickerDialog extends HandlebarsApplicationMixin(ApplicationV2) {
+class CompendiumPickerDialog extends ApplicationV2 {
   static DEFAULT_OPTIONS = {
     id: "compendium-picker-dialog",
     classes: ["compendium-picker"],
-    position: { width: 400, height: 450 },
+    position: { width: 420, height: 480 },
     tag: "div"
-  };
-
-  static PARTS = {
-    main: {
-      template: "modules/npc-spell-book/templates/compendium-picker.hbs"
-    }
   };
 
   get title() {
@@ -27,21 +21,20 @@ class CompendiumPickerDialog extends HandlebarsApplicationMixin(ApplicationV2) {
 
   async _prepareContext(options) {
     const context = await super._prepareContext(options);
-    
+
     // Find all Item compendiums
     const itemPacks = game.packs.filter((p) => p.metadata.type === "Item");
     const validPacks = [];
 
     for (const pack of itemPacks) {
-      // Load index if not cached
-      const index = await pack.getIndex({ fields: ["type", "system.sourceClass"] });
+      const index = await pack.getIndex({ fields: ["type"] });
       const hasSpells = index.some((i) => i.type === "spell");
 
       if (hasSpells) {
         validPacks.push({
           collection: pack.collection,
           title: pack.metadata.label,
-          package: pack.metadata.packageName
+          package: pack.metadata.packageName || "System"
         });
       }
     }
@@ -50,10 +43,34 @@ class CompendiumPickerDialog extends HandlebarsApplicationMixin(ApplicationV2) {
     return context;
   }
 
+  async _renderHTML(context, options) {
+    const templateSource = `
+      <div class="compendium-picker-content" style="padding: 12px;">
+        <p class="notes" style="margin-bottom: 12px; font-weight: bold;">
+          <i class="fas fa-book"></i> Select a compendium to browse Wizard spells:
+        </p>
+        <ul class="compendium-list" style="list-style: none; padding: 0; margin: 0; max-height: 360px; overflow-y: auto;">
+          {{#each packs}}
+            <li style="margin-bottom: 8px;">
+              <button type="button" class="pack-link" data-pack-id="{{this.collection}}" style="width: 100%; text-align: left; padding: 8px 12px; cursor: pointer;">
+                <i class="fas fa-atlas"></i> <strong>{{this.title}}</strong> <small style="opacity: 0.7;">({{this.package}})</small>
+              </button>
+            </li>
+          {{/each}}
+        </ul>
+      </div>
+    `;
+    const compiled = Handlebars.compile(templateSource);
+    return compiled(context);
+  }
+
+  _replaceHTML(result, content, options) {
+    content.innerHTML = result;
+  }
+
   _onRender(context, options) {
     super._onRender(context, options);
-    
-    // Attach click listeners to open selected compendium with wizard filter applied
+
     this.element.querySelectorAll(".pack-link").forEach((link) => {
       link.addEventListener("click", async (e) => {
         e.preventDefault();
@@ -62,14 +79,15 @@ class CompendiumPickerDialog extends HandlebarsApplicationMixin(ApplicationV2) {
 
         if (pack) {
           const compendiumWindow = await pack.render(true);
-          
-          // Apply Wizard class filter if supported by dnd5e compendium view
+
           if (compendiumWindow?.element) {
-            const searchInput = compendiumWindow.element.querySelector("input[type='search'], .filter-search");
-            if (searchInput) {
-              searchInput.value = "wizard";
-              searchInput.dispatchEvent(new Event("input", { bubbles: true }));
-            }
+            setTimeout(() => {
+              const searchInput = compendiumWindow.element.querySelector("input[type='search'], input[name='search'], .filter-search");
+              if (searchInput) {
+                searchInput.value = "wizard";
+                searchInput.dispatchEvent(new Event("input", { bubbles: true }));
+              }
+            }, 100);
           }
           this.close();
         }
@@ -109,14 +127,14 @@ export class NpcSpellbookSheet extends HandlebarsApplicationMixin(ItemSheetV2) {
 
     let spells = Data.getSpellbookSpells ? Data.getSpellbookSpells(this.document) : [];
 
-    // --- Automatic Duplicate Deduplication ---
+    // Automatic Duplicate Deduplication
     const seenKeys = new Set();
     const cleanSpells = [];
     let hasDuplicates = false;
 
     for (const spell of spells) {
       const key = spell.uuid ? spell.uuid : `${spell.name?.toLowerCase()}-${spell.level}`;
-      
+
       if (seenKeys.has(key)) {
         hasDuplicates = true;
       } else {
@@ -131,7 +149,6 @@ export class NpcSpellbookSheet extends HandlebarsApplicationMixin(ItemSheetV2) {
       ui.notifications.info(`Cleaned up duplicate spells in ${this.document.name}.`);
     }
 
-    // Group clean spells by level
     const levels = {};
     for (const spell of spells) {
       const lvl = Number(spell.level ?? 0);
@@ -160,7 +177,7 @@ export class NpcSpellbookSheet extends HandlebarsApplicationMixin(ItemSheetV2) {
     if (!Data.getSpellbookSpells || !Data.setSpellbookSpells) return;
 
     let spells = Data.getSpellbookSpells(this.document);
-    
+
     const initialCount = spells.length;
     spells = spells.filter((s) => {
       if (spellId && (s.id === spellId || s.uuid === spellId)) return false;
@@ -187,7 +204,7 @@ export class NpcSpellbookSheet extends HandlebarsApplicationMixin(ItemSheetV2) {
 
     const html = this.element;
 
-    // 1. Add Spell Button listener (Opens custom compendium picker dialog)
+    // Add Spell Button listener
     html.querySelectorAll(".add-spell, .add-spell-btn").forEach((btn) => {
       btn.addEventListener("click", (e) => {
         e.preventDefault();
@@ -195,12 +212,12 @@ export class NpcSpellbookSheet extends HandlebarsApplicationMixin(ItemSheetV2) {
       });
     });
 
-    // 2. Delete Spell Button listeners
+    // Delete Spell Button listeners
     html.querySelectorAll(".delete-spell, .spell-delete, [data-action='deleteSpell'], .fa-trash, .fa-trash-can").forEach((btn) => {
       btn.addEventListener("click", (e) => NpcSpellbookSheet._onDeleteSpell.call(this, e, e.currentTarget));
     });
 
-    // 3. Drag & Drop Listener with Duplicate Prevention
+    // Drag & Drop Listener
     if (this._dropHandler) {
       html.removeEventListener("drop", this._dropHandler);
     }
@@ -220,7 +237,7 @@ export class NpcSpellbookSheet extends HandlebarsApplicationMixin(ItemSheetV2) {
         const item = await Item.implementation.fromDropData(data);
         if (item && item.type === "spell") {
           const existing = Data.getSpellbookSpells(this.document);
-          
+
           const isDuplicate = existing.some((s) => s.uuid === item.uuid || (s.name.toLowerCase() === item.name.toLowerCase() && Number(s.level) === Number(item.system?.level ?? 0)));
           if (isDuplicate) {
             ui.notifications.warn(`"${item.name}" is already in this spellbook.`);
