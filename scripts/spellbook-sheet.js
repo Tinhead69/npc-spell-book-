@@ -33,7 +33,33 @@ export class NpcSpellbookSheet extends HandlebarsApplicationMixin(ItemSheetV2) {
     context.item = this.document;
     context.isGM = game.user.isGM;
 
-    const spells = Data.getSpellbookSpells ? Data.getSpellbookSpells(this.document) : [];
+    let spells = Data.getSpellbookSpells ? Data.getSpellbookSpells(this.document) : [];
+
+    // --- Automatic Duplicate Deduplication ---
+    const seenKeys = new Set();
+    const cleanSpells = [];
+    let hasDuplicates = false;
+
+    for (const spell of spells) {
+      // Key by UUID if available, or fall back to Name + Level
+      const key = spell.uuid ? spell.uuid : `${spell.name?.toLowerCase()}-${spell.level}`;
+      
+      if (seenKeys.has(key)) {
+        hasDuplicates = true; // Found a duplicate!
+      } else {
+        seenKeys.add(key);
+        cleanSpells.push(spell);
+      }
+    }
+
+    // Save cleaned list back to the document if duplicates were stripped
+    if (hasDuplicates && Data.setSpellbookSpells) {
+      spells = cleanSpells;
+      await Data.setSpellbookSpells(this.document, cleanSpells);
+      ui.notifications.info(`Cleaned up duplicate spells in ${this.document.name}.`);
+    }
+
+    // Group clean spells by level
     const levels = {};
     for (const spell of spells) {
       const lvl = Number(spell.level ?? 0);
@@ -76,7 +102,6 @@ export class NpcSpellbookSheet extends HandlebarsApplicationMixin(ItemSheetV2) {
       btn.addEventListener("click", (e) => {
         e.preventDefault();
         
-        // V13 ApplicationV2 requires tab and group identifier ("primary")
         if (typeof ui.sidebar?.changeTab === "function") {
           ui.sidebar.changeTab("compendium", "primary");
         } else if (typeof ui.sidebar?.activateTab === "function") {
@@ -109,7 +134,7 @@ export class NpcSpellbookSheet extends HandlebarsApplicationMixin(ItemSheetV2) {
           const existing = Data.getSpellbookSpells(this.document);
           
           // Check for existing duplicate spell
-          const isDuplicate = existing.some((s) => s.uuid === item.uuid || (s.name === item.name && Number(s.level) === Number(item.system?.level ?? 0)));
+          const isDuplicate = existing.some((s) => s.uuid === item.uuid || (s.name.toLowerCase() === item.name.toLowerCase() && Number(s.level) === Number(item.system?.level ?? 0)));
           if (isDuplicate) {
             ui.notifications.warn(`"${item.name}" is already in this spellbook.`);
             return;
