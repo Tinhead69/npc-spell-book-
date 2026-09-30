@@ -41,18 +41,16 @@ export class NpcSpellbookSheet extends HandlebarsApplicationMixin(ItemSheetV2) {
     let hasDuplicates = false;
 
     for (const spell of spells) {
-      // Key by UUID if available, or fall back to Name + Level
       const key = spell.uuid ? spell.uuid : `${spell.name?.toLowerCase()}-${spell.level}`;
       
       if (seenKeys.has(key)) {
-        hasDuplicates = true; // Found a duplicate!
+        hasDuplicates = true;
       } else {
         seenKeys.add(key);
         cleanSpells.push(spell);
       }
     }
 
-    // Save cleaned list back to the document if duplicates were stripped
     if (hasDuplicates && Data.setSpellbookSpells) {
       spells = cleanSpells;
       await Data.setSpellbookSpells(this.document, cleanSpells);
@@ -76,10 +74,18 @@ export class NpcSpellbookSheet extends HandlebarsApplicationMixin(ItemSheetV2) {
   }
 
   static async _onDeleteSpell(event, target) {
-    const spellId = target.dataset.spellId;
-    if (!Data.getSpellbookSpells || !Data.setSpellbookSpells) return;
+    event.preventDefault();
+    event.stopPropagation();
+
+    // Find the spell ID from target or nearest element containing dataset
+    const btn = target.closest("[data-spell-id]");
+    const spellId = btn?.dataset?.spellId || target.dataset?.spellId;
+    
+    if (!spellId || !Data.getSpellbookSpells || !Data.setSpellbookSpells) return;
+
     let spells = Data.getSpellbookSpells(this.document);
-    spells = spells.filter((s) => s.id !== spellId && s.uuid !== spellId && s.name !== target.dataset.spellName);
+    spells = spells.filter((s) => s.id !== spellId && s.uuid !== spellId);
+    
     await Data.setSpellbookSpells(this.document, spells);
     this.render(false);
   }
@@ -112,7 +118,12 @@ export class NpcSpellbookSheet extends HandlebarsApplicationMixin(ItemSheetV2) {
       });
     });
 
-    // 2. Drag & Drop Listener with Duplicate Prevention
+    // 2. Delete Spell Button listeners (Trashcan icons / buttons)
+    html.querySelectorAll(".delete-spell, .spell-delete, [data-action='deleteSpell']").forEach((btn) => {
+      btn.addEventListener("click", (e) => NpcSpellbookSheet._onDeleteSpell.call(this, e, e.currentTarget));
+    });
+
+    // 3. Drag & Drop Listener with Duplicate Prevention
     if (this._dropHandler) {
       html.removeEventListener("drop", this._dropHandler);
     }
@@ -133,7 +144,6 @@ export class NpcSpellbookSheet extends HandlebarsApplicationMixin(ItemSheetV2) {
         if (item && item.type === "spell") {
           const existing = Data.getSpellbookSpells(this.document);
           
-          // Check for existing duplicate spell
           const isDuplicate = existing.some((s) => s.uuid === item.uuid || (s.name.toLowerCase() === item.name.toLowerCase() && Number(s.level) === Number(item.system?.level ?? 0)));
           if (isDuplicate) {
             ui.notifications.warn(`"${item.name}" is already in this spellbook.`);
