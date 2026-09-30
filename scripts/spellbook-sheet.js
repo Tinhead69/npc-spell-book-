@@ -53,7 +53,7 @@ export class NpcSpellbookSheet extends HandlebarsApplicationMixin(ItemSheetV2) {
     const spellId = target.dataset.spellId;
     if (!Data.getSpellbookSpells || !Data.setSpellbookSpells) return;
     let spells = Data.getSpellbookSpells(this.document);
-    spells = spells.filter((s) => s.id !== spellId && s.uuid !== spellId);
+    spells = spells.filter((s) => s.id !== spellId && s.uuid !== spellId && s.name !== target.dataset.spellName);
     await Data.setSpellbookSpells(this.document, spells);
     this.render(false);
   }
@@ -71,27 +71,32 @@ export class NpcSpellbookSheet extends HandlebarsApplicationMixin(ItemSheetV2) {
 
     const html = this.element;
 
-    // 1. Add Spell Button listener
+    // 1. Add Spell Button listener (Opens compendiums tab/browser)
     html.querySelectorAll(".add-spell, .add-spell-btn").forEach((btn) => {
       btn.addEventListener("click", (e) => {
         e.preventDefault();
-        const spellPack = game.packs.get("dnd5e.spells") || 
-                          game.packs.find((p) => p.metadata.type === "Item" && p.index.some((i) => i.type === "spell"));
-
-        if (spellPack) {
-          spellPack.render(true);
-          ui.notifications.info("Drag and drop spells from the compendium into this spellbook.");
+        
+        // Check if dnd5e compendium browser exists
+        if (game.dnd5e?.applications?.compendiumBrowser) {
+          game.dnd5e.applications.compendiumBrowser.openTab("spells");
         } else {
+          // Open Compendium Sidebar Tab so user can pick from ANY spell compendium
           ui.sidebar.activateTab("compendiums");
-          ui.notifications.info("Drag and drop spells into this spellbook.");
         }
+        ui.notifications.info("Drag and drop spells from any compendium into this spellbook.");
       });
     });
 
-    // 2. Drag & Drop Listener for adding spells directly to sheet
-    html.addEventListener("dragover", (e) => e.preventDefault());
-    html.addEventListener("drop", async (e) => {
+    // 2. Drag & Drop Listener with Duplicate Guard
+    // Remove existing drop listener if re-rendering to prevent duplicate handlers
+    if (this._dropHandler) {
+      html.removeEventListener("drop", this._dropHandler);
+    }
+
+    this._dropHandler = async (e) => {
       e.preventDefault();
+      e.stopPropagation();
+
       let data;
       try {
         data = JSON.parse(e.dataTransfer.getData("text/plain"));
@@ -102,25 +107,36 @@ export class NpcSpellbookSheet extends HandlebarsApplicationMixin(ItemSheetV2) {
       if (data?.type === "Item") {
         const item = await Item.implementation.fromDropData(data);
         if (item && item.type === "spell") {
+          const existing = Data.getSpellbookSpells(this.document);
+          
+          // Check if spell already exists in the book
+          const isDuplicate = existing.some((s) => s.uuid === item.uuid || (s.name === item.name && s.level === (item.system?.level ?? 0)));
+          if (isDuplicate) {
+            ui.notifications.warn(`"${item.name}" is already in this spellbook.`);
+            return;
+          }
+
           if (typeof Data.addSpellToSpellbook === "function") {
             await Data.addSpellToSpellbook(this.document, item);
           } else if (typeof Data.getSpellbookSpells === "function" && typeof Data.setSpellbookSpells === "function") {
-            const spells = Data.getSpellbookSpells(this.document);
-            spells.push({
-              id: item.id,
+            existing.push({
+              id: item.id ?? foundry.utils.randomID(),
               uuid: item.uuid,
               name: item.name,
               img: item.img,
               level: item.system?.level ?? 0,
               components: item.labels?.components?.vsm ?? ""
             });
-            await Data.setSpellbookSpells(this.document, spells);
+            await Data.setSpellbookSpells(this.document, existing);
           }
           this.render(false);
         } else {
           ui.notifications.warn("Only spells can be added to a spellbook.");
         }
       }
-    });
+    };
+
+    html.addEventListener("dragover", (e) => e.preventDefault());
+    html.addEventListener("drop", this._dropHandler);
   }
 }
