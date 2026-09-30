@@ -17,11 +17,9 @@ export class NpcSpellbookSheet extends HandlebarsApplicationMixin(ItemSheetV2) {
       closeOnSubmit: false
     },
     actions: {
-      addSpell: NpcSpellbookSheet.#onAddSpell,
       deleteSpell: NpcSpellbookSheet.#onDeleteSpell,
       studySpellbook: NpcSpellbookSheet.#onStudySpellbook
-    },
-    dragDrop: [{ dropSelector: ".npc-spellbook-container" }]
+    }
   };
 
   static PARTS = {
@@ -51,24 +49,7 @@ export class NpcSpellbookSheet extends HandlebarsApplicationMixin(ItemSheetV2) {
     await this.document.update(formData.object);
   }
 
-  static async #onAddSpell(event, target) {
-    event.preventDefault();
-    
-    // Open the dnd5e spells compendium pack or notify the user
-    const spellPack = game.packs.get("dnd5e.spells") || 
-                      game.packs.find((p) => p.metadata.type === "Item" && p.index.some((i) => i.type === "spell"));
-
-    if (spellPack) {
-      spellPack.render(true);
-      ui.notifications.info("Drag and drop spells from the compendium directly into this spellbook.");
-    } else {
-      ui.sidebar.activateTab("compendiums");
-      ui.notifications.info("Drag and drop spells into this spellbook.");
-    }
-  }
-
   static async #onDeleteSpell(event, target) {
-    event.preventDefault();
     const spellId = target.dataset.spellId;
     let spells = getSpellbookSpells(this.document);
     spells = spells.filter((s) => s.id !== spellId && s.uuid !== spellId);
@@ -77,32 +58,10 @@ export class NpcSpellbookSheet extends HandlebarsApplicationMixin(ItemSheetV2) {
   }
 
   static async #onStudySpellbook(event, target) {
-    event.preventDefault();
     try {
       new StudySpellbookDialog({ spellbook: this.document }).render(true);
     } catch (err) {
       console.error("NPC Spellbook | Failed to open Study Dialog:", err);
-    }
-  }
-
-  /** Handle item drag and drop onto the sheet */
-  async _onDrop(event) {
-    event.preventDefault();
-    let data;
-    try {
-      data = JSON.parse(event.dataTransfer.getData("text/plain"));
-    } catch (err) {
-      return;
-    }
-
-    if (data.type === "Item") {
-      const item = await Item.implementation.fromDropData(data);
-      if (item && item.type === "spell") {
-        await addSpellToSpellbook(this.document, item);
-        this.render(false);
-      } else {
-        ui.notifications.warn("Only spells can be added to a spellbook.");
-      }
     }
   }
 
@@ -111,19 +70,59 @@ export class NpcSpellbookSheet extends HandlebarsApplicationMixin(ItemSheetV2) {
 
     const html = this.element;
 
-    // Add Spell button listener
+    // 1. Add Spell Button
     html.querySelectorAll(".add-spell").forEach((btn) => {
-      btn.addEventListener("click", (e) => NpcSpellbookSheet.#onAddSpell.call(this, e, e.currentTarget));
+      btn.addEventListener("click", (e) => {
+        e.preventDefault();
+        const spellPack = game.packs.get("dnd5e.spells") || 
+                          game.packs.find((p) => p.metadata.type === "Item" && p.index.some((i) => i.type === "spell"));
+
+        if (spellPack) {
+          spellPack.render(true);
+          ui.notifications.info("Drag and drop spells from the compendium into this spellbook.");
+        } else {
+          ui.sidebar.activateTab("compendiums");
+          ui.notifications.info("Drag and drop spells into this spellbook.");
+        }
+      });
     });
 
-    // Delete Spell button listener
+    // 2. Delete Spell Buttons
     html.querySelectorAll(".delete-spell").forEach((btn) => {
-      btn.addEventListener("click", (e) => NpcSpellbookSheet.#onDeleteSpell.call(this, e, e.currentTarget));
+      btn.addEventListener("click", (e) => {
+        e.preventDefault();
+        NpcSpellbookSheet.#onDeleteSpell.call(this, e, e.currentTarget);
+      });
     });
 
-    // Study Spellbook button listener
+    // 3. Study Spellbook Button
     html.querySelectorAll(".study-spellbook").forEach((btn) => {
-      btn.addEventListener("click", (e) => NpcSpellbookSheet.#onStudySpellbook.call(this, e, e.currentTarget));
+      btn.addEventListener("click", (e) => {
+        e.preventDefault();
+        NpcSpellbookSheet.#onStudySpellbook.call(this, e, e.currentTarget);
+      });
+    });
+
+    // 4. Drag & Drop Event Listeners
+    html.addEventListener("dragover", (e) => e.preventDefault());
+    html.addEventListener("drop", async (e) => {
+      e.preventDefault();
+      let data;
+      try {
+        data = JSON.parse(e.dataTransfer.getData("text/plain"));
+      } catch (err) {
+        return;
+      }
+
+      if (data?.type === "Item") {
+        const item = await Item.implementation.fromDropData(data);
+        if (item && item.type === "spell") {
+          await addSpellToSpellbook(this.document, item);
+          this.render(false);
+        } else {
+          ui.notifications.warn("Only spells can be added to a spellbook.");
+        }
+      }
     });
   }
 }
