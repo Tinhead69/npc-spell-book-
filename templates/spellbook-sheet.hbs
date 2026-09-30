@@ -1,70 +1,50 @@
-<div class="npc-spellbook-container flexcol">
-  <header class="sheet-header flexrow">
-    <img class="profile-img" src="{{#if item.img}}{{item.img}}{{else}}icons/svg/book.svg{{/if}}" data-edit="img" title="{{item.name}}"/>
-    <div class="header-fields">
-      <h1 class="charname">
-        <input name="name" type="text" value="{{item.name}}" placeholder="Spellbook Name"/>
-      </h1>
-      <p class="notes">
-        This spellbook is independent of character spellbooks. Wizards may transcribe spells using 5e 2014 rules.
-      </p>
+<form class="{{cssClass}}" autocomplete="off">
+  <header class="sheet-header" style="display: flex; gap: 10px; align-items: center; margin-bottom: 10px;">
+    <img class="profile-img" src="{{item.img}}" data-edit="img" title="{{item.name}}" width="64" height="64" style="border-radius: 4px; object-fit: cover;"/>
+    <div class="header-fields" style="flex: 1;">
+      <h1 class="charname" style="margin: 0;"><input name="name" type="text" value="{{item.name}}" placeholder="Spellbook Name"/></h1>
     </div>
   </header>
 
-  <section class="sheet-body flexcol">
-    <div class="sheet-actions flexrow">
-      {{#if isGM}}
-        <button type="button" class="add-spell"><i class="fas fa-plus"></i> Add Spell</button>
-      {{/if}}
-      <button type="button" class="study-spellbook" data-action="studySpellbook"><i class="fas fa-scroll"></i> Study Spellbook</button>
-    </div>
+  <!-- ACTION BUTTONS ROW (3 EQUALLY SPACED BUTTONS) -->
+  <div class="spellbook-actions" style="display: flex; gap: 6px; margin-bottom: 10px; width: 100%;">
+    {{#if isGM}}
+      <button type="button" class="add-spell-btn" style="flex: 1; padding: 4px 8px; font-size: 11px; display: flex; align-items: center; justify-content: center; gap: 4px; white-space: nowrap;">
+        <i class="fas fa-plus"></i> Add Spell
+      </button>
+      <button type="button" class="clear-spellbook-btn" data-action="clearSpellbook" style="flex: 1; padding: 4px 8px; font-size: 11px; display: flex; align-items: center; justify-content: center; gap: 4px; white-space: nowrap;">
+        <i class="fas fa-trash-alt"></i> Clear Spellbook
+      </button>
+    {{/if}}
+    <button type="button" class="study-spellbook-btn" data-action="studySpellbook" style="flex: 1; padding: 4px 8px; font-size: 11px; display: flex; align-items: center; justify-content: center; gap: 4px; white-space: nowrap;">
+      <i class="fas fa-book-open"></i> Study Spellbook
+    </button>
+  </div>
 
+  <section class="sheet-body">
     <div class="spells-list">
       {{#each spellLevels as |spells level|}}
-        <div class="spell-level-block">
-          <div class="spell-level-header">
-            {{#if (eq level 0)}}Cantrips{{else}}Level {{level}}{{/if}}
-          </div>
-          <table class="spells-table">
-            <thead>
-              <tr>
-                <th class="col-name">Name</th>
-                <th class="col-time">Time</th>
-                <th class="col-range">Range</th>
-                <th class="col-target">Target</th>
-                <th class="col-actions"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {{#each spells as |spell|}}
-                <tr class="spell-item" data-spell-id="{{spell.id}}">
-                  <td class="col-name">
-                    <div class="spell-name-cell">
-                      <img src="{{spell.img}}" class="spell-icon" />
-                      <div class="spell-details">
-                        <span class="spell-title">{{spell.name}}</span>
-                        {{#if spell.components}}
-                          <span class="spell-components">{{spell.components}}</span>
-                        {{/if}}
-                      </div>
-                    </div>
-                  </td>
-                  <td class="col-time">{{#if spell.activation.cost}}{{spell.activation.cost}} {{spell.activation.type}}{{else}}A{{/if}}</td>
-                  <td class="col-range">{{#if spell.range.value}}{{spell.range.value}} {{spell.range.units}}{{else}}—{{/if}}</td>
-                  <td class="col-target">{{#if spell.target.value}}{{spell.target.value}} {{spell.target.units}}{{else}}—{{/if}}</td>
-                  <td class="col-actions">
-                    <a class="delete-spell" data-spell-id="{{spell.id}}" title="Delete Spell">
-                      <i class="fas fa-trash"></i>
-                    </a>
-                  </td>
-                </tr>
-              {{/each}}
-            </tbody>
-          </table>
+        <div class="spell-level-group" style="margin-bottom: 12px;">
+          <h3 style="border-bottom: 1px solid #7a7971; margin: 0 0 4px 0; padding-bottom: 2px; font-size: 13px;">
+            Level {{level}}
+          </h3>
+          <ul style="list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 2px;">
+            {{#each spells}}
+              <li data-spell-id="{{this.id}}" data-spell-name="{{this.name}}" style="display: flex; align-items: center; justify-content: space-between; padding: 2px 6px; background: rgba(0,0,0,0.04); border-radius: 3px; font-size: 11px;">
+                <div style="display: flex; align-items: center; gap: 6px;">
+                  <img src="{{this.img}}" width="20" height="20" style="border: none; border-radius: 2px;" />
+                  <span><strong>{{this.name}}</strong></span>
+                </div>
+                {{#if ../../isGM}}
+                  <a class="delete-spell" data-action="deleteSpell" title="Delete Spell" style="cursor: pointer; color: #a00;">
+                    <i class="fas fa-trash"></i>
+                  </a>
+                {{/if}}
+              </li>
+            {{/each}}
+          </ul>
         </div>
-      {{else}}
-        <p class="empty-notice">No spells recorded in this spellbook yet. Drop spell items here to add them.</p>
       {{/each}}
     </div>
   </section>
-</div>
+</form>
