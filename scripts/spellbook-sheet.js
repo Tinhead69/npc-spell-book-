@@ -1,4 +1,5 @@
 import { getSpellbookSpells, setSpellbookSpells } from "./data.js";
+import { StudySpellbookDialog } from "./learn-dialog.js";
 
 const { ItemSheetV2 } = foundry.applications.sheets;
 const { HandlebarsApplicationMixin } = foundry.applications.api;
@@ -58,7 +59,6 @@ export class NpcSpellbookSheet extends HandlebarsApplicationMixin(ItemSheetV2) {
 
   static async #onStudySpellbook(event, target) {
     try {
-      const { StudySpellbookDialog } = await import("./learn-dialog.js");
       new StudySpellbookDialog({ spellbook: this.document }).render(true);
     } catch (err) {
       console.error("NPC Spellbook | Failed to open Study Dialog:", err);
