@@ -4,6 +4,13 @@ export const MODULE_ID = "npc-spell-book";
 export const SPELLBOOK_ICON = "icons/svg/book.svg";
 
 /**
+ * Helper to safely get an entry ID or identifier.
+ */
+export function getEntryId(doc) {
+  return doc?._id || doc?.id || foundry.utils.randomID();
+}
+
+/**
  * Retrieves the stored spells array from the spellbook item.
  * @param {Item} item - The spellbook item.
  * @returns {Array} List of stored spells.
