@@ -86,14 +86,14 @@
 }
 
 .npc-spellbook-sheet .level-title {
-  flex: 2.5;
+  flex: 2.2;
   font-size: 0.95em;
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
 
 .npc-spellbook-sheet .header-columns {
-  flex: 3;
+  flex: 3.8;
   display: flex;
   font-size: 0.7em;
   text-transform: uppercase;
@@ -110,7 +110,7 @@
 .npc-spellbook-sheet .spell-row {
   display: flex;
   align-items: center;
-  padding: 5px 8px;
+  padding: 6px 8px;
   background: #111216;
   border-bottom: 1px solid #1a1c23;
 }
@@ -123,42 +123,50 @@
   background: #181a22;
 }
 
-/* Column Alignment */
+/* Column Alignment & Flex adjustments to fit longer text */
 .npc-spellbook-sheet .col-name {
-  flex: 2.5;
+  flex: 2.2;
   display: flex;
   align-items: center;
   gap: 8px;
+  overflow: hidden;
 }
 
 .npc-spellbook-sheet .col-time,
 .npc-spellbook-sheet .header-columns .col-time {
-  flex: 1;
+  flex: 1.2;
   text-align: center;
-  font-size: 0.8em;
+  font-size: 0.75em;
   color: #bbb;
+  padding: 0 2px;
+  word-break: break-word;
 }
 
 .npc-spellbook-sheet .col-range,
 .npc-spellbook-sheet .header-columns .col-range {
-  flex: 1;
+  flex: 1.2;
   text-align: center;
-  font-size: 0.8em;
+  font-size: 0.75em;
   color: #bbb;
+  padding: 0 2px;
+  word-break: break-word;
 }
 
 .npc-spellbook-sheet .col-target,
 .npc-spellbook-sheet .header-columns .col-target {
-  flex: 1;
+  flex: 1.4;
   text-align: center;
-  font-size: 0.8em;
+  font-size: 0.75em;
   color: #bbb;
+  padding: 0 2px;
+  word-break: break-word;
 }
 
 .npc-spellbook-sheet .col-actions,
 .npc-spellbook-sheet .header-columns .col-actions {
   width: 25px;
   text-align: right;
+  flex-shrink: 0;
 }
 
 /* Icons & Labels */
@@ -168,22 +176,30 @@
   border: 1px solid #3a3f50;
   border-radius: 3px;
   object-fit: cover;
+  flex-shrink: 0;
 }
 
 .npc-spellbook-sheet .spell-details {
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 .npc-spellbook-sheet .spell-title {
   color: #ffffff;
   font-weight: bold;
   font-size: 0.9em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .npc-spellbook-sheet .spell-components {
-  color: #777777;
-  font-size: 0.7em;
+  color: #888888;
+  font-size: 0.65em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .npc-spellbook-sheet .spell-delete {
