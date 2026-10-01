@@ -1,4 +1,4 @@
-import { getSpellbookSpells, setSpellbookSpells } from "./data.js";
+import { addSpellToSpellbook, getSpellbookSpells } from "./data.js";
 
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
 
@@ -30,13 +30,11 @@ export class CompendiumSpellPicker extends HandlebarsApplicationMixin(Applicatio
     return `Add Spells to ${this.spellbook?.name ?? "Spellbook"}`;
   }
 
+  /** @override */
   async _prepareContext(options) {
     const context = await super._prepareContext(options);
 
-    // 1. Get all Item Compendiums
     const itemPacks = game.packs.filter((p) => p.metadata.type === "Item");
-    
-    // Auto-select first pack if current selected Pack is missing
     if (!itemPacks.some((p) => p.collection === this.selectedPackId) && itemPacks.length > 0) {
       this.selectedPackId = itemPacks[0].collection;
     }
@@ -62,7 +60,6 @@ export class CompendiumSpellPicker extends HandlebarsApplicationMixin(Applicatio
       { id: "9", label: "9th Level" }
     ].map((lvl) => ({ ...lvl, selected: lvl.id === String(this.selectedLevel) }));
 
-    // 2. Fetch index entries for selected compendium pack
     const targetPack = game.packs.get(this.selectedPackId);
     let spells = [];
 
@@ -75,8 +72,6 @@ export class CompendiumSpellPicker extends HandlebarsApplicationMixin(Applicatio
         if (entry.type !== "spell") continue;
 
         const level = Number(entry.system?.level ?? 0);
-
-        // Filter by selected level
         if (this.selectedLevel !== "all" && String(level) !== String(this.selectedLevel)) {
           continue;
         }
@@ -91,20 +86,18 @@ export class CompendiumSpellPicker extends HandlebarsApplicationMixin(Applicatio
       }
     }
 
-    // Sort alphabetically
     spells.sort((a, b) => a.name.localeCompare(b.name));
-
     context.spells = spells;
     context.hasSpells = spells.length > 0;
 
     return context;
   }
 
+  /** @override */
   _onRender(context, options) {
     super._onRender(context, options);
     const html = this.element;
 
-    // Handle Pack Selection Change
     const packSelect = html.querySelector("#pack-select");
     if (packSelect) {
       packSelect.addEventListener("change", (e) => {
@@ -113,7 +106,6 @@ export class CompendiumSpellPicker extends HandlebarsApplicationMixin(Applicatio
       });
     }
 
-    // Handle Level Filter Change
     const levelSelect = html.querySelector("#level-select");
     if (levelSelect) {
       levelSelect.addEventListener("change", (e) => {
@@ -122,7 +114,6 @@ export class CompendiumSpellPicker extends HandlebarsApplicationMixin(Applicatio
       });
     }
 
-    // Handle Add Spell Button
     html.querySelectorAll(".add-picker-spell-btn").forEach((btn) => {
       btn.addEventListener("click", async (e) => {
         e.preventDefault();
@@ -133,20 +124,7 @@ export class CompendiumSpellPicker extends HandlebarsApplicationMixin(Applicatio
         if (!spellDoc) return;
 
         btn.disabled = true;
-
-        if (typeof addSpellToSpellbook === "function") {
-          await addSpellToSpellbook(this.spellbook, spellDoc);
-        } else {
-          const spells = getSpellbookSpells(this.spellbook);
-          spells.push({
-            id: spellDoc.id,
-            uuid: spellDoc.uuid,
-            name: spellDoc.name,
-            img: spellDoc.img,
-            level: Number(spellDoc.system?.level ?? 0)
-          });
-          await setSpellbookSpells(this.spellbook, spells);
-        }
+        await addSpellToSpellbook(this.spellbook, spellDoc);
 
         ui.notifications.info(`Added "${spellDoc.name}" to ${this.spellbook.name}.`);
         this.render(false);
