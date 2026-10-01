@@ -51,7 +51,7 @@ export class CompendiumSpellPicker extends HandlebarsApplicationMixin(Applicatio
     for (let i = 0; i <= 9; i++) {
       levelGroups[i] = {
         level: i,
-        label: i === 0 ? "Cantrips" : `Level ${i}`,
+        label: i === 0 ? "CANTRIPS" : `LEVEL ${i}`,
         spells: []
       };
     }
@@ -76,10 +76,8 @@ export class CompendiumSpellPicker extends HandlebarsApplicationMixin(Applicatio
         const level = Number(sys.level ?? 0);
         if (level < 0 || level > 9) continue;
 
-        // School formatting
         const school = sys.school ? (CONFIG.dnd5e?.spellSchools?.[sys.school] ?? sys.school) : "—";
 
-        // Casting Time / Activation
         let time = "—";
         const activation = sys.activation;
         if (typeof activation === "string") {
@@ -90,7 +88,6 @@ export class CompendiumSpellPicker extends HandlebarsApplicationMixin(Applicatio
           time = `${cost}${typeMap[activation.type] || activation.type}`;
         }
 
-        // Range
         let range = "—";
         const rng = sys.range;
         if (typeof rng === "string") {
@@ -117,12 +114,16 @@ export class CompendiumSpellPicker extends HandlebarsApplicationMixin(Applicatio
       }
     }
 
-    // Sort spells alphabetically within each level and filter out empty levels
+    // Sort spells alphabetically within each level group
     Object.values(levelGroups).forEach(group => {
       group.spells.sort((a, b) => a.name.localeCompare(b.name));
     });
 
-    context.activeLevels = Object.values(levelGroups).filter(group => group.spells.length > 0);
+    // Filter out empty levels and sort levels numerically from 0 to 9
+    context.activeLevels = Object.values(levelGroups)
+      .filter((group) => group.spells.length > 0)
+      .sort((a, b) => a.level - b.level);
+
     context.hasSpells = context.activeLevels.length > 0;
 
     return context;
