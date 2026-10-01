@@ -1,7 +1,10 @@
 import { MODULE_ID } from "./data.js";
 import { CompendiumSpellPicker } from "./spellbook-compendium.js";
 
-export class NpcSpellbookSheet extends ItemSheet {
+// Safely resolve the V1 compatibility ItemSheet class
+const BaseItemSheet = foundry.appv1?.sheets?.ItemSheet ?? globalThis.ItemSheet;
+
+export class NpcSpellbookSheet extends BaseItemSheet {
   static get defaultOptions() {
     return foundry.utils.mergeObject(super.defaultOptions, {
       id: "npc-spellbook-sheet",
