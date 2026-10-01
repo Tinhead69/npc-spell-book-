@@ -63,3 +63,15 @@ export async function addSpellToSpellbook(spellbook, spellDoc) {
   await spellbook.setFlag(MODULE_ID, "spells", rawSpells);
   await spellbook.update({ "system.spells": rawSpells });
 }
+/**
+ * Removes a spell document from the spellbook item's flags and system data.
+ * @param {Item} spellbook - The spellbook item.
+ * @param {string} uuid - The UUID of the spell being removed.
+ */
+export async function removeSpellFromSpellbook(spellbook, uuid) {
+  let rawSpells = getSpellbookSpells(spellbook);
+  const updatedSpells = rawSpells.filter(s => s.uuid !== uuid);
+
+  await spellbook.setFlag(MODULE_ID, "spells", updatedSpells);
+  await spellbook.update({ "system.spells": updatedSpells });
+}
