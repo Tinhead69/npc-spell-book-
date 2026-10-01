@@ -1,5 +1,8 @@
 import { MODULE_ID } from "./data.js";
 
+import { MODULE_ID } from "./data.js";
+import { SpellBrowserApp } from "./spellbook-compendium.js";
+
 export class NpcSpellbookSheet extends ItemSheet {
   static get defaultOptions() {
     return foundry.utils.mergeObject(super.defaultOptions, {
