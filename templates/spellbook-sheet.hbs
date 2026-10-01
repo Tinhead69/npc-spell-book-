@@ -1,63 +1,60 @@
-<form class="{{cssClass}}" autocomplete="off">
-  <!-- Header Section -->
-  <header class="sheet-header">
-    <div class="header-top-row">
-      <h1 class="item-name">{{item.name}}</h1>
-    </div>
-    <div class="header-actions">
-      <button type="button" class="btn add-spell-btn"><i class="fas fa-plus"></i> Add Spell</button>
-      <button type="button" class="btn study-spellbook-btn"><i class="fas fa-book-reader"></i> Study Spellbook</button>
-      <button type="button" class="btn clear-spellbook-btn"><i class="fas fa-trash-alt"></i> Clear Spellbook</button>
+<form class="{{cssClass}} flexcol" autocomplete="off" style="padding: 6px; background: #191919; color: #f0f0f0; border: none;">
+  <!-- Header / Action Buttons -->
+  <header class="sheet-header flexrow" style="padding: 4px; align-items: center; margin-bottom: 8px; border: none; gap: 8px;">
+    <img src="{{img}}" data-edit="img" alt="{{name}}" width="48" height="48" style="flex: 0 0 48px; border: none; border-radius: 4px; object-fit: contain;" />
+    <div style="flex: 1; font-size: 1.2rem; font-weight: bold; color: #fff;">{{name}}</div>
+    <div style="display: flex; gap: 6px;">
+      <button type="button" class="add-spell-btn" style="padding: 4px 8px; font-size: 0.85rem; background: #222; color: #fff; border: 1px solid #444;">
+        <i class="fas fa-plus"></i> Add Spell
+      </button>
+      <button type="button" class="clear-book-btn" style="padding: 4px 8px; font-size: 0.85rem; background: #222; color: #ff8888; border: 1px solid #444;" title="Clear Spellbook">
+        <i class="fas fa-trash"></i>
+      </button>
     </div>
   </header>
 
-  <!-- Main Scrollable Content Area -->
-  <section class="sheet-body spellbook-body">
-    {{#each activeLevels as |group|}}
-      <div class="level-group">
-        <!-- Level Header Bar with Column Titles -->
-        <div class="level-header">
-          <span class="level-title">{{group.label}}</span>
-          <div class="header-columns">
-            <span class="col-time">TIME</span>
-            <span class="col-range">RANGE</span>
-            <span class="col-target">TARGET</span>
-            <span class="col-actions"></span>
-          </div>
-        </div>
+  <!-- Spell List Body Grouped by Level -->
+  <section class="sheet-body" style="flex: 1; overflow-y: auto; max-height: 520px; border: none;">
+    <ol class="items-list inventory-list directory-list" style="list-style: none; padding: 0; margin: 0;">
+      {{#if hasSpells}}
+        {{#each activeLevels}}
+          <!-- Matching Dark Red Header Bar -->
+          <li class="item-header flexrow" style="background-color: #3c1618 !important; background: #3c1618 !important; color: #fff !important; padding: 4px 8px; font-weight: bold; margin-top: 8px; border-radius: 3px; align-items: center; border: none;">
+            <div class="item-name" style="flex: 1; color: #fff;">{{label}}</div>
+            <div class="item-detail" style="width: 75px; text-align: center; color: #fff;">TIME</div>
+            <div class="item-detail" style="width: 75px; text-align: center; color: #fff;">RANGE</div>
+            <div class="item-detail" style="width: 90px; text-align: center; color: #fff;">TARGET</div>
+            <div class="item-controls" style="width: 40px; text-align: right;"></div>
+          </li>
 
-        <!-- Spell List -->
-        <div class="spell-list">
-          {{#each group.spells as |spell|}}
-            <div class="spell-row" data-spell-id="{{spell._id}}">
-              <!-- Name, Icon, Components -->
-              <div class="col-name">
-                <img class="spell-icon" src="{{spell.img}}" title="{{spell.name}}"/>
-                <div class="spell-details">
-                  <span class="spell-title">{{spell.name}}</span>
-                  {{#if spell.components}}
-                    <span class="spell-components">{{spell.components}}</span>
-                  {{/if}}
+          <ol class="item-list" style="list-style: none; padding: 0; margin: 2px 0 6px 0;">
+            {{#each spells}}
+              <li class="spell-row flexrow item" style="align-items: center; padding: 4px 6px; border-bottom: 1px solid #333;">
+                <div class="item-name flexrow" style="flex: 1; align-items: center; gap: 8px;">
+                  <img src="{{img}}" alt="{{name}}" width="28" height="28" style="width: 28px; height: 28px; flex: 0 0 28px; border: none; border-radius: 3px; object-fit: contain;" />
+                  <span class="spell-name" style="font-weight: 500; color: #f0f0f0;">{{name}}</span>
                 </div>
-              </div>
-
-              <!-- Time, Range, Target -->
-              <span class="col-time">{{spell.time}}</span>
-              <span class="col-range">{{spell.range}}</span>
-              <span class="col-target">{{spell.target}}</span>
-
-              <!-- Actions -->
-              <div class="col-actions">
-                <a class="spell-delete" title="Delete Spell"><i class="fas fa-trash"></i></a>
-              </div>
-            </div>
-          {{/each}}
-        </div>
-      </div>
-    {{else}}
-      <div class="empty-notice">
-        <p>No spells currently recorded in this spellbook.</p>
-      </div>
-    {{/each}}
+                <div class="item-detail" style="width: 75px; text-align: center; font-size: 0.85rem; opacity: 0.8;">
+                  {{#if system.activation}}{{system.activation.cost}} {{system.activation.type}}{{else}}—{{/if}}
+                </div>
+                <div class="item-detail" style="width: 75px; text-align: center; font-size: 0.85rem; opacity: 0.8;">
+                  {{#if system.range.units}}{{system.range.units}}{{else}}—{{/if}}
+                </div>
+                <div class="item-detail" style="width: 90px; text-align: center; font-size: 0.85rem; opacity: 0.8;">
+                  {{#if system.target.value}}{{system.target.value}} {{system.target.units}}{{else}}—{{/if}}
+                </div>
+                <div class="item-controls" style="width: 40px; text-align: right;">
+                  <button type="button" class="remove-spell-btn" data-uuid="{{uuid}}" style="background: none; border: none; color: #ff8888; cursor: pointer;" title="Remove Spell">
+                    <i class="fas fa-trash"></i>
+                  </button>
+                </div>
+              </li>
+            {{/each}}
+          </ol>
+        {{/each}}
+      {{else}}
+        <p class="notes" style="text-align: center; padding: 2rem; opacity: 0.7; color: #bbb;">This spellbook is empty. Click "Add Spell" to add spells.</p>
+      {{/if}}
+    </ol>
   </section>
 </form>
