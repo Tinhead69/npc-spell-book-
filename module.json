@@ -1,16 +1,16 @@
 {
-  "id": "npc-spellbook",
-  "title": "NPC Spellbook & Study",
-  "version": "0.22.23",
+  "id": "npc-spell-book",
+  "title": "NPC Spellbook",
+  "description": "Lootable NPC wizard spellbooks that let wizard PCs transcribe spells using 5e 2014 rules, independent of the built-in spellbook.",
+  "version": "0.21.23",
   "compatibility": {
     "minimum": "13",
-    "verified": "13"
+    "verified": "13.351"
   },
-  "esmodules": [
-    "scripts/module.js"
-  ],
-  "styles": [
-    "styles/npc-spellbook.css"
+  "authors": [
+    {
+      "name": "Martin Zealey"
+    }
   ],
   "relationships": {
     "systems": [
@@ -22,5 +22,21 @@
         }
       }
     ]
-  }
+  },
+  "esmodules": [
+    "scripts/main.js"
+  ],
+  "styles": [
+    "styles/spellbook.css"
+  ],
+  "languages": [
+    {
+      "lang": "en",
+      "name": "English",
+      "path": "lang/en.json"
+    }
+  ],
+  "url": "https://github.com/Tinhead69/npc-spell-book-",
+  "manifest": "https://raw.githubusercontent.com/Tinhead69/npc-spell-book-/main/module.json",
+  "download": "https://github.com/Tinhead69/npc-spell-book-/archive/refs/heads/main.zip"
 }
