@@ -21,9 +21,11 @@
           <!-- Matching Dark Red Header Bar -->
           <li class="item-header flexrow" style="background-color: #3c1618 !important; background: #3c1618 !important; color: #fff !important; padding: 4px 8px; font-weight: bold; margin-top: 8px; border-radius: 3px; align-items: center; border: none;">
             <div class="item-name" style="flex: 1; color: #fff;">{{label}}</div>
-            <div class="item-detail" style="width: 75px; text-align: center; color: #fff;">TIME</div>
-            <div class="item-detail" style="width: 75px; text-align: center; color: #fff;">RANGE</div>
-            <div class="item-detail" style="width: 90px; text-align: center; color: #fff;">TARGET</div>
+            <div class="item-detail" style="width: 70px; text-align: center; color: #fff;">TIME</div>
+            <div class="item-detail" style="width: 65px; text-align: center; color: #fff;">RANGE</div>
+            <div class="item-detail" style="width: 80px; text-align: center; color: #fff;">TARGET</div>
+            <div class="item-detail" style="width: 55px; text-align: center; color: #fff;">COMP</div>
+            <div class="item-detail" style="width: 75px; text-align: center; color: #fff;">DURATION</div>
             <div class="item-controls" style="width: 40px; text-align: right;"></div>
           </li>
 
@@ -34,14 +36,20 @@
                   <img src="{{img}}" alt="{{name}}" width="28" height="28" style="width: 28px; height: 28px; flex: 0 0 28px; border: none; border-radius: 3px; object-fit: contain; background: #111;" />
                   <span class="spell-name" style="font-weight: 500; color: #f0f0f0;">{{name}}</span>
                 </div>
-                <div class="item-detail" style="width: 75px; text-align: center; font-size: 0.85rem; opacity: 0.8; color: #ccc;">
+                <div class="item-detail" style="width: 70px; text-align: center; font-size: 0.85rem; opacity: 0.8; color: #ccc;">
                   {{time}}
                 </div>
-                <div class="item-detail" style="width: 75px; text-align: center; font-size: 0.85rem; opacity: 0.8; color: #ccc;">
+                <div class="item-detail" style="width: 65px; text-align: center; font-size: 0.85rem; opacity: 0.8; color: #ccc;">
                   {{range}}
                 </div>
-                <div class="item-detail" style="width: 90px; text-align: center; font-size: 0.85rem; opacity: 0.8; color: #ccc;">
+                <div class="item-detail" style="width: 80px; text-align: center; font-size: 0.85rem; opacity: 0.8; color: #ccc;">
                   {{target}}
+                </div>
+                <div class="item-detail" style="width: 55px; text-align: center; font-size: 0.85rem; opacity: 0.8; color: #ccc;">
+                  {{components}}
+                </div>
+                <div class="item-detail" style="width: 75px; text-align: center; font-size: 0.85rem; opacity: 0.8; color: #ccc;">
+                  {{duration}}
                 </div>
                 <div class="item-controls" style="width: 40px; text-align: right;">
                   <button type="button" class="remove-spell-btn" data-uuid="{{uuid}}" style="background: none; border: none; color: #ff8888; cursor: pointer;" title="Remove Spell">
