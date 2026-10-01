@@ -9,7 +9,7 @@ import {
 import { NpcSpellbookSheet } from "./spellbook-sheet.js";
 
 Hooks.once("init", () => {
-  console.log("NPC Spellbook | Initialising V2 Module");
+  console.log("NPC Spellbook | Initialising");
 
   game.settings.register(MODULE_ID, "deductGold", {
     name: "NPC_SPELLBOOK.Settings.DeductGold.Name",
@@ -29,15 +29,15 @@ Hooks.once("init", () => {
     default: true
   });
 
-  // Load templates using V2 handlebars loader
+  // Preload templates
   foundry.applications.handlebars.loadTemplates([
     "modules/npc-spell-book/templates/spellbook-sheet.hbs",
     "modules/npc-spell-book/templates/learn-spells.hbs",
     "modules/npc-spell-book/templates/spell-picker.hbs"
   ]);
 
-  // Register V2 ItemSheet class
-  Items.registerSheet(MODULE_ID, NpcSpellbookSheet, {
+  // Register V2 Sheet Class with DocumentSheetConfig
+  Items.registerSheet("dnd5e", NpcSpellbookSheet, {
     types: ["loot"],
     label: "NPC Spellbook Sheet",
     makeDefault: false
@@ -46,31 +46,18 @@ Hooks.once("init", () => {
   patchItemDirectoryContextMenu();
 });
 
-/** Hook to override sheet opening for items marked as spellbooks */
+/** Override Item double-click / click to open NpcSpellbookSheet when flagged as spellbook */
 Hooks.on("getItemSheetHeaderButtons", (sheet, buttons) => {
-  // Safe hook check for V2 sheet compatibility
+  if (isSpellbook(sheet.document) && !(sheet instanceof NpcSpellbookSheet)) {
+    // If opened in default sheet, render the spellbook sheet instead and close standard sheet
+    setTimeout(() => {
+      new NpcSpellbookSheet({ document: sheet.document }).render(true);
+      sheet.close();
+    }, 10);
+  }
 });
 
-/** Direct ApplicationV2 sheet opening override */
-Hooks.on("renderItemDirectory", (app, htmlOrElement) => {
-  const root = htmlOrElement instanceof HTMLElement ? htmlOrElement : htmlOrElement[0];
-  if (!root) return;
-
-  root.querySelectorAll(".directory-item.document, .directory-item").forEach((el) => {
-    const docId = el.dataset.documentId || el.dataset.entryId;
-    const item = game.items.get(docId);
-    
-    if (item && isSpellbook(item)) {
-      el.addEventListener("dblclick", (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        new NpcSpellbookSheet({ document: item }).render(true);
-      }, true);
-    }
-  });
-});
-
-/** Context menu registration */
+/** Patch sidebar item context menu */
 function patchItemDirectoryContextMenu() {
   const ItemDirectoryClass =
     foundry?.applications?.sidebar?.tabs?.ItemDirectory ?? globalThis.ItemDirectory;
@@ -93,7 +80,7 @@ function patchItemDirectoryContextMenu() {
         const item = game.items.get(getEntryId(li));
         if (!item) return;
         await markAsSpellbook(item);
-        ui.notifications.info(game.i18n.format("NPC_SPELLBOOK.Notifications.MarkedSpellbook", { name: item.name }));
+        new NpcSpellbookSheet({ document: item }).render(true);
       }
     });
 
@@ -124,7 +111,7 @@ function patchItemDirectoryContextMenu() {
   };
 }
 
-/** Helper function to instantiate new V2 Spellbook document */
+/** Create a flagged NPC spellbook loot item */
 async function createNpcSpellbook({ folder = null } = {}) {
   const item = await Item.implementation.create({
     name: "New Spellbook",
@@ -143,3 +130,49 @@ async function createNpcSpellbook({ folder = null } = {}) {
   new NpcSpellbookSheet({ document: item }).render(true);
   return item;
 }
+
+function resolveAppElement(htmlOrElement) {
+  if (!htmlOrElement) return null;
+  if (htmlOrElement instanceof HTMLElement) return htmlOrElement;
+  if (htmlOrElement[0] instanceof HTMLElement) return htmlOrElement[0];
+  if (htmlOrElement.jquery && htmlOrElement[0]) return htmlOrElement[0];
+  return null;
+}
+
+/** Intercept direct clicks in Item sidebar directory */
+Hooks.on("renderItemDirectory", (app, htmlOrElement) => {
+  const root = resolveAppElement(htmlOrElement) ?? app?.element;
+  if (!root) return;
+
+  root.querySelectorAll(".directory-item.document, .directory-item").forEach((el) => {
+    const docId = el.dataset.documentId || el.dataset.entryId;
+    const item = game.items.get(docId);
+
+    if (item && isSpellbook(item)) {
+      el.addEventListener("dblclick", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        new NpcSpellbookSheet({ document: item }).render(true);
+      }, true);
+    }
+  });
+
+  // Create button header action
+  if (root.querySelector(".npc-spellbook-create")) return;
+  const header =
+    root.querySelector(".directory-header .header-actions") ??
+    root.querySelector(".header-actions") ??
+    root.querySelector(".directory-header");
+  if (!header) return;
+
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "npc-spellbook-create";
+  button.title = "Create Spellbook";
+  button.innerHTML = `<i class="fas fa-book"></i>`;
+  button.addEventListener("click", async (event) => {
+    event.preventDefault();
+    await createNpcSpellbook();
+  });
+  header.append(button);
+});
