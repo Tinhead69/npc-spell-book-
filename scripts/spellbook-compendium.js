@@ -7,7 +7,8 @@ export class CompendiumSpellPicker extends HandlebarsApplicationMixin(Applicatio
     super(options);
     this.spellbook = options.spellbook;
     this.selectedPackId = options.selectedPackId ?? "dnd5e.spells";
-    this.selectedLevel = options.selectedLevel ?? "all";
+    // Default to Level 1 instead of all or cantrips
+    this.selectedLevel = options.selectedLevel ?? "1";
   }
 
   static DEFAULT_OPTIONS = {
@@ -46,9 +47,9 @@ export class CompendiumSpellPicker extends HandlebarsApplicationMixin(Applicatio
     }));
 
     context.selectedLevel = this.selectedLevel;
+    
+    // Levels 1 through 9 only (Cantrips excluded per spellbook rules)
     context.levels = [
-      { id: "all", label: "All Levels" },
-      { id: "0", label: "Cantrip" },
       { id: "1", label: "1st Level" },
       { id: "2", label: "2nd Level" },
       { id: "3", label: "3rd Level" },
@@ -72,6 +73,9 @@ export class CompendiumSpellPicker extends HandlebarsApplicationMixin(Applicatio
         if (entry.type !== "spell") continue;
 
         const level = Number(entry.system?.level ?? 0);
+        
+        // Strictly ignore level 0 (cantrips) and respect level filter
+        if (level < 1) continue;
         if (this.selectedLevel !== "all" && String(level) !== String(this.selectedLevel)) {
           continue;
         }
