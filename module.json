@@ -27,7 +27,7 @@
     "scripts/main.js"
   ],
   "styles": [
-    "styles/spellbook-sheet.css"
+    "styles/spellbook.css"
   ],
   "languages": [
     {
