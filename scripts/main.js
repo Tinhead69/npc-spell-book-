@@ -18,7 +18,8 @@ Hooks.once("init", async () => {
   ]);
 
   // Register ApplicationV2 sheet for loot items
-  Items.registerSheet("dnd5e", NpcSpellbookSheet, {
+  // Correct V13 way:
+game.items.registerSheet(...)
     types: ["loot"],
     label: "NPC Spellbook Sheet",
     makeDefault: false
