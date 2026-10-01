@@ -31,12 +31,26 @@ Hooks.once("init", () => {
     default: true
   });
 
+  game.settings.register(MODULE_ID, "rulesetPreference", {
+    name: "Spell Ruleset Preference",
+    hint: "Choose which spell revisions to display in the NPC Spellbook browser.",
+    scope: "world",
+    config: true,
+    type: String,
+    choices: {
+      "2024": "2024 Rules Only (Modern)",
+      "2014": "2014 Rules Only (Legacy)",
+      "both": "Allow Both (2014 & 2024)"
+    },
+    default: "2024"
+  });
+
   foundry.applications.handlebars.loadTemplates([
     "modules/npc-spell-book/templates/spellbook-sheet.hbs",
     "modules/npc-spell-book/templates/learn-spells.hbs"
   ]);
 
-  // FIX 1: Pass "dnd5e" instead of MODULE_ID so Foundry registers the sheet under D&D 5e
+  // Register sheet for "dnd5e" loot items
   Items.registerSheet("dnd5e", NpcSpellbookSheet, {
     types: ["loot"],
     label: "NPC Spellbook",
@@ -134,8 +148,6 @@ async function createNpcSpellbook({ folder = null } = {}) {
   });
 
   ui.notifications.info(game.i18n.format("NPC_SPELLBOOK.Create.Created", { name: item.name }));
-  
-  // FIX 2: Render using item.sheet.render(true) instead of new NpcSpellbookSheet({ document: item })
   item.sheet.render(true);
   return item;
 }
@@ -253,8 +265,6 @@ Hooks.on("renderItemDirectory", (app, html) => {
       el.addEventListener("dblclick", (e) => {
         e.preventDefault();
         e.stopPropagation();
-        
-        // FIX 2: Open sheet standardly
         item.sheet.render(true);
       }, true);
     }
