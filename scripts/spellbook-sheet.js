@@ -1,13 +1,11 @@
 import * as Data from "./data.js";
-import { StudySpellbookDialog } from "./learn-dialog.js";
-import { CompendiumSpellPicker } from "./spellbook-compendium.js";
 
 const { ItemSheetV2 } = foundry.applications.sheets;
 const { HandlebarsApplicationMixin } = foundry.applications.api;
 
 export class NpcSpellbookSheet extends HandlebarsApplicationMixin(ItemSheetV2) {
   constructor(options = {}) {
-    // If passed as { item: doc }, convert to V2 standard { document: doc }
+    // Handle both { document: item } and legacy { item: item }
     if (options.item && !options.document) {
       options.document = options.item;
     }
@@ -17,17 +15,18 @@ export class NpcSpellbookSheet extends HandlebarsApplicationMixin(ItemSheetV2) {
   static DEFAULT_OPTIONS = {
     id: "npc-spellbook-sheet",
     classes: ["npc-spellbook", "sheet", "item"],
-    position: {
-      width: 600,
-      height: 650
+    tag: "form",
+    window: {
+      title: "NPC Spellbook",
+      icon: "fas fa-book",
+      resizable: true
     },
-    form: {
-      submitOnChange: true,
-      closeOnSubmit: false
+    position: {
+      width: 550,
+      height: 600
     },
     actions: {
-      deleteSpell: NpcSpellbookSheet._onDeleteSpell,
-      studySpellbook: NpcSpellbookSheet._onStudySpellbook
+      deleteSpell: NpcSpellbookSheet._onDeleteSpell
     }
   };
 
@@ -40,15 +39,15 @@ export class NpcSpellbookSheet extends HandlebarsApplicationMixin(ItemSheetV2) {
   /** @override */
   async _prepareContext(options) {
     const context = await super._prepareContext(options);
-    
-    // Access document from this.document (ApplicationV2 standard)
     const item = this.document;
+
     context.item = item;
     context.isGM = game.user.isGM;
+    context.spells = Data.getSpellbookSpells(item);
 
-    const spells = Data.getSpellbookSpells(item);
+    // Group spells by level
     const levels = {};
-    for (const spell of spells) {
+    for (const spell of context.spells) {
       const lvl = Number(spell.level ?? 0);
       if (!levels[lvl]) levels[lvl] = [];
       levels[lvl].push(spell);
@@ -66,47 +65,28 @@ export class NpcSpellbookSheet extends HandlebarsApplicationMixin(ItemSheetV2) {
     this.render(false);
   }
 
-  static async _onStudySpellbook(event, target) {
-    try {
-      new StudySpellbookDialog({ spellbook: this.document }).render(true);
-    } catch (err) {
-      console.error("NPC Spellbook | Failed to open Study Dialog:", err);
-    }
-  }
-
   /** @override */
   _onRender(context, options) {
     super._onRender(context, options);
-
     const html = this.element;
 
-    // Trigger Compendium Picker
-    html.querySelectorAll(".add-spell, .add-spell-btn").forEach((btn) => {
-      btn.addEventListener("click", (e) => {
-        e.preventDefault();
-        new CompendiumSpellPicker({ spellbook: this.document }).render(true);
-      });
-    });
-
-    // Native Drag-and-Drop for Spells
+    // Support Drag and Drop spells onto the sheet
     html.addEventListener("dragover", (e) => e.preventDefault());
     html.addEventListener("drop", async (e) => {
       e.preventDefault();
-      let data;
       try {
-        data = JSON.parse(e.dataTransfer.getData("text/plain"));
-      } catch (err) {
-        return;
-      }
-
-      if (data?.type === "Item") {
-        const item = await Item.implementation.fromDropData(data);
-        if (item && item.type === "spell") {
-          await Data.addSpellToSpellbook(this.document, item);
-          this.render(false);
-        } else {
-          ui.notifications.warn("Only spells can be added to a spellbook.");
+        const data = JSON.parse(e.dataTransfer.getData("text/plain"));
+        if (data?.type === "Item") {
+          const item = await Item.implementation.fromDropData(data);
+          if (item && item.type === "spell") {
+            await Data.addSpellToSpellbook(this.document, item);
+            this.render(false);
+          } else {
+            ui.notifications.warn("Only spells can be added to a spellbook.");
+          }
         }
+      } catch (err) {
+        console.error("Drop error:", err);
       }
     });
   }
