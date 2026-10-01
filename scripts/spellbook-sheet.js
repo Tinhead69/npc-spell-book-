@@ -1,4 +1,11 @@
-import { SPELL_METADATA } from "./spell-metadata.js";
+// Safely attempt import; if file is missing, fallback gracefully
+let SPELL_METADATA = {};
+try {
+  const metaModule = await import("./spell-metadata.js");
+  SPELL_METADATA = metaModule.SPELL_METADATA ?? {};
+} catch (e) {
+  console.warn("NPC Spellbook | 'spell-metadata.js' not found or failed to load. Falling back to dynamic checks.", e);
+}
 
 /**
  * ApplicationV2 Dialog for selecting spell compendiums and filtering spells.
@@ -44,7 +51,7 @@ export class CompendiumPickerDialog extends foundry.applications.api.HandlebarsA
   async _prepareContext(options) {
     const context = await super._prepareContext(options);
 
-    // Load available Item compendiums
+    // Filter available Item compendiums
     context.compendiums = game.packs
       .filter((pack) => pack.metadata.type === "Item" && (game.user.isGM || pack.visible))
       .map((pack) => ({
@@ -56,10 +63,18 @@ export class CompendiumPickerDialog extends foundry.applications.api.HandlebarsA
     // Retrieve spells from selected compendiums
     await this._loadSpellsFromSelectedPacks();
 
+    // Safely get ruleset setting (defaults to '2024' if setting isn't registered yet)
+    let rulesetPref = "2024";
+    try {
+      rulesetPref = game.settings.get("npc-spellbook", "rulesetPreference") ?? "2024";
+    } catch (err) {
+      // Setting not registered yet
+    }
+
     context.spells = this.cachedSpells;
     context.selectedCount = this.selectedPacks.size;
     context.spellCount = this.cachedSpells.length;
-    context.rulesetPreference = game.settings.get("npc-spellbook", "rulesetPreference") ?? "2024";
+    context.rulesetPreference = rulesetPref;
 
     return context;
   }
@@ -71,15 +86,14 @@ export class CompendiumPickerDialog extends foundry.applications.api.HandlebarsA
     this.cachedSpells = [];
     if (this.selectedPacks.size === 0) return;
 
-    const rulesetPref = game.settings.get("npc-spellbook", "rulesetPreference") ?? "2024";
-
-    // Safe retrieval of spellcasting configuration (Fixes CONFIG.DND5E.spellcastingTypes deprecation warning in 5.1+)
-    const spellcastingConfig = CONFIG.DND5E?.spellcasting ?? CONFIG.DND5E?.spellcastingTypes ?? {};
+    let rulesetPref = "2024";
+    try {
+      rulesetPref = game.settings.get("npc-spellbook", "rulesetPreference") ?? "2024";
+    } catch (e) {}
 
     for (const packId of this.selectedPacks) {
       const pack = game.packs.get(packId);
       if (!pack) continue;
-
       if (!game.user.isGM && !pack.visible) continue;
 
       const docs = await pack.getDocuments();
@@ -92,14 +106,13 @@ export class CompendiumPickerDialog extends foundry.applications.api.HandlebarsA
 
         const slug = item.name.toLowerCase().replace(/[^a-z0-9]/g, "");
 
-        // 1. Metadata / Fallback Evaluation
+        // 1. Metadata or Dynamic Fallback
         let meta = SPELL_METADATA[slug];
 
         if (!meta) {
-          // Dynamic Fallback
           const ddbClasses = item.flags?.ddbimporter?.dndbeyond?.classes ?? [];
           const isWizard =
-            ddbClasses.some((c) => (c.name || c).toLowerCase().includes("wizard")) ||
+            ddbClasses.some((c) => (typeof c === "string" ? c : c.name || "").toLowerCase().includes("wizard")) ||
             Boolean(CONFIG.DND5E?.spellComps?.wizard?.has?.(slug)) ||
             Boolean(CONFIG.DND5E?.CLASS_SPELLS?.wizard?.includes?.(slug));
 
@@ -116,13 +129,13 @@ export class CompendiumPickerDialog extends foundry.applications.api.HandlebarsA
           };
         }
 
-        // 2. Class Filter: Wizard Only
+        // 2. Wizard Filter
         if (!meta.isWizard) continue;
 
-        // 3. Ruleset Filter: 2014 vs 2024
+        // 3. Ruleset Filter
         if (rulesetPref !== "both" && meta.rulesVersion !== rulesetPref) continue;
 
-        // 4. Build Clean Entry
+        // 4. Build Item Entry
         this.cachedSpells.push({
           id: item.id,
           uuid: item.uuid,
@@ -137,7 +150,6 @@ export class CompendiumPickerDialog extends foundry.applications.api.HandlebarsA
       }
     }
 
-    // Sort spells alphabetically by name
     this.cachedSpells.sort((a, b) => a.name.localeCompare(b.name));
   }
 
@@ -147,10 +159,11 @@ export class CompendiumPickerDialog extends foundry.applications.api.HandlebarsA
   _onRender(context, options) {
     super._onRender(context, options);
 
-    // Compendium selection checkbox toggle
-    this.element.querySelectorAll('.pack-checkbox input[type="checkbox"]').forEach((checkbox) => {
+    // Safe delegation for checkbox toggles
+    const html = this.element;
+    html.querySelectorAll('.pack-checkbox input[type="checkbox"]').forEach((checkbox) => {
       checkbox.addEventListener("change", (event) => {
-        const packId = event.target.dataset.packId;
+        const packId = event.target.dataset.packId || event.target.value;
         if (event.target.checked) {
           this.selectedPacks.add(packId);
         } else {
@@ -166,9 +179,16 @@ export class CompendiumPickerDialog extends foundry.applications.api.HandlebarsA
    */
   static async _onSubmitForm(event, form, formData) {
     event.preventDefault();
-    const selectedSpellUuids = formData.getAll("selectedSpells");
     
-    // Process selected spells (e.g., adding to actor spellbook)
+    // Safely extract selected spell IDs/UUIDs regardless of formData implementation
+    let selectedSpellUuids = [];
+    if (typeof formData.getAll === "function") {
+      selectedSpellUuids = formData.getAll("selectedSpells");
+    } else if (formData.object?.selectedSpells) {
+      const val = formData.object.selectedSpells;
+      selectedSpellUuids = Array.isArray(val) ? val : [val];
+    }
+
     Hooks.callAll("npcSpellbookSpellsSelected", selectedSpellUuids);
   }
 }
