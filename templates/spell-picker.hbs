@@ -1,6 +1,6 @@
-<form class="standard-form compendium-spell-picker-container flexcol" autocomplete="off" style="padding: 6px; background: #191919; color: #f0f0f0;">
+<form class="standard-form compendium-spell-picker-container flexcol" autocomplete="off" style="padding: 6px; background: #191919; color: #f0f0f0; border: none;">
   <!-- Controls Section -->
-  <header class="sheet-header flexrow" style="padding: 4px; align-items: center; margin-bottom: 8px;">
+  <header class="sheet-header flexrow" style="padding: 4px; align-items: center; margin-bottom: 8px; border: none;">
     <div class="form-group flexrow" style="gap: 8px; align-items: center; width: 100%;">
       <label for="pack-select" style="font-weight: bold; white-space: nowrap; color: #f0f0f0;">Compendium:</label>
       <select id="pack-select" style="flex: 1; background: #222; color: #fff; border: 1px solid #444;">
@@ -12,12 +12,12 @@
   </header>
 
   <!-- Spell List Body Grouped by Level with Red Headers -->
-  <section class="sheet-body" style="flex: 1; overflow-y: auto; max-height: 520px;">
+  <section class="sheet-body" style="flex: 1; overflow-y: auto; max-height: 520px; border: none;">
     <ol class="items-list inventory-list directory-list" style="list-style: none; padding: 0; margin: 0;">
       {{#if hasSpells}}
         {{#each activeLevels}}
           <!-- DND5E Standard Red Header Bar -->
-          <li class="item-header flexrow" style="background: var(--color-header-background, #b51c1c); color: #fff; padding: 4px 8px; font-weight: bold; margin-top: 8px; border-radius: 3px; align-items: center;">
+          <li class="item-header flexrow" style="background: var(--color-header-background, #b51c1c); color: #fff; padding: 4px 8px; font-weight: bold; margin-top: 8px; border-radius: 3px; align-items: center; border: none;">
             <div class="item-name" style="flex: 1;">{{label}}</div>
             <div class="item-detail" style="width: 90px; text-align: center;">SCHOOL</div>
             <div class="item-detail" style="width: 80px; text-align: center;">TIME</div>
@@ -29,7 +29,7 @@
             {{#each spells}}
               <li class="spell-row flexrow item" style="align-items: center; padding: 4px 6px; border-bottom: 1px solid #333;">
                 <div class="item-name flexrow" style="flex: 1; align-items: center; gap: 8px;">
-                  <img src="{{img}}" alt="{{name}}" width="28" height="28" style="border: none; border-radius: 3px;" />
+                  <img src="{{img}}" alt="{{name}}" width="28" height="28" style="width: 28px; height: 28px; flex: 0 0 28px; border: none; border-radius: 3px; object-fit: contain;" />
                   <span class="spell-name" style="font-weight: 500; color: #f0f0f0;">{{name}}</span>
                 </div>
                 <div class="item-detail" style="width: 90px; text-align: center; font-size: 0.85rem; opacity: 0.8;">
