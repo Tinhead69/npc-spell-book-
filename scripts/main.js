@@ -13,8 +13,43 @@ Hooks.once("init", () => {
 
   game.settings.register(MODULE_ID, "deductGold", {
     name: "NPC_SPELLBOOK.Settings.DeductGold.Name",
-    hint: "NPC_SPELLBOOK.Settings.DeductGold.Hint",
-    scope: "world",
+    hint: "NPC_SPELLBOOK.Settings.DeductGold.Hint",import {
+  MODULE_ID,
+  SPELLBOOK_ICON,
+  getEntryId,
+  isSpellbook,
+  markAsSpellbook
+} from "./data.js";
+import { NpcSpellbookSheet } from "./spellbook-sheet.js";
+
+Hooks.once("init", () => {
+  console.log("NPC Spellbook | Initialising V2 Module");
+
+  // Preload templates
+  foundry.applications.handlebars.loadTemplates([
+    "modules/npc-spell-book/templates/spellbook-sheet.hbs",
+    "modules/npc-spell-book/templates/learn-spells.hbs",
+    "modules/npc-spell-book/templates/spell-picker.hbs"
+  ]);
+
+  // Register sheet class under system scope
+  Items.registerSheet("dnd5e", NpcSpellbookSheet, {
+    types: ["loot"],
+    label: "NPC Spellbook Sheet",
+    makeDefault: false
+  });
+});
+
+/** Hook into sheet rendering to launch NpcSpellbookSheet if the item is a spellbook */
+Hooks.on("getItemSheetHeaderButtons", (sheet, buttons) => {
+  if (isSpellbook(sheet.document) && !(sheet instanceof NpcSpellbookSheet)) {
+    // Prevent default sheet from staying open and replace it with custom ApplicationV2 sheet
+    setTimeout(() => {
+      new NpcSpellbookSheet({ document: sheet.document }).render(true);
+      sheet.close();
+    }, 0);
+  }
+});    scope: "world",
     config: true,
     type: Boolean,
     default: true
