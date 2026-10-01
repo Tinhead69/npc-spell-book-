@@ -13,7 +13,7 @@ export class CompendiumSpellPicker extends HandlebarsApplicationMixin(Applicatio
     id: "compendium-spell-picker",
     classes: ["compendium-spell-picker", "dnd5e", "sheet"],
     position: {
-      width: 650,
+      width: 750,
       height: 700
     },
     tag: "div"
@@ -63,7 +63,8 @@ export class CompendiumSpellPicker extends HandlebarsApplicationMixin(Applicatio
           "img",
           "system.school",
           "system.activation",
-          "system.range"
+          "system.range",
+          "system.target"
         ]
       });
       const currentSpells = getSpellbookSpells(this.spellbook);
@@ -74,7 +75,7 @@ export class CompendiumSpellPicker extends HandlebarsApplicationMixin(Applicatio
 
         const sys = entry.system || {};
         const level = Number(sys.level ?? 0);
-        if (level < 1 || level > 9) continue; // Skip cantrips (level 0) and invalid levels
+        if (level < 1 || level > 9) continue; // Skip cantrips and invalid levels
 
         const school = sys.school ? (CONFIG.dnd5e?.spellSchools?.[sys.school] ?? sys.school) : "—";
 
@@ -102,6 +103,18 @@ export class CompendiumSpellPicker extends HandlebarsApplicationMixin(Applicatio
           range = rng.units;
         }
 
+        let target = "—";
+        const tgt = sys.target;
+        if (typeof tgt === "string") {
+          target = tgt;
+        } else if (tgt?.value || tgt?.type) {
+          const val = tgt.value ? `${tgt.value} ` : "";
+          const units = tgt.units ? `${tgt.units} ` : "";
+          const type = tgt.type ? `${tgt.type}` : "";
+          target = `${val}${units}${type}`.trim();
+          if (!target) target = "—";
+        }
+
         levelGroups[level].spells.push({
           uuid: entry.uuid,
           name: entry.name,
@@ -109,6 +122,7 @@ export class CompendiumSpellPicker extends HandlebarsApplicationMixin(Applicatio
           school,
           time,
           range,
+          target,
           inBook: existingUuids.has(entry.uuid)
         });
       }
