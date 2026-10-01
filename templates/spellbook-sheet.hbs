@@ -10,9 +10,9 @@
 
   <!-- Main Content Scroll Area -->
   <section class="sheet-body spellbook-body">
-    {{#each activeLevels as |group level|}}
+    {{#each activeLevels as |group|}}
       <div class="level-group">
-        <!-- Level Header Bar with Integrated Column Headers -->
+        <!-- Level Header Bar with Column Titles -->
         <div class="level-header">
           <span class="level-title">{{group.label}}</span>
           <div class="header-columns">
@@ -27,21 +27,21 @@
         <div class="spell-list">
           {{#each group.spells as |spell|}}
             <div class="spell-row" data-spell-id="{{spell._id}}">
-              <!-- Name & Icon -->
+              <!-- Name, Icon, Components -->
               <div class="col-name">
                 <img class="spell-icon" src="{{spell.img}}" title="{{spell.name}}"/>
                 <div class="spell-details">
                   <span class="spell-title">{{spell.name}}</span>
-                  {{#if spell.labels.components.vsm}}
-                    <span class="spell-components">{{spell.labels.components.vsm}}</span>
+                  {{#if spell.components}}
+                    <span class="spell-components">{{spell.components}}</span>
                   {{/if}}
                 </div>
               </div>
 
               <!-- Time, Range, Target -->
-              <span class="col-time">{{#if spell.system.activation.type}}{{spell.system.activation.type}}{{else}}—{{/if}}</span>
-              <span class="col-range">{{#if spell.system.range.value}}{{spell.system.range.value}}{{else}}—{{/if}}</span>
-              <span class="col-target">{{#if spell.system.target.type}}{{spell.system.target.type}}{{else}}—{{/if}}</span>
+              <span class="col-time">{{spell.time}}</span>
+              <span class="col-range">{{spell.range}}</span>
+              <span class="col-target">{{spell.target}}</span>
 
               <!-- Actions -->
               <div class="col-actions">
