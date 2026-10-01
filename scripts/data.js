@@ -50,19 +50,18 @@ export function getSpellbookSpells(item) {
 export async function addSpellToSpellbook(spellbook, spellDoc) {
   let rawSpells = getSpellbookSpells(spellbook);
 
-  // Prevent duplicates based on uuid, id, or name
-  const spellData = spellDoc.toObject();
   const uuid = spellDoc.uuid;
-
   if (rawSpells.some(s => s.uuid === uuid || s._id === spellDoc.id || s.name === spellDoc.name)) {
     return;
   }
 
+  const spellData = spellDoc.toObject();
   rawSpells.push(spellData);
 
   await spellbook.setFlag(MODULE_ID, "spells", rawSpells);
   await spellbook.update({ "system.spells": rawSpells });
 }
+
 /**
  * Removes a spell document from the spellbook item's flags and system data.
  * @param {Item} spellbook - The spellbook item.
