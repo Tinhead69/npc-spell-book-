@@ -1,37 +1,30 @@
 import { addSpellToSpellbook, getSpellbookSpells } from "./data.js";
 
-const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
-
-export class CompendiumSpellPicker extends HandlebarsApplicationMixin(ApplicationV2) {
-  constructor(options = {}) {
-    super(options);
-    this.spellbook = options.spellbook;
+export class CompendiumSpellPicker extends FormApplication {
+  constructor(object = {}, options = {}) {
+    super(object, options);
+    this.spellbook = options.spellbook || object.spellbook;
     this.selectedPackId = options.selectedPackId ?? "dnd5e.spells";
   }
 
-  static DEFAULT_OPTIONS = {
-    id: "compendium-spell-picker",
-    classes: ["compendium-spell-picker", "dnd5e", "sheet"],
-    position: {
+  static get defaultOptions() {
+    return foundry.utils.mergeObject(super.defaultOptions, {
+      id: "compendium-spell-picker",
+      classes: ["compendium-spell-picker", "dnd5e", "sheet"],
+      template: "modules/npc-spell-book/templates/spell-picker.hbs",
       width: 750,
-      height: 700
-    },
-    tag: "div"
-  };
-
-  static PARTS = {
-    main: {
-      template: "modules/npc-spell-book/templates/spell-picker.hbs"
-    }
-  };
+      height: 700,
+      closeOnSubmit: false,
+      submitOnChange: false
+    });
+  }
 
   get title() {
     return `Add Spells to ${this.spellbook?.name ?? "Study Spell Book"}`;
   }
 
-  /** @override */
-  async _prepareContext(options) {
-    const context = await super._prepareContext(options);
+  async getData(options) {
+    const context = await super.getData(options);
 
     const itemPacks = game.packs.filter((p) => p.metadata.type === "Item");
     if (!itemPacks.some((p) => p.collection === this.selectedPackId) && itemPacks.length > 0) {
@@ -46,7 +39,7 @@ export class CompendiumSpellPicker extends HandlebarsApplicationMixin(Applicatio
 
     const targetPack = game.packs.get(this.selectedPackId);
     
-    // Initialize level groups from 1 to 9 (excluding cantrips / level 0)
+    // Initialize level groups from 1 to 9 (excluding cantrips)
     const levelGroups = {};
     for (let i = 1; i <= 9; i++) {
       levelGroups[i] = {
@@ -141,35 +134,32 @@ export class CompendiumSpellPicker extends HandlebarsApplicationMixin(Applicatio
     return context;
   }
 
-  /** @override */
-  _onRender(context, options) {
-    super._onRender(context, options);
-    const html = this.element;
+  activateListeners(html) {
+    super.activateListeners(html);
 
-    const packSelect = html.querySelector("#pack-select");
-    if (packSelect) {
-      packSelect.addEventListener("change", (e) => {
-        this.selectedPackId = e.target.value;
-        this.render(false);
-      });
-    }
-
-    html.querySelectorAll(".add-picker-spell-btn").forEach((btn) => {
-      btn.addEventListener("click", async (e) => {
-        e.preventDefault();
-        const uuid = e.currentTarget.dataset.uuid;
-        if (!uuid || !this.spellbook) return;
-
-        const spellDoc = await fromUuid(uuid);
-        if (!spellDoc) return;
-
-        btn.disabled = true;
-        btn.textContent = "Added";
-        await addSpellToSpellbook(this.spellbook, spellDoc);
-
-        ui.notifications.info(`Added "${spellDoc.name}" to ${this.spellbook.name}.`);
-        this.render(false);
-      });
+    html.find("#pack-select").change((e) => {
+      this.selectedPackId = e.target.value;
+      this.render(false);
     });
+
+    html.find(".add-picker-spell-btn").click(async (e) => {
+      e.preventDefault();
+      const btn = $(e.currentTarget);
+      const uuid = btn.data("uuid");
+      if (!uuid || !this.spellbook) return;
+
+      const spellDoc = await fromUuid(uuid);
+      if (!spellDoc) return;
+
+      btn.prop("disabled", true).text("Added");
+      await addSpellToSpellbook(this.spellbook, spellDoc);
+
+      ui.notifications.info(`Added "${spellDoc.name}" to ${this.spellbook.name}.`);
+      this.render(false);
+    });
+  }
+
+  async _updateObject(event, formData) {
+    // No-op form update handler needed for FormApplication
   }
 }
