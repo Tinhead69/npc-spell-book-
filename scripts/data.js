@@ -4,6 +4,13 @@ export const MODULE_ID = "npc-spell-book";
 export const SPELLBOOK_ICON = "icons/svg/book.svg";
 
 /**
+ * Checks if an item is a spellbook.
+ */
+export function isSpellbook(item) {
+  return item?.type === "spellbook" || item?.flags?.[MODULE_ID]?.isSpellbook;
+}
+
+/**
  * Helper to safely get an entry ID or identifier.
  */
 export function getEntryId(doc) {
