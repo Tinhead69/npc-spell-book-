@@ -1,82 +1,86 @@
-<div class="{{cssClass}} flexcol" style="padding: 10px; height: 100%; box-sizing: border-box; font-family: Roboto, sans-serif;">
+<div class="npc-spellbook-container flexcol">
   
   <!-- ITEM HEADER: ICON & TITLE -->
-  <header class="sheet-header" style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px; border-bottom: 1px solid rgba(255,255,255,0.15); padding-bottom: 8px;">
-    <img class="profile-img" src="{{item.img}}" data-edit="img" title="{{item.name}}" height="48" width="48" style="border: none; border-radius: 4px; background: rgba(0,0,0,0.3); object-fit: cover;" />
-    <div class="header-fields" style="flex: 1;">
-      <h1 class="charname" style="margin: 0; border: none;">
-        <!-- Directly target item.name -->
-        <input name="name" type="text" value="{{item.name}}" placeholder="Spellbook Name" style="font-family: 'Modesto Elementum', 'Cinzel', serif; font-size: 24px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; color: #f0f0f0; background: transparent; border: none; width: 100%; text-shadow: 0 2px 4px rgba(0,0,0,0.8);" />
+  <header class="sheet-header">
+    <img class="profile-img" src="{{item.img}}" data-edit="img" title="{{item.name}}" />
+    <div class="header-fields">
+      <h1 class="charname">
+        <input name="name" type="text" value="{{item.name}}" placeholder="{{localize 'NPC_SPELLBOOK.PlaceholderName'}}" />
       </h1>
     </div>
   </header>
 
   <!-- ACTION BUTTONS TOOLBAR -->
-  <div class="sheet-actions" style="display: flex; gap: 8px; margin-bottom: 12px;">
-    <button type="button" class="add-spell-btn" style="flex: 1; padding: 6px 10px; font-size: 12px; font-weight: bold; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.2); border-radius: 4px; color: #f0f0f0; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; line-height: 1.2;">
-      <i class="fas fa-plus"></i> Add Spell
+  <div class="sheet-actions">
+    <button type="button" class="add-spell-btn" data-action="addSpell">
+      <i class="fas fa-plus"></i> {{localize "NPC_SPELLBOOK.Actions.AddSpell"}}
     </button>
     
-    <button type="button" class="clear-spellbook-btn" style="flex: 1; padding: 6px 10px; font-size: 12px; font-weight: bold; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.2); border-radius: 4px; color: #f0f0f0; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; line-height: 1.2;">
-      <i class="fas fa-trash"></i> Clear Spellbook
+    <button type="button" class="clear-spellbook-btn" data-action="clearSpellbook">
+      <i class="fas fa-trash"></i> {{localize "NPC_SPELLBOOK.Actions.ClearSpellbook"}}
     </button>
 
-    <button type="button" data-action="studySpellbook" style="flex: 1; padding: 6px 10px; font-size: 12px; font-weight: bold; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.2); border-radius: 4px; color: #f0f0f0; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; line-height: 1.2;">
-      <i class="fas fa-book"></i> Study Spellbook
+    <button type="button" class="study-spellbook-btn" data-action="studySpellbook">
+      <i class="fas fa-book"></i> {{localize "NPC_SPELLBOOK.Actions.StudySpellbook"}}
     </button>
   </div>
 
   <!-- SPELL LIST CONTAINER -->
-  <section class="sheet-body" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; padding-right: 2px;">
+  <section class="sheet-body">
     {{#if spellLevels}}
-      {{#each spellLevels as |spells level|}}
-        <div class="spell-level-group" style="display: flex; flex-direction: column; gap: 2px;">
-          
-          <!-- CRIMSON HEADER BAR -->
-          <div class="level-header" style="background: linear-gradient(90deg, #601819 0%, #3a0d0e 100%); color: #f0f0f0; padding: 5px 10px; font-size: 12px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.8px; border-radius: 3px 3px 0 0; border-bottom: 1px solid #8b0000; box-shadow: 0 1px 3px rgba(0,0,0,0.4);">
-            LEVEL {{level}}
+      <div class="spells-list">
+        {{#each spellLevels as |spells level|}}
+          <div class="spell-level-block">
+            
+            <!-- CRIMSON HEADER BAR -->
+            <div class="spell-level-header">
+              {{#if (eq level 0)}}
+                {{localize "NPC_SPELLBOOK.Cantrips"}}
+              {{else}}
+                {{localize "NPC_SPELLBOOK.Level" level=level}}
+              {{/if}}
+            </div>
+
+            <!-- SPELLS TABLE -->
+            <table class="spells-table">
+              <thead>
+                <tr>
+                  <th class="col-name">{{localize "NPC_SPELLBOOK.Headers.Name"}}</th>
+                  <th class="col-actions"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {{#each spells as |spell|}}
+                  <tr class="spell-item" data-spell-id="{{spell.id}}" data-spell-name="{{spell.name}}">
+                    <td class="col-name">
+                      <div class="spell-name-cell">
+                        <img src="{{spell.img}}" class="spell-icon" alt="{{spell.name}}" />
+                        <div class="spell-details">
+                          <span class="spell-title">{{spell.name}}</span>
+                          {{#if spell.components}}
+                            <span class="spell-components">{{spell.components}}</span>
+                          {{/if}}
+                        </div>
+                      </div>
+                    </td>
+                    <td class="col-actions">
+                      <a class="delete-spell" data-action="deleteSpell" data-spell-id="{{spell.id}}" title="{{localize 'NPC_SPELLBOOK.Actions.DeleteSpell'}}">
+                        <i class="fas fa-trash"></i>
+                      </a>
+                    </td>
+                  </tr>
+                {{/each}}
+              </tbody>
+            </table>
+
           </div>
-
-          <!-- COLUMN SUB-HEADERS -->
-          <div class="table-subheaders" style="display: flex; align-items: center; padding: 4px 10px; font-size: 10px; font-weight: bold; color: #a0a0a0; text-transform: uppercase; background: rgba(0,0,0,0.2); border-bottom: 1px solid rgba(255,255,255,0.05);">
-            <div style="flex: 1;">NAME</div>
-            <div style="width: 40px; text-align: center;">ACTION</div>
-          </div>
-
-          <!-- SPELL ROWS -->
-          <ul class="spells-list" style="list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 2px;">
-            {{#each spells as |spell|}}
-              <li class="spell-item" data-spell-id="{{spell.id}}" data-spell-name="{{spell.name}}" style="display: flex; align-items: center; padding: 6px 10px; background: rgba(0, 0, 0, 0.25); border-bottom: 1px solid rgba(255,255,255,0.03); transition: background 0.15s ease;">
-                
-                <!-- ICON & NAME / DETAILS -->
-                <div style="flex: 1; display: flex; align-items: center; gap: 10px; overflow: hidden;">
-                  <img src="{{spell.img}}" width="32" height="32" style="border: none; border-radius: 3px; object-fit: cover; background: rgba(0,0,0,0.4);" />
-                  <div style="display: flex; flex-direction: column; overflow: hidden; line-height: 1.2;">
-                    <span style="font-size: 13px; font-weight: bold; color: #e0e0e0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{spell.name}}</span>
-                    {{#if spell.components}}
-                      <span style="font-size: 10px; opacity: 0.65; color: #bbb;">{{spell.components}}</span>
-                    {{/if}}
-                  </div>
-                </div>
-
-                <!-- DELETE ACTION -->
-                <div style="width: 40px; display: flex; justify-content: center; align-items: center;">
-                  <a class="delete-spell" data-action="deleteSpell" title="Delete Spell" style="color: #d9534f; cursor: pointer; padding: 4px; font-size: 13px; opacity: 0.8; transition: opacity 0.15s ease;">
-                    <i class="fas fa-trash"></i>
-                  </a>
-                </div>
-
-              </li>
-            {{/each}}
-          </ul>
-
-        </div>
-      {{/each}}
+        {{/each}}
+      </div>
     {{else}}
       <!-- EMPTY STATE -->
-      <div style="text-align: center; margin-top: 60px; opacity: 0.6; font-size: 13px; color: #aaa;">
-        <i class="fas fa-book-open" style="font-size: 32px; display: block; margin-bottom: 10px; opacity: 0.5;"></i>
-        This spellbook is empty.<br>Click <strong>+ Add Spell</strong> or drag and drop spells here.
+      <div class="empty-notice" style="text-align: center; margin-top: 3rem; opacity: 0.6; font-size: 0.9rem;">
+        <i class="fas fa-book-open" style="font-size: 2rem; display: block; margin-bottom: 0.5rem;"></i>
+        {{localize "NPC_SPELLBOOK.EmptyNotice"}}
       </div>
     {{/if}}
   </section>

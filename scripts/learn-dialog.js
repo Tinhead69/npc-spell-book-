@@ -42,13 +42,11 @@ export class StudySpellbookDialog extends HandlebarsApplicationMixin(Application
   async _prepareContext(options) {
     const context = await super._prepareContext(options);
 
-    // 1. Find all available wizard actors (strictly wizards only)
     const wizards = game.actors.filter((a) => {
       if (a.type !== "character") return false;
       return isWizard(a);
     });
 
-    // Auto-select first wizard if none selected
     if (!this.selectedWizardId && wizards.length > 0) {
       this.selectedWizardId = wizards[0].id;
     }
@@ -74,10 +72,7 @@ export class StudySpellbookDialog extends HandlebarsApplicationMixin(Application
       context.currentWizard = null;
     }
 
-    // 2. Fetch raw spells from the spellbook
     const rawSpells = getSpellbookSpells(this.spellbook);
-
-    // 3. Group spells by level into an object { "0": [...], "1": [...] }
     const spellLevels = {};
 
     for (const spell of rawSpells) {
@@ -90,8 +85,7 @@ export class StudySpellbookDialog extends HandlebarsApplicationMixin(Application
       if (currentWizard) {
         const evalResult = evaluateTranscription(currentWizard, spell);
         canLearn = evalResult.canLearn;
-        
-        // Human-readable status texts
+
         if (level === 0) {
           statusText = "Cantrips cannot be transcribed (PHB 2014)";
         } else if (evalResult.reasonKey) {
@@ -135,7 +129,6 @@ export class StudySpellbookDialog extends HandlebarsApplicationMixin(Application
     super._onRender(context, options);
     const html = this.element;
 
-    // Handle Wizard selection change
     const select = html.querySelector("#wizard-select");
     if (select) {
       select.addEventListener("change", (e) => {
@@ -144,7 +137,6 @@ export class StudySpellbookDialog extends HandlebarsApplicationMixin(Application
       });
     }
 
-    // Handle Transcribe / Copy button clicks
     html.querySelectorAll(".transcribe-btn").forEach((btn) => {
       btn.addEventListener("click", async (e) => {
         e.preventDefault();
@@ -154,7 +146,7 @@ export class StudySpellbookDialog extends HandlebarsApplicationMixin(Application
         if (!currentWizard || !this.spellbook) return;
 
         const rawSpells = getSpellbookSpells(this.spellbook);
-        const spellEntry = rawSpells.find((s) => (s.id ?? s.uuid) === spellId);
+        const spellEntry = rawSpells.find((s) => s.uuid === spellId || s.id === spellId);
 
         if (spellEntry) {
           btn.disabled = true;

@@ -1,3 +1,5 @@
+import { MODULE_ID, getSpellbookSpells } from "./data.js";
+
 /**
  * Primary Item Sheet for the Spellbook Item
  */
@@ -9,13 +11,17 @@ export class SpellbookItemSheet extends dnd5e.applications.item.ItemSheet5e2 {
     });
   }
 
-  /**
-   * Action event listeners for sheet UI
-   */
+  /** @override */
+  async getData(options) {
+    const context = await super.getData(options);
+    context.spells = getSpellbookSpells(this.item);
+    return context;
+  }
+
+  /** Action event listeners for sheet UI */
   activateListeners(html) {
     super.activateListeners(html);
 
-    // Open spell picker dialog when clicking a button with class .open-spell-picker
     html.find(".open-spell-picker").click((ev) => {
       ev.preventDefault();
       new CompendiumPickerDialog({ document: this.document }).render(true);
@@ -58,7 +64,7 @@ export class CompendiumPickerDialog extends foundry.applications.api.HandlebarsA
 
   static PARTS = {
     form: {
-      template: "modules/npc-spellbook/templates/compendium-picker.hbs"
+      template: "modules/npc-spell-book/templates/compendium-picker.hbs"
     }
   };
 
@@ -88,7 +94,7 @@ export class CompendiumPickerDialog extends foundry.applications.api.HandlebarsA
 
     let rulesetPref = "2024";
     try {
-      rulesetPref = game.settings.get("npc-spellbook", "rulesetPreference") ?? "2024";
+      rulesetPref = game.settings.get(MODULE_ID, "rulesetPreference") ?? "2024";
     } catch (e) {}
 
     for (const packId of this.selectedPacks) {
@@ -101,11 +107,10 @@ export class CompendiumPickerDialog extends foundry.applications.api.HandlebarsA
         if (item.type !== "spell") continue;
 
         const level = Number(item.system?.level ?? 0);
-        if (level === 0) continue; // Skip cantrips
+        if (level === 0) continue;
 
         const slug = item.name.toLowerCase().replace(/[^a-z0-9]/g, "");
 
-        // Dynamic Wizard Check
         const ddbClasses = item.flags?.ddbimporter?.dndbeyond?.classes ?? [];
         const systemClasses = item.system?.classes ?? [];
         const isWizard =
@@ -116,7 +121,6 @@ export class CompendiumPickerDialog extends foundry.applications.api.HandlebarsA
 
         if (!isWizard) continue;
 
-        // Dynamic Ruleset Check
         const isLegacy =
           item.name.includes("(Legacy)") ||
           item.system?.source?.rules === "2014" ||

@@ -21,7 +21,7 @@ export async function markAsSpellbook(item) {
   if (!item.getFlag(MODULE_ID, "spells")) {
     await item.setFlag(MODULE_ID, "spells", []);
   }
-  await item.setFlag("core", "sheetClass", `${MODULE_ID}.NpcSpellbookSheet`);
+  await item.setFlag("core", "sheetClass", `${MODULE_ID}.SpellbookItemSheet`);
 }
 
 /**

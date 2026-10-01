@@ -1,5 +1,9 @@
 {
   "NPC_SPELLBOOK": {
+    "Cantrips": "Cantrips",
+    "Level": "Level {level}",
+    "EmptyNotice": "No spells recorded in this spellbook yet.",
+    "PlaceholderName": "Spellbook Name",
     "Settings": {
       "DeductGold": {
         "Name": "Deduct Gold on Transcription",
@@ -10,12 +14,20 @@
         "Hint": "When enabled, wizards cannot transcribe a spell unless they can afford the ink cost."
       }
     },
+    "Headers": {
+      "Name": "Name",
+      "Cost": "Cost",
+      "Time": "Time",
+      "Status": "Status"
+    },
     "Actions": {
       "MarkAsSpellbook": "Mark as Spellbook",
       "RemoveSpellbookFlag": "Remove Spellbook Flag",
       "StudySpellbook": "Study Spellbook",
       "TranscribeSpell": "Transcribe Spell",
       "AddSpell": "Add Spell",
+      "ClearSpellbook": "Clear Spellbook",
+      "DeleteSpell": "Delete Spell",
       "RemoveSpell": "Remove",
       "ViewTranscribed": "Transcribed Spells"
     },
@@ -27,11 +39,14 @@
     },
     "Learn": {
       "Title": "Study Spellbook: {name}",
-      "SelectWizard": "Select Wizard",
-      "WizardLevel": "Wizard Level {level}",
-      "MaxSpellLevel": "Maximum spell level: {level}",
+      "SelectWizard": "Select Wizard:",
+      "WizardLevel": "Level",
+      "MaxSpellLevel": "Max Spell Level",
+      "GoldAvailable": "Gold Available",
       "Cost": "Cost: {cost} gp",
       "Time": "Time: {hours} hours",
+      "Copy": "Copy",
+      "TranscribeTitle": "Transcribe Spell",
       "Status": {
         "Learnable": "Can transcribe",
         "TooHighLevel": "Level too high (max {max})",

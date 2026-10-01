@@ -106,7 +106,6 @@ export function actorKnowsSpell(actor, spellEntry) {
     if (item.type !== "spell") return false;
     if (item.name?.toLowerCase() === targetName) return true;
 
-    // Modern V12/V13 compendium source property check without calling deprecated core.sourceId flag
     const sourceUuid = item._stats?.compendiumSource ?? item.flags?.core?.sourceId ?? "";
     if (targetUuid && sourceUuid && sourceUuid === targetUuid) return true;
 
@@ -139,7 +138,6 @@ function buildSpellbookItemData(spellDoc, sourceSpellbook) {
   data.type = "spell";
   data.img = spellDoc.img;
 
-  // dnd5e: unprepared wizard spellbook entry
   data.system = data.system ?? {};
   data.system.preparation = foundry.utils.mergeObject(
     data.system.preparation ?? {},
@@ -147,7 +145,6 @@ function buildSpellbookItemData(spellDoc, sourceSpellbook) {
     { inplace: false }
   );
 
-  // Newer dnd5e versions may use method; keep preparation for 2014-style sheets.
   if ("method" in (spellDoc.system ?? {}) || "method" in data.system) {
     data.system.method = data.system.method ?? "spell";
   }
@@ -205,7 +202,6 @@ export function evaluateTranscription(wizard, spellEntry, options = {}) {
     return { canLearn: false, reasonKey: "NPC_SPELLBOOK.Learn.Status.AlreadyKnown" };
   }
 
-  // Also block if only recorded in legacy module flag list.
   const known = getTranscribedSpells(wizard);
   if (known.some((s) => s.uuid === spellEntry.uuid || s.name === spellEntry.name)) {
     return { canLearn: false, reasonKey: "NPC_SPELLBOOK.Learn.Status.AlreadyKnown" };
@@ -256,7 +252,6 @@ export async function transcribeSpell(wizard, spellEntry, sourceSpellbook, optio
   const itemData = buildSpellbookItemData(spellDoc, sourceSpellbook);
   await wizard.createEmbeddedDocuments("Item", [itemData]);
 
-  // Keep a lightweight audit trail of NPC-book transcriptions.
   const transcribed = getTranscribedSpells(wizard);
   transcribed.push({
     uuid: spellDoc.uuid,

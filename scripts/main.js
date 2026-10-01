@@ -8,7 +8,7 @@ import {
   getSpellbookSpells,
   setSpellbookSpells
 } from "./data.js";
-import { NpcSpellbookSheet } from "./spellbook-sheet.js";
+import { SpellbookItemSheet } from "./spellbook-sheet.js";
 
 Hooks.once("init", () => {
   console.log("NPC Spellbook | Initialising");
@@ -47,12 +47,12 @@ Hooks.once("init", () => {
 
   foundry.applications.handlebars.loadTemplates([
     "modules/npc-spell-book/templates/spellbook-sheet.hbs",
-    "modules/npc-spell-book/templates/learn-spells.hbs"
+    "modules/npc-spell-book/templates/learn-spells.hbs",
+    "modules/npc-spell-book/templates/compendium-picker.hbs"
   ]);
 
-  // Register sheet for "dnd5e" loot items
-  Items.registerSheet("dnd5e", NpcSpellbookSheet, {
-    types: ["loot"],
+  Items.registerSheet("dnd5e", SpellbookItemSheet, {
+    types: ["loot", "container"],
     label: "NPC Spellbook",
     makeDefault: false
   });
@@ -94,7 +94,7 @@ function patchItemDirectoryContextMenu() {
       icon: '<i class="fas fa-book"></i>',
       condition: (li) => {
         const item = game.items.get(getEntryId(li));
-        return item?.type === "loot" && !isSpellbook(item);
+        return (item?.type === "loot" || item?.type === "container") && !isSpellbook(item);
       },
       callback: async (li) => {
         const item = game.items.get(getEntryId(li));
