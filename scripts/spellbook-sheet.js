@@ -39,16 +39,17 @@ export class NpcSpellbookSheet extends ItemSheet {
     for (const spell of rawSpells) {
       if (!spell) continue;
 
+      // Extract system / data container broadly
       const sys = spell.system || spell.data || spell;
-      const labels = spell.labels || {};
+      const labels = spell.labels || sys.labels || {};
       const lvl = sys.level ?? spell.level ?? 0;
 
-      // 1. Time / Activation
+      // 1. Time / Activation Extraction
       let time = "—";
       if (labels.activation) {
         time = labels.activation;
       } else {
-        const activation = sys.activation;
+        const activation = sys.activation || spell.activation;
         if (typeof activation === "string") {
           time = activation;
         } else if (activation?.type) {
@@ -66,12 +67,12 @@ export class NpcSpellbookSheet extends ItemSheet {
         }
       }
 
-      // 2. Range
+      // 2. Range Extraction
       let range = "—";
       if (labels.range) {
         range = labels.range;
       } else {
-        const rng = sys.range;
+        const rng = sys.range || spell.range;
         if (typeof rng === "string") {
           range = rng;
         } else if (rng?.units === "self") {
@@ -84,17 +85,17 @@ export class NpcSpellbookSheet extends ItemSheet {
           const units = rng.units ? ` ${rng.units}` : "";
           range = `${rng.value}${units}`;
         } else if (rng?.units) {
-          range = typeof rng.units === "string" ? rng.units.capitalize() : "—";
+          range = typeof rng.units === "string" ? rng.units : "—";
         }
       }
 
-      // 3. Target / Area
+      // 3. Target / Area Extraction
       let target = "—";
       if (labels.target) {
         target = labels.target;
       } else {
-        const tgt = sys.target;
-        const area = sys.area;
+        const tgt = sys.target || spell.target;
+        const area = sys.area || sys.target?.area;
         if (tgt && (tgt.value || tgt.type || tgt.units)) {
           const val = tgt.value ? `${tgt.value} ` : "";
           const units = tgt.units ? `${tgt.units} ` : "";
@@ -110,22 +111,29 @@ export class NpcSpellbookSheet extends ItemSheet {
         }
       }
 
-      // 4. Components
+      // 4. Components Extraction
       let components = "";
       if (labels.components?.vsm) {
         components = `(${labels.components.vsm})`;
       } else {
-        const comp = sys.components || {};
+        const comp = sys.components || spell.components || {};
         let compsList = [];
-        if (comp.v || (Array.isArray(comp.value) && comp.value.includes("v"))) compsList.push("V");
-        if (comp.s || (Array.isArray(comp.value) && comp.value.includes("s"))) compsList.push("S");
-        if (comp.m || (Array.isArray(comp.value) && comp.value.includes("m"))) {
+        
+        const hasV = comp.v || (Array.isArray(comp.value) && comp.value.includes("v"));
+        const hasS = comp.s || (Array.isArray(comp.value) && comp.value.includes("s"));
+        const hasM = comp.m || (Array.isArray(comp.value) && comp.value.includes("m"));
+
+        if (hasV) compsList.push("V");
+        if (hasS) compsList.push("S");
+        if (hasM) {
           let mStr = "M";
-          if (comp.materials?.value) {
-            mStr += ` (${comp.materials.value})`;
+          const matVal = comp.materials?.value || comp.material?.value;
+          if (matVal) {
+            mStr += ` (${matVal})`;
           }
           compsList.push(mStr);
         }
+
         if (compsList.length > 0) {
           components = `(${compsList.join(", ")})`;
         }
