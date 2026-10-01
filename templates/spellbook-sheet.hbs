@@ -12,11 +12,9 @@
   <section class="sheet-body spellbook-body">
     {{#each activeLevels as |group level|}}
       <div class="level-group">
-        <!-- Header Bar with Integrated Column Titles (Image 2 style) -->
+        <!-- Level Header Bar with Integrated Column Headers -->
         <div class="level-header">
-          <span class="level-title">
-            {{#if (eq level "0")}}Cantrips{{else}}LEVEL {{level}}{{/if}}
-          </span>
+          <span class="level-title">{{group.label}}</span>
           <div class="header-columns">
             <span class="col-time">TIME</span>
             <span class="col-range">RANGE</span>
@@ -25,27 +23,27 @@
           </div>
         </div>
 
-        <!-- List of Spells -->
+        <!-- Spell List -->
         <div class="spell-list">
           {{#each group.spells as |spell|}}
             <div class="spell-row" data-spell-id="{{spell._id}}">
-              <!-- Icon & Name/Components -->
+              <!-- Name & Icon -->
               <div class="col-name">
                 <img class="spell-icon" src="{{spell.img}}" title="{{spell.name}}"/>
                 <div class="spell-details">
                   <span class="spell-title">{{spell.name}}</span>
-                  {{#if spell.system.components.vsm}}
-                    <span class="spell-components">{{spell.system.components.vsm}}</span>
+                  {{#if spell.labels.components.vsm}}
+                    <span class="spell-components">{{spell.labels.components.vsm}}</span>
                   {{/if}}
                 </div>
               </div>
 
-              <!-- Spell Attributes -->
+              <!-- Time, Range, Target -->
               <span class="col-time">{{#if spell.system.activation.type}}{{spell.system.activation.type}}{{else}}—{{/if}}</span>
               <span class="col-range">{{#if spell.system.range.value}}{{spell.system.range.value}}{{else}}—{{/if}}</span>
               <span class="col-target">{{#if spell.system.target.type}}{{spell.system.target.type}}{{else}}—{{/if}}</span>
 
-              <!-- Action Icons -->
+              <!-- Actions -->
               <div class="col-actions">
                 <a class="spell-delete" title="Delete Spell"><i class="fas fa-trash"></i></a>
               </div>
@@ -55,7 +53,7 @@
       </div>
     {{else}}
       <div class="empty-notice">
-        <p>No spells recorded in this spellbook.</p>
+        <p>No spells currently recorded in this spellbook.</p>
       </div>
     {{/each}}
   </section>
