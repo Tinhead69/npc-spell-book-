@@ -36,7 +36,8 @@ Hooks.once("init", () => {
     "modules/npc-spell-book/templates/learn-spells.hbs"
   ]);
 
-  Items.registerSheet(MODULE_ID, NpcSpellbookSheet, {
+  // FIX 1: Pass "dnd5e" instead of MODULE_ID so Foundry registers the sheet under D&D 5e
+  Items.registerSheet("dnd5e", NpcSpellbookSheet, {
     types: ["loot"],
     label: "NPC Spellbook",
     makeDefault: false
@@ -133,7 +134,9 @@ async function createNpcSpellbook({ folder = null } = {}) {
   });
 
   ui.notifications.info(game.i18n.format("NPC_SPELLBOOK.Create.Created", { name: item.name }));
-  new NpcSpellbookSheet({ document: item }).render(true);
+  
+  // FIX 2: Render using item.sheet.render(true) instead of new NpcSpellbookSheet({ document: item })
+  item.sheet.render(true);
   return item;
 }
 
@@ -250,7 +253,9 @@ Hooks.on("renderItemDirectory", (app, html) => {
       el.addEventListener("dblclick", (e) => {
         e.preventDefault();
         e.stopPropagation();
-        new NpcSpellbookSheet({ document: item }).render(true);
+        
+        // FIX 2: Open sheet standardly
+        item.sheet.render(true);
       }, true);
     }
   });
