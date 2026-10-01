@@ -17,16 +17,15 @@ Hooks.once("init", async () => {
     "modules/npc-spell-book/templates/spell-picker.hbs"
   ]);
 
-  // Register the item sheet for loot items using game.items
-  game.items.registerSheet(MODULE_ID, NpcSpellbookSheet, {
+  // Register the sheet safely using DocumentSheetConfig for Item documents
+  DocumentSheetConfig.registerSheet(Item, MODULE_ID, NpcSpellbookSheet, {
     types: ["loot"],
-    label: "NPC Spellbook Sheet",
+    label: "Study Spell Book Sheet",
     makeDefault: false
   });
 
   patchItemDirectoryContextMenu();
 
-  // Popup confirmation to show module initialized and sheet registered
   ui.notifications.info("NPC Spellbook | Sheet registered successfully!");
 });
 
