@@ -38,7 +38,50 @@ export class NpcSpellbookSheet extends ItemSheet {
     for (const spell of rawSpells) {
       const level = Number(spell.system?.level ?? 1);
       if (level >= 1 && level <= 9) {
-        levelGroups[level].spells.push(spell);
+        const sys = spell.system || {};
+
+        let time = "—";
+        const activation = sys.activation;
+        if (typeof activation === "string") {
+          time = activation;
+        } else if (activation?.type) {
+          const cost = activation.cost ? `${activation.cost} ` : "";
+          const typeMap = { action: "Action", bonus: "Bonus Action", reaction: "Reaction", minute: "Minute", hour: "Hour", day: "Day" };
+          time = `${cost}${typeMap[activation.type] || activation.type}`;
+        }
+
+        let range = "—";
+        const rng = sys.range;
+        if (typeof rng === "string") {
+          range = rng;
+        } else if (rng?.units === "self") {
+          range = "Self";
+        } else if (rng?.units === "touch") {
+          range = "Touch";
+        } else if (rng?.value) {
+          range = `${rng.value}${rng.units ? ` ${rng.units}` : ""}`;
+        } else if (rng?.units) {
+          range = rng.units;
+        }
+
+        let target = "—";
+        const tgt = sys.target;
+        if (typeof tgt === "string") {
+          target = tgt;
+        } else if (tgt?.value || tgt?.type) {
+          const val = tgt.value ? `${tgt.value} ` : "";
+          const units = tgt.units ? `${tgt.units} ` : "";
+          const type = tgt.type ? `${tgt.type}` : "";
+          target = `${val}${units}${type}`.trim();
+          if (!target) target = "—";
+        }
+
+        levelGroups[level].spells.push({
+          ...spell,
+          time,
+          range,
+          target
+        });
       }
     }
 
