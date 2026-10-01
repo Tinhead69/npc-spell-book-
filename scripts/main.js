@@ -17,9 +17,8 @@ Hooks.once("init", async () => {
     "modules/npc-spell-book/templates/spell-picker.hbs"
   ]);
 
-  // Register ApplicationV2 sheet for loot items
-  // Correct V13 way:
-game.items.registerSheet(...)
+  // Register the item sheet for loot items using game.items
+  game.items.registerSheet(MODULE_ID, NpcSpellbookSheet, {
     types: ["loot"],
     label: "NPC Spellbook Sheet",
     makeDefault: false
