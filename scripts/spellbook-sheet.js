@@ -1,11 +1,12 @@
 import * as Data from "./data.js";
+import { StudySpellbookDialog } from "./learn-dialog.js";
+import { CompendiumSpellPicker } from "./spellbook-compendium.js";
 
 const { ItemSheetV2 } = foundry.applications.sheets;
 const { HandlebarsApplicationMixin } = foundry.applications.api;
 
 export class NpcSpellbookSheet extends HandlebarsApplicationMixin(ItemSheetV2) {
   constructor(options = {}) {
-    // Handle both { document: item } and legacy { item: item }
     if (options.item && !options.document) {
       options.document = options.item;
     }
@@ -22,11 +23,13 @@ export class NpcSpellbookSheet extends HandlebarsApplicationMixin(ItemSheetV2) {
       resizable: true
     },
     position: {
-      width: 550,
-      height: 600
+      width: 600,
+      height: 650
     },
     actions: {
-      deleteSpell: NpcSpellbookSheet._onDeleteSpell
+      deleteSpell: NpcSpellbookSheet._onDeleteSpell,
+      studySpellbook: NpcSpellbookSheet._onStudySpellbook,
+      openSpellPicker: NpcSpellbookSheet._onOpenSpellPicker
     }
   };
 
@@ -43,11 +46,13 @@ export class NpcSpellbookSheet extends HandlebarsApplicationMixin(ItemSheetV2) {
 
     context.item = item;
     context.isGM = game.user.isGM;
-    context.spells = Data.getSpellbookSpells(item);
+    
+    const spells = Data.getSpellbookSpells(item);
+    context.spells = spells;
 
-    // Group spells by level
+    // Group spells by level for sheet layout
     const levels = {};
-    for (const spell of context.spells) {
+    for (const spell of spells) {
       const lvl = Number(spell.level ?? 0);
       if (!levels[lvl]) levels[lvl] = [];
       levels[lvl].push(spell);
@@ -57,7 +62,29 @@ export class NpcSpellbookSheet extends HandlebarsApplicationMixin(ItemSheetV2) {
     return context;
   }
 
+  /** Action Handler: Open Study / Learn Dialog */
+  static async _onStudySpellbook(event, target) {
+    event.preventDefault();
+    if (typeof StudySpellbookDialog !== "undefined") {
+      new StudySpellbookDialog({ spellbook: this.document }).render(true);
+    } else {
+      console.error("NPC Spellbook | StudySpellbookDialog is not defined.");
+    }
+  }
+
+  /** Action Handler: Open Compendium Picker */
+  static async _onOpenSpellPicker(event, target) {
+    event.preventDefault();
+    if (typeof CompendiumSpellPicker !== "undefined") {
+      new CompendiumSpellPicker({ spellbook: this.document }).render(true);
+    } else {
+      console.error("NPC Spellbook | CompendiumSpellPicker is not defined.");
+    }
+  }
+
+  /** Action Handler: Remove Spell */
   static async _onDeleteSpell(event, target) {
+    event.preventDefault();
     const spellId = target.dataset.spellId;
     let spells = Data.getSpellbookSpells(this.document);
     spells = spells.filter((s) => s.id !== spellId && s.uuid !== spellId);
@@ -70,12 +97,23 @@ export class NpcSpellbookSheet extends HandlebarsApplicationMixin(ItemSheetV2) {
     super._onRender(context, options);
     const html = this.element;
 
-    // Support Drag and Drop spells onto the sheet
+    // Manual click fallback for class-based buttons
+    html.querySelectorAll(".study-spellbook, .btn-study").forEach((btn) => {
+      btn.addEventListener("click", (e) => NpcSpellbookSheet._onStudySpellbook.call(this, e, btn));
+    });
+
+    html.querySelectorAll(".add-spell, .btn-add-spell").forEach((btn) => {
+      btn.addEventListener("click", (e) => NpcSpellbookSheet._onOpenSpellPicker.call(this, e, btn));
+    });
+
+    // Drag & Drop Spells onto sheet
     html.addEventListener("dragover", (e) => e.preventDefault());
     html.addEventListener("drop", async (e) => {
       e.preventDefault();
       try {
-        const data = JSON.parse(e.dataTransfer.getData("text/plain"));
+        const raw = e.dataTransfer.getData("text/plain");
+        if (!raw) return;
+        const data = JSON.parse(raw);
         if (data?.type === "Item") {
           const item = await Item.implementation.fromDropData(data);
           if (item && item.type === "spell") {
@@ -86,7 +124,7 @@ export class NpcSpellbookSheet extends HandlebarsApplicationMixin(ItemSheetV2) {
           }
         }
       } catch (err) {
-        console.error("Drop error:", err);
+        console.error("NPC Spellbook | Drag drop error:", err);
       }
     });
   }
