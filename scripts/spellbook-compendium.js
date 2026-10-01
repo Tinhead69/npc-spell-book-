@@ -46,12 +46,12 @@ export class CompendiumSpellPicker extends HandlebarsApplicationMixin(Applicatio
 
     const targetPack = game.packs.get(this.selectedPackId);
     
-    // Initialize level groups 0 to 9
+    // Initialize level groups from 1 to 9 (excluding cantrips / level 0)
     const levelGroups = {};
-    for (let i = 0; i <= 9; i++) {
+    for (let i = 1; i <= 9; i++) {
       levelGroups[i] = {
         level: i,
-        label: i === 0 ? "CANTRIPS" : `LEVEL ${i}`,
+        label: `LEVEL ${i}`,
         spells: []
       };
     }
@@ -74,7 +74,7 @@ export class CompendiumSpellPicker extends HandlebarsApplicationMixin(Applicatio
 
         const sys = entry.system || {};
         const level = Number(sys.level ?? 0);
-        if (level < 0 || level > 9) continue;
+        if (level < 1 || level > 9) continue; // Skip cantrips (level 0) and invalid levels
 
         const school = sys.school ? (CONFIG.dnd5e?.spellSchools?.[sys.school] ?? sys.school) : "—";
 
@@ -114,12 +114,10 @@ export class CompendiumSpellPicker extends HandlebarsApplicationMixin(Applicatio
       }
     }
 
-    // Sort spells alphabetically within each level group
     Object.values(levelGroups).forEach(group => {
       group.spells.sort((a, b) => a.name.localeCompare(b.name));
     });
 
-    // Filter out empty levels and sort levels numerically from 0 to 9
     context.activeLevels = Object.values(levelGroups)
       .filter((group) => group.spells.length > 0)
       .sort((a, b) => a.level - b.level);
