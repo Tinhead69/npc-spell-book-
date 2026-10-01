@@ -1,6 +1,4 @@
 import * as Data from "./data.js";
-import { StudySpellbookDialog } from "./learn-dialog.js";
-import { CompendiumSpellPicker } from "./spellbook-compendium.js";
 
 const { ItemSheetV2 } = foundry.applications.sheets;
 const { HandlebarsApplicationMixin } = foundry.applications.api;
@@ -28,8 +26,7 @@ export class NpcSpellbookSheet extends HandlebarsApplicationMixin(ItemSheetV2) {
     },
     actions: {
       deleteSpell: NpcSpellbookSheet._onDeleteSpell,
-      studySpellbook: NpcSpellbookSheet._onStudySpellbook,
-      openSpellPicker: NpcSpellbookSheet._onOpenSpellPicker
+      studySpellbook: NpcSpellbookSheet._onStudySpellbook
     }
   };
 
@@ -46,39 +43,20 @@ export class NpcSpellbookSheet extends HandlebarsApplicationMixin(ItemSheetV2) {
 
     context.item = item;
     context.isGM = game.user.isGM;
-    
-    const spells = Data.getSpellbookSpells(item);
-    context.spells = spells;
-
-    // Group spells by level for sheet layout
-    const levels = {};
-    for (const spell of spells) {
-      const lvl = Number(spell.level ?? 0);
-      if (!levels[lvl]) levels[lvl] = [];
-      levels[lvl].push(spell);
-    }
-    context.spellLevels = levels;
+    context.spells = Data.getSpellbookSpells(item);
 
     return context;
   }
 
-  /** Action Handler: Open Study / Learn Dialog */
+  /** Action Handler: Open Study / Learn Dialog safely */
   static async _onStudySpellbook(event, target) {
     event.preventDefault();
-    if (typeof StudySpellbookDialog !== "undefined") {
+    try {
+      const { StudySpellbookDialog } = await import("./learn-dialog.js");
       new StudySpellbookDialog({ spellbook: this.document }).render(true);
-    } else {
-      console.error("NPC Spellbook | StudySpellbookDialog is not defined.");
-    }
-  }
-
-  /** Action Handler: Open Compendium Picker */
-  static async _onOpenSpellPicker(event, target) {
-    event.preventDefault();
-    if (typeof CompendiumSpellPicker !== "undefined") {
-      new CompendiumSpellPicker({ spellbook: this.document }).render(true);
-    } else {
-      console.error("NPC Spellbook | CompendiumSpellPicker is not defined.");
+    } catch (err) {
+      console.error("NPC Spellbook | Error loading StudySpellbookDialog:", err);
+      ui.notifications.error("Could not open Study Spellbook dialog. Check console for details.");
     }
   }
 
@@ -96,15 +74,6 @@ export class NpcSpellbookSheet extends HandlebarsApplicationMixin(ItemSheetV2) {
   _onRender(context, options) {
     super._onRender(context, options);
     const html = this.element;
-
-    // Manual click fallback for class-based buttons
-    html.querySelectorAll(".study-spellbook, .btn-study").forEach((btn) => {
-      btn.addEventListener("click", (e) => NpcSpellbookSheet._onStudySpellbook.call(this, e, btn));
-    });
-
-    html.querySelectorAll(".add-spell, .btn-add-spell").forEach((btn) => {
-      btn.addEventListener("click", (e) => NpcSpellbookSheet._onOpenSpellPicker.call(this, e, btn));
-    });
 
     // Drag & Drop Spells onto sheet
     html.addEventListener("dragover", (e) => e.preventDefault());
