@@ -25,7 +25,10 @@ Hooks.once("init", async () => {
   });
 
   patchItemDirectoryContextMenu();
+});
 
+Hooks.once("setup", () => {
+  // UI and notifications are fully ready by the setup hook
   ui.notifications.info("NPC Spellbook | Sheet registered successfully!");
 });
 
