@@ -7,11 +7,11 @@ import {
 } from "./data.js";
 import { NpcSpellbookSheet } from "./spellbook-sheet.js";
 
-Hooks.once("init", () => {
+Hooks.once("init", async () => {
   console.log("NPC Spellbook | Initialising V2 Module");
 
   // Preload Handlebars templates
-  foundry.applications.handlebars.loadTemplates([
+  await foundry.applications.handlebars.loadTemplates([
     "modules/npc-spell-book/templates/spellbook-sheet.hbs",
     "modules/npc-spell-book/templates/learn-spells.hbs",
     "modules/npc-spell-book/templates/spell-picker.hbs"
@@ -25,6 +25,9 @@ Hooks.once("init", () => {
   });
 
   patchItemDirectoryContextMenu();
+
+  // Popup confirmation to show module initialized and sheet registered
+  ui.notifications.info("NPC Spellbook | Sheet registered successfully!");
 });
 
 /** Intercept default sheet opening and swap to NpcSpellbookSheet for spellbook items */
@@ -60,6 +63,7 @@ function patchItemDirectoryContextMenu() {
         const item = game.items.get(getEntryId(li));
         if (!item) return;
         await markAsSpellbook(item);
+        ui.notifications.info(`Marked ${item.name} as a spellbook.`);
         new NpcSpellbookSheet({ document: item }).render(true);
       }
     });
