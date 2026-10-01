@@ -1,0 +1,67 @@
+{
+  "NPC_SPELLBOOK": {
+    "Settings": {
+      "DeductGold": {
+        "Name": "Deduct Gold on Transcription",
+        "Hint": "When enabled, transcribing a spell deducts 50 gp per spell level from the wizard's currency."
+      },
+      "RequireGold": {
+        "Name": "Require Sufficient Gold",
+        "Hint": "When enabled, wizards cannot transcribe a spell unless they can afford the ink cost."
+      }
+    },
+    "Actions": {
+      "MarkAsSpellbook": "Mark as Spellbook",
+      "RemoveSpellbookFlag": "Remove Spellbook Flag",
+      "StudySpellbook": "Study Spellbook",
+      "TranscribeSpell": "Transcribe Spell",
+      "AddSpell": "Add Spell",
+      "RemoveSpell": "Remove",
+      "ViewTranscribed": "Transcribed Spells"
+    },
+    "Sheet": {
+      "Title": "NPC Spellbook",
+      "SpellsHeader": "Spells in this Spellbook",
+      "EmptySpells": "No spells recorded. Drag spell items here or use Add Spell.",
+      "Description": "This spellbook is independent of character spellbooks. Wizards may transcribe spells using 5e 2014 rules."
+    },
+    "Learn": {
+      "Title": "Study Spellbook: {name}",
+      "SelectWizard": "Select Wizard",
+      "WizardLevel": "Wizard Level {level}",
+      "MaxSpellLevel": "Maximum spell level: {level}",
+      "Cost": "Cost: {cost} gp",
+      "Time": "Time: {hours} hours",
+      "Status": {
+        "Learnable": "Can transcribe",
+        "TooHighLevel": "Level too high (max {max})",
+        "AlreadyKnown": "Already transcribed",
+        "NotWizard": "Not a wizard",
+        "CannotAfford": "Insufficient gold ({have} / {need} gp)",
+        "NotWizardSpell": "Not on wizard spell list",
+        "CantripNotCopyable": "Cantrips cannot be transcribed (PHB 2014)"
+      },
+      "ConfirmTitle": "Transcribe {spell}?",
+      "ConfirmContent": "<p>Transcribing <strong>{spell}</strong> (level {level}) costs <strong>{cost} gp</strong> and takes <strong>{hours} hours</strong> per the 5e Player's Handbook.</p><p>Proceed?</p>",
+      "Success": "{wizard} copied {spell} into their spellbook.",
+      "Failed": "Could not transcribe {spell}."
+    },
+    "Transcribed": {
+      "Title": "Transcribed Spells — {name}",
+      "Empty": "No spells transcribed via NPC spellbooks yet.",
+      "Source": "From: {source}",
+      "Level": "Level {level}",
+      "Hint": "These spells are also in the character's Spells tab / spellbook."
+    },
+    "Create": {
+      "SpellbookType": "Spellbook",
+      "Created": "{name} created as a spellbook."
+    },
+    "Notifications": {
+      "MarkedSpellbook": "{name} is now a spellbook.",
+      "UnmarkedSpellbook": "{name} is no longer a spellbook.",
+      "SpellAdded": "{spell} added to spellbook.",
+      "SpellRemoved": "{spell} removed from spellbook."
+    }
+  }
+}

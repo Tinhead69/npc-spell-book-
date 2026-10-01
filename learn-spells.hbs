@@ -1,0 +1,78 @@
+<div class="study-spellbook-container flexcol">
+  <header class="wizard-selection-header flexcol">
+    <div class="wizard-select-row flexrow">
+      <label for="wizard-select"><strong>Select Wizard:</strong></label>
+      <select id="wizard-select" name="wizardId">
+        {{#each wizards}}
+          <option value="{{this.id}}" {{#if this.selected}}selected{{/if}}>
+            {{this.name}}
+          </option>
+        {{/each}}
+      </select>
+    </div>
+
+    {{#if currentWizard}}
+      <div class="wizard-stats-bar">
+        <span><strong>Level:</strong> {{currentWizard.level}}</span>
+        <span class="sep">|</span>
+        <span><strong>Max Spell Level:</strong> {{currentWizard.maxSpellLevel}}</span>
+        <span class="sep">|</span>
+        <span><strong>Gold Available:</strong> {{currentWizard.gold}} gp</span>
+      </div>
+    {{/if}}
+  </header>
+
+  <div class="spells-list">
+    {{#each spellLevels as |spells level|}}
+      <div class="spell-level-block">
+        <div class="spell-level-header">
+          {{#if (eq level 0)}}Cantrips{{else}}Level {{level}}{{/if}}
+        </div>
+        <table class="spells-table study-spells-table">
+          <thead>
+            <tr>
+              <th class="col-name">Name</th>
+              <th class="col-cost">Cost</th>
+              <th class="col-time">Time</th>
+              <th class="col-status">Status</th>
+              <th class="col-actions"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {{#each spells as |spell|}}
+              <tr class="spell-item {{#unless spell.canLearn}}cannot-transcribe{{/unless}}" data-spell-id="{{spell.id}}">
+                <td class="col-name">
+                  <div class="spell-name-cell">
+                    <img src="{{spell.img}}" class="spell-icon" />
+                    <div class="spell-details">
+                      <span class="spell-title">{{spell.name}}</span>
+                      {{#if spell.components}}
+                        <span class="spell-components">{{spell.components}}</span>
+                      {{/if}}
+                    </div>
+                  </div>
+                </td>
+                <td class="col-cost">{{#if (gt spell.level 0)}}{{spell.cost}} gp{{else}}0 gp{{/if}}</td>
+                <td class="col-time">{{#if (gt spell.level 0)}}{{spell.hours}} hrs{{else}}0 hrs{{/if}}</td>
+                <td class="col-status">
+                  <span class="status-badge {{#if spell.canLearn}}learnable{{else}}blocked{{/if}}">
+                    {{spell.statusText}}
+                  </span>
+                </td>
+                <td class="col-actions">
+                  {{#if spell.canLearn}}
+                    <button type="button" class="transcribe-btn" data-spell-id="{{spell.id}}" title="Transcribe Spell">
+                      <i class="fas fa-book-open"></i> Copy
+                    </button>
+                  {{/if}}
+                </td>
+              </tr>
+            {{/each}}
+          </tbody>
+        </table>
+      </div>
+    {{else}}
+      <p class="empty-notice">No spells recorded in this spellbook yet.</p>
+    {{/each}}
+  </div>
+</div>
