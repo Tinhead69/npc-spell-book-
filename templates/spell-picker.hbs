@@ -1,4 +1,5 @@
-<div class="npc-spellbook-container flexcol">
+<div class="standard-form compendium-spell-picker-container flexcol">
+  <!-- Controls Section -->
   <header class="wizard-selection-header flexcol" style="gap: 0.5rem; padding: 0.5rem; background: rgba(0,0,0,0.2); border-radius: 4px;">
     <div class="flexrow" style="gap: 0.5rem; align-items: center;">
       <label for="pack-select"><strong>Compendium:</strong></label>
@@ -19,33 +20,47 @@
     </div>
   </header>
 
-  <div class="spells-list" style="margin-top: 0.5rem;">
+  <!-- Spell List Table -->
+  <div class="spell-list-container flexcol" style="margin-top: 0.5rem; max-height: 450px; overflow-y: auto;">
     {{#if hasSpells}}
-      <table class="spells-table study-spells-table">
+      <table class="spell-picker-table" style="width: 100%; border-collapse: collapse; font-size: 0.9rem;">
         <thead>
-          <tr>
-            <th class="col-name">Spell Name</th>
-            <th class="col-cost">Level</th>
-            <th class="col-actions"></th>
+          <tr style="border-bottom: 1px solid var(--color-border-light); text-align: left;">
+            <th style="padding: 6px; width: 36px;"></th>
+            <th style="padding: 6px;">Spell Name</th>
+            <th style="padding: 6px; width: 90px;">School</th>
+            <th style="padding: 6px; width: 90px;">Time</th>
+            <th style="padding: 6px; width: 90px;">Range</th>
+            <th style="padding: 6px; width: 90px;">Duration</th>
+            <th style="padding: 6px; width: 70px; text-align: right;">Action</th>
           </tr>
         </thead>
         <tbody>
-          {{#each spells as |spell|}}
-            <tr class="spell-item">
-              <td class="col-name">
-                <div class="spell-name-cell">
-                  <img src="{{spell.img}}" class="spell-icon" />
-                  <span class="spell-title">{{spell.name}}</span>
-                </div>
+          {{#each spells}}
+            <tr style="border-bottom: 1px solid var(--color-border-light-2);">
+              <td style="padding: 4px;">
+                <img src="{{img}}" alt="{{name}}" width="28" height="28" style="border: none; border-radius: 4px; vertical-align: middle;">
               </td>
-              <td class="col-cost">
-                Lvl {{spell.level}}
+              <td style="padding: 4px; font-weight: bold; vertical-align: middle;">
+                {{name}}
               </td>
-              <td class="col-actions">
-                {{#if spell.inBook}}
+              <td style="padding: 4px; vertical-align: middle; opacity: 0.8;">
+                {{school}}
+              </td>
+              <td style="padding: 4px; vertical-align: middle; opacity: 0.8;">
+                {{time}}
+              </td>
+              <td style="padding: 4px; vertical-align: middle; opacity: 0.8;">
+                {{range}}
+              </td>
+              <td style="padding: 4px; vertical-align: middle; opacity: 0.8;">
+                {{duration}}
+              </td>
+              <td style="padding: 4px; text-align: right; vertical-align: middle;">
+                {{#if inBook}}
                   <span style="font-size: 0.75rem; opacity: 0.6; font-style: italic;">In Book</span>
                 {{else}}
-                  <button type="button" class="add-picker-spell-btn transcribe-btn" data-uuid="{{spell.uuid}}">
+                  <button type="button" class="add-picker-spell-btn transcribe-btn" data-uuid="{{uuid}}" style="padding: 2px 6px; font-size: 0.8rem;">
                     <i class="fas fa-plus"></i> Add
                   </button>
                 {{/if}}
