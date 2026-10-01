@@ -1,0 +1,61 @@
+<div class="npc-spellbook-container flexcol">
+  <header class="wizard-selection-header flexcol" style="gap: 0.5rem; padding: 0.5rem; background: rgba(0,0,0,0.2); border-radius: 4px;">
+    <div class="flexrow" style="gap: 0.5rem; align-items: center;">
+      <label for="pack-select"><strong>Compendium:</strong></label>
+      <select id="pack-select" style="flex: 1;">
+        {{#each packs}}
+          <option value="{{this.id}}" {{#if this.selected}}selected{{/if}}>{{this.label}}</option>
+        {{#each}}
+      </select>
+    </div>
+
+    <div class="flexrow" style="gap: 0.5rem; align-items: center;">
+      <label for="level-select"><strong>Spell Level:</strong></label>
+      <select id="level-select" style="flex: 1;">
+        {{#each levels}}
+          <option value="{{this.id}}" {{#if this.selected}}selected{{/if}}>{{this.label}}</option>
+        {{/each}}
+      </select>
+    </div>
+  </header>
+
+  <div class="spells-list" style="margin-top: 0.5rem;">
+    {{#if hasSpells}}
+      <table class="spells-table study-spells-table">
+        <thead>
+          <tr>
+            <th class="col-name">Spell Name</th>
+            <th class="col-cost">Level</th>
+            <th class="col-actions"></th>
+          </tr>
+        </thead>
+        <tbody>
+          {{#each spells as |spell|}}
+            <tr class="spell-item">
+              <td class="col-name">
+                <div class="spell-name-cell">
+                  <img src="{{spell.img}}" class="spell-icon" />
+                  <span class="spell-title">{{spell.name}}</span>
+                </div>
+              </td>
+              <td class="col-cost">
+                {{#if (eq spell.level 0)}Cantrip{{else}}Lvl {{spell.level}}{{/if}}
+              </td>
+              <td class="col-actions">
+                {{#if spell.inBook}}
+                  <span style="font-size: 0.75rem; opacity: 0.6; font-style: italic;">In Book</span>
+                {{else}}
+                  <button type="button" class="add-picker-spell-btn transcribe-btn" data-uuid="{{spell.uuid}}">
+                    <i class="fas fa-plus"></i> Add
+                  </button>
+                {{/if}}
+              </td>
+            </tr>
+          {{/each}}
+        </tbody>
+      </table>
+    {{else}}
+      <p class="empty-notice" style="text-align: center; padding: 1rem;">No matching spells found in this compendium.</p>
+    {{/if}}
+  </div>
+</div>
