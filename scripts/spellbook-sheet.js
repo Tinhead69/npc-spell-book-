@@ -1,121 +1,90 @@
-import * as Data from "./data.js";
+import { MODULE_ID } from "./data.js";
 
-const { ItemSheetV2 } = foundry.applications.sheets;
-const { HandlebarsApplicationMixin } = foundry.applications.api;
-
-export class NpcSpellbookSheet extends HandlebarsApplicationMixin(ItemSheetV2) {
-  constructor(options = {}) {
-    if (options.item && !options.document) {
-      options.document = options.item;
-    }
-    super(options);
+export class NpcSpellbookSheet extends ItemSheet {
+  static get defaultOptions() {
+    return foundry.utils.mergeObject(super.defaultOptions, {
+      id: "npc-spellbook-sheet",
+      classes: ["dnd5e", "sheet", "item", "npc-spellbook-sheet"],
+      template: "modules/npc-spell-book/templates/spellbook-sheet.hbs",
+      width: 620,
+      height: 680,
+      resizable: true
+    });
   }
 
-  static DEFAULT_OPTIONS = {
-    id: "npc-spellbook-sheet",
-    classes: ["npc-spellbook", "sheet", "item"],
-    tag: "form",
-    window: {
-      title: "NPC Spellbook",
-      icon: "fas fa-book",
-      resizable: true
-    },
-    position: {
-      width: 600,
-      height: 650
-    },
-    actions: {
-      deleteSpell: NpcSpellbookSheet._onDeleteSpell,
-      studySpellbook: NpcSpellbookSheet._onStudySpellbook
-    }
-  };
+  async getData(options) {
+    const context = await super.getData(options);
+    const item = this.item;
 
-  static PARTS = {
-    body: {
-      template: "modules/npc-spell-book/templates/spellbook-sheet.hbs"
-    }
-  };
+    // 1. Fetch spells from the module flag, with fallbacks for alternative paths
+    let rawSpells =
+      item.getFlag(MODULE_ID, "spells") ||
+      item.flags?.[MODULE_ID]?.spells ||
+      item.flags?.["npc-spell-book"]?.spells ||
+      item.system?.spells ||
+      [];
 
-  /** @override */
-  async _prepareContext(options) {
-    const context = await super._prepareContext(options);
-    const item = this.document;
-
-    // Fetch raw spell array from flags
-    const spells = Data.getSpellbookSpells(item) ?? [];
-
-    context.item = item;
-    context.isGM = game.user.isGM;
-    context.spells = spells;
-    context.hasSpells = spells.length > 0;
-
-    // Group spells by level (Cantrips = 0, 1st level = 1, etc.)
-    const spellLevels = {};
-    for (const spell of spells) {
-      const lvl = Number(spell.level ?? 0);
-      if (!spellLevels[lvl]) spellLevels[lvl] = [];
-      spellLevels[lvl].push(spell);
+    // Convert object to array if Foundry converted flag data into key-value pairs
+    if (!Array.isArray(rawSpells) && typeof rawSpells === "object") {
+      rawSpells = Object.values(rawSpells);
     }
 
-    // Convert to sorted array for Handlebars iteration
-    context.spellLevels = Object.entries(spellLevels)
-      .map(([level, list]) => ({
-        level: Number(level),
-        label: Number(level) === 0 ? "Cantrips" : `Level ${level}`,
-        spells: list
-      }))
-      .sort((a, b) => a.level - b.level);
+    // 2. Initialize level groups (0 to 9)
+    const spellbookLevels = {};
+    for (let i = 0; i <= 9; i++) {
+      spellbookLevels[i] = {
+        level: i,
+        label: i === 0 ? "Cantrips" : `LEVEL ${i}`,
+        spells: []
+      };
+    }
+
+    // 3. Process each spell and extract clean display properties
+    for (const spell of rawSpells) {
+      if (!spell) continue;
+
+      const systemData = spell.system || spell.data || {};
+      const lvl = systemData.level ?? spell.level ?? 0;
+
+      // Extract time/activation
+      const time = systemData.activation?.type
+        ? `${systemData.activation.cost || ""} ${systemData.activation.type}`.trim()
+        : "—";
+
+      // Extract range
+      const range = systemData.range?.value
+        ? `${systemData.range.value} ${systemData.range.units || ""}`.trim()
+        : systemData.range?.units || "—";
+
+      // Extract target
+      const target = systemData.target?.type || "—";
+
+      // Extract components (e.g., V, S, M)
+      const components =
+        spell.labels?.components?.vsm ||
+        systemData.components?.vsm ||
+        "";
+
+      const normalizedSpell = {
+        _id: spell._id || spell.id || foundry.utils.randomID(),
+        name: spell.name || "Unnamed Spell",
+        img: spell.img || "icons/svg/book.svg",
+        time,
+        range,
+        target,
+        components
+      };
+
+      if (spellbookLevels[lvl]) {
+        spellbookLevels[lvl].spells.push(normalizedSpell);
+      }
+    }
+
+    // 4. Group into an array containing only levels that have spells
+    context.activeLevels = Object.values(spellbookLevels).filter(
+      (group) => group.spells.length > 0
+    );
 
     return context;
-  }
-
-  /** Action Handler: Open Study / Learn Dialog safely */
-  static async _onStudySpellbook(event, target) {
-    event.preventDefault();
-    try {
-      const { StudySpellbookDialog } = await import("./learn-dialog.js");
-      new StudySpellbookDialog({ spellbook: this.document }).render(true);
-    } catch (err) {
-      console.error("NPC Spellbook | Error loading StudySpellbookDialog:", err);
-      ui.notifications.error("Could not open Study Spellbook dialog.");
-    }
-  }
-
-  /** Action Handler: Remove Spell */
-  static async _onDeleteSpell(event, target) {
-    event.preventDefault();
-    const spellId = target.dataset.spellId;
-    let spells = Data.getSpellbookSpells(this.document);
-    spells = spells.filter((s) => s.id !== spellId && s.uuid !== spellId);
-    await Data.setSpellbookSpells(this.document, spells);
-    this.render(false);
-  }
-
-  /** @override */
-  _onRender(context, options) {
-    super._onRender(context, options);
-    const html = this.element;
-
-    // Drag & Drop Spells onto sheet
-    html.addEventListener("dragover", (e) => e.preventDefault());
-    html.addEventListener("drop", async (e) => {
-      e.preventDefault();
-      try {
-        const raw = e.dataTransfer.getData("text/plain");
-        if (!raw) return;
-        const data = JSON.parse(raw);
-        if (data?.type === "Item") {
-          const item = await Item.implementation.fromDropData(data);
-          if (item && item.type === "spell") {
-            await Data.addSpellToSpellbook(this.document, item);
-            this.render(false);
-          } else {
-            ui.notifications.warn("Only spells can be added to a spellbook.");
-          }
-        }
-      } catch (err) {
-        console.error("NPC Spellbook | Drag drop error:", err);
-      }
-    });
   }
 }
