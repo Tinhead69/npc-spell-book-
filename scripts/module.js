@@ -1,10 +1,9 @@
 import { SpellbookItemSheet } from "./spellbook-sheet.js";
 
-// Register custom world settings and sheets on Foundry initialization
 Hooks.once("init", () => {
-  console.log("NPC Spellbook | Initializing NPC Spellbook Module");
+  console.log("NPC Spellbook | Initializing Module...");
 
-  // 1. Register Ruleset Setting (2014 vs 2024 vs Both)
+  // Register Ruleset Setting
   game.settings.register("npc-spellbook", "rulesetPreference", {
     name: "Spell Ruleset Preference",
     hint: "Choose which spell revisions to display in the NPC Spellbook browser.",
@@ -16,16 +15,10 @@ Hooks.once("init", () => {
       "2014": "2014 Rules Only (Legacy)",
       "both": "Allow Both (2014 & 2024)"
     },
-    default: "2024",
-    onChange: () => {
-      // Re-render open spellbook windows if setting changes
-      ui.windows && Object.values(ui.windows).forEach(w => {
-        if (w.constructor.name === "CompendiumPickerDialog") w.render();
-      });
-    }
+    default: "2024"
   });
 
-  // 2. Register Custom Sheet for Container & Loot Items
+  // Register Custom Sheet for Item Types
   Items.registerSheet("dnd5e", SpellbookItemSheet, {
     types: ["container", "loot"],
     makeDefault: false,
