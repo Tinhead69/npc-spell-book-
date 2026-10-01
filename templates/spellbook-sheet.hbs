@@ -1,33 +1,62 @@
-<div class="npc-spellbook-container">
+<form class="{{cssClass}}" autocomplete="off">
+  <!-- Header Section -->
   <header class="sheet-header">
-    <h2 class="item-name">{{item.name}}</h2>
+    <h1 class="item-name">{{item.name}}</h1>
     <div class="header-actions">
-      <button type="button" data-action="studySpellbook" class="btn-study">
-        <i class="fas fa-graduation-cap"></i> Study Spellbook
-      </button>
+      <button type="button" class="btn add-spell-btn"><i class="fas fa-plus"></i> Add Spell</button>
+      <button type="button" class="btn study-spellbook-btn"><i class="fas fa-book-reader"></i> Study Spellbook</button>
     </div>
   </header>
 
-  <section class="spells-list">
-    {{#if hasSpells}}
-      {{#each spellLevels}}
-        <div class="spell-level-header">
-          <h3>{{this.label}}</h3>
+  <!-- Main Content Scroll Area -->
+  <section class="sheet-body spellbook-body">
+    {{#each activeLevels as |group level|}}
+      <div class="level-group">
+        <!-- Header Bar with Integrated Column Titles (Image 2 style) -->
+        <div class="level-header">
+          <span class="level-title">
+            {{#if (eq level "0")}}Cantrips{{else}}LEVEL {{level}}{{/if}}
+          </span>
+          <div class="header-columns">
+            <span class="col-time">TIME</span>
+            <span class="col-range">RANGE</span>
+            <span class="col-target">TARGET</span>
+            <span class="col-actions"></span>
+          </div>
         </div>
-        <ul class="spell-items">
-          {{#each this.spells}}
-            <li class="spell-row" data-spell-id="{{this.id}}">
-              <img class="spell-img" src="{{this.img}}" width="28" height="28" alt="{{this.name}}"/>
-              <span class="spell-title">{{this.name}}</span>
-              <button type="button" class="btn-delete" data-action="deleteSpell" data-spell-id="{{this.id}}" title="Remove Spell">
-                <i class="fas fa-trash"></i>
-              </button>
-            </li>
+
+        <!-- List of Spells -->
+        <div class="spell-list">
+          {{#each group.spells as |spell|}}
+            <div class="spell-row" data-spell-id="{{spell._id}}">
+              <!-- Icon & Name/Components -->
+              <div class="col-name">
+                <img class="spell-icon" src="{{spell.img}}" title="{{spell.name}}"/>
+                <div class="spell-details">
+                  <span class="spell-title">{{spell.name}}</span>
+                  {{#if spell.system.components.vsm}}
+                    <span class="spell-components">{{spell.system.components.vsm}}</span>
+                  {{/if}}
+                </div>
+              </div>
+
+              <!-- Spell Attributes -->
+              <span class="col-time">{{#if spell.system.activation.type}}{{spell.system.activation.type}}{{else}}—{{/if}}</span>
+              <span class="col-range">{{#if spell.system.range.value}}{{spell.system.range.value}}{{else}}—{{/if}}</span>
+              <span class="col-target">{{#if spell.system.target.type}}{{spell.system.target.type}}{{else}}—{{/if}}</span>
+
+              <!-- Action Icons -->
+              <div class="col-actions">
+                <a class="spell-delete" title="Delete Spell"><i class="fas fa-trash"></i></a>
+              </div>
+            </div>
           {{/each}}
-        </ul>
-      {{/each}}
+        </div>
+      </div>
     {{else}}
-      <p class="empty-notice">No spells inside this spellbook. Drag and drop spell items here to add them.</p>
-    {{/if}}
+      <div class="empty-notice">
+        <p>No spells recorded in this spellbook.</p>
+      </div>
+    {{/each}}
   </section>
-</div>
+</form>
