@@ -18,29 +18,7 @@
         "id": "dnd5e",
         "type": "system",
         "compatibility": {
-          "minimum": "3.0.0"{
-  "id": "npc-spellbook",
-  "title": "NPC Spellbook",
-  "description": "Allows Wizard PCs to manage independent spellbooks using 5e 2014 rules.",
-  "version": "1.0.0",
-  "compatibility": {
-    "minimum": "13",
-    "verified": "13.351"
-  },
-  "authors": [
-    {
-      "name": "Your Name"
-    }
-  ],
-  "esmodules": [
-    "scripts/main.js"
-  ],
-  "styles": [
-    "styles/spellbook-sheet.css"
-  ],
-  "manifest": "https://github.com/your-repo/npc-spellbook/releases/latest/download/module.json",
-  "download": "https://github.com/your-repo/npc-spellbook/releases/latest/download/module.zip"
-}
+          "minimum": "3.0.0"
         }
       }
     ]
@@ -49,7 +27,7 @@
     "scripts/main.js"
   ],
   "styles": [
-    "styles/spellbook.css"
+    "styles/spellbook-sheet.css"
   ],
   "languages": [
     {
