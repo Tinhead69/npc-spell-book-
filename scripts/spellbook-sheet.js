@@ -41,9 +41,30 @@ export class NpcSpellbookSheet extends HandlebarsApplicationMixin(ItemSheetV2) {
     const context = await super._prepareContext(options);
     const item = this.document;
 
+    // Fetch raw spell array from flags
+    const spells = Data.getSpellbookSpells(item) ?? [];
+
     context.item = item;
     context.isGM = game.user.isGM;
-    context.spells = Data.getSpellbookSpells(item);
+    context.spells = spells;
+    context.hasSpells = spells.length > 0;
+
+    // Group spells by level (Cantrips = 0, 1st level = 1, etc.)
+    const spellLevels = {};
+    for (const spell of spells) {
+      const lvl = Number(spell.level ?? 0);
+      if (!spellLevels[lvl]) spellLevels[lvl] = [];
+      spellLevels[lvl].push(spell);
+    }
+
+    // Convert to sorted array for Handlebars iteration
+    context.spellLevels = Object.entries(spellLevels)
+      .map(([level, list]) => ({
+        level: Number(level),
+        label: Number(level) === 0 ? "Cantrips" : `Level ${level}`,
+        spells: list
+      }))
+      .sort((a, b) => a.level - b.level);
 
     return context;
   }
@@ -56,7 +77,7 @@ export class NpcSpellbookSheet extends HandlebarsApplicationMixin(ItemSheetV2) {
       new StudySpellbookDialog({ spellbook: this.document }).render(true);
     } catch (err) {
       console.error("NPC Spellbook | Error loading StudySpellbookDialog:", err);
-      ui.notifications.error("Could not open Study Spellbook dialog. Check console for details.");
+      ui.notifications.error("Could not open Study Spellbook dialog.");
     }
   }
 
