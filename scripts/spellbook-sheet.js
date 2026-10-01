@@ -39,11 +39,9 @@ export class NpcSpellbookSheet extends ItemSheet {
     for (const spell of rawSpells) {
       if (!spell) continue;
 
-      // Handle dnd5e system vs flat property layouts
       const sys = spell.system || spell.data || spell;
       const lvl = sys.level ?? spell.level ?? 0;
 
-      // Format Activation Time
       let time = "—";
       const activation = sys.activation;
       if (activation) {
@@ -52,7 +50,6 @@ export class NpcSpellbookSheet extends ItemSheet {
         } else if (activation.type) {
           const cost = activation.cost ? `${activation.cost} ` : "";
           const typeMap = {
-            actionプター: "Action",
             action: "Action",
             bonus: "Bonus Action",
             reaction: "Reaction",
@@ -64,7 +61,6 @@ export class NpcSpellbookSheet extends ItemSheet {
         }
       }
 
-      // Format Range
       let range = "—";
       const rng = sys.range;
       if (rng) {
@@ -83,7 +79,6 @@ export class NpcSpellbookSheet extends ItemSheet {
         }
       }
 
-      // Format Target
       let target = "—";
       const tgt = sys.target;
       if (tgt) {
@@ -97,7 +92,6 @@ export class NpcSpellbookSheet extends ItemSheet {
         }
       }
 
-      // Format Components
       const comp = sys.components || {};
       let compsList = [];
       if (comp.v) compsList.push("V");
@@ -142,6 +136,34 @@ export class NpcSpellbookSheet extends ItemSheet {
         await this.item.update({ "system.spells": [] });
         this.render();
       }
+    });
+
+    // Delete Individual Spell listener
+    html.find(".spell-delete").click(async (event) => {
+      event.preventDefault();
+      const row = event.currentTarget.closest(".spell-row");
+      const spellId = row?.dataset?.spellId;
+      if (!spellId) return;
+
+      let rawSpells =
+        this.item.getFlag(MODULE_ID, "spells") ||
+        this.item.flags?.[MODULE_ID]?.spells ||
+        this.item.flags?.["npc-spell-book"]?.spells ||
+        this.item.system?.spells ||
+        [];
+
+      if (!Array.isArray(rawSpells) && typeof rawSpells === "object") {
+        rawSpells = Object.values(rawSpells);
+      }
+
+      const updatedSpells = rawSpells.filter(s => {
+        const id = s._id || s.id;
+        return id !== spellId;
+      });
+
+      await this.item.setFlag(MODULE_ID, "spells", updatedSpells);
+      await this.item.update({ "system.spells": updatedSpells });
+      this.render();
     });
   }
 }
