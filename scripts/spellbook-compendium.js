@@ -1,4 +1,4 @@
-import { addSpellToSpellbook, getSpellbookSpells, setSpellbookSpells } from "./data.js";
+import { getSpellbookSpells, setSpellbookSpells } from "./data.js";
 
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
 
