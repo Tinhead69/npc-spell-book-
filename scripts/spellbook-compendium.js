@@ -14,8 +14,8 @@ export class CompendiumSpellPicker extends HandlebarsApplicationMixin(Applicatio
     id: "compendium-spell-picker",
     classes: ["compendium-spell-picker"],
     position: {
-      width: 550,
-      height: 600
+      width: 750,
+      height: 650
     },
     tag: "div"
   };
@@ -63,18 +63,85 @@ export class CompendiumSpellPicker extends HandlebarsApplicationMixin(Applicatio
     let spells = [];
 
     if (targetPack) {
-      const index = await targetPack.getIndex({ fields: ["system.level", "img"] });
+      const index = await targetPack.getIndex({
+        fields: [
+          "system.level",
+          "img",
+          "system.school",
+          "system.activation",
+          "system.range",
+          "system.duration"
+        ]
+      });
       const currentSpells = getSpellbookSpells(this.spellbook);
       const existingUuids = new Set(currentSpells.map((s) => s.uuid));
 
       for (const entry of index) {
         if (entry.type !== "spell") continue;
 
-        const level = Number(entry.system?.level ?? 0);
+        const sys = entry.system || {};
+        const level = Number(sys.level ?? 0);
         
         if (level < 1) continue;
         if (this.selectedLevel !== "all" && String(level) !== String(this.selectedLevel)) {
           continue;
+        }
+
+        // School formatting
+        const school = sys.school ? (CONFIG.dnd5e?.spellSchools?.[sys.school] ?? sys.school) : "—";
+
+        // Activation / Casting Time formatting
+        let time = "—";
+        const activation = sys.activation;
+        if (typeof activation === "string") {
+          time = activation;
+        } else if (activation?.type) {
+          const cost = activation.cost ? `${activation.cost} ` : "";
+          const typeMap = {
+            action: "Action",
+            bonus: "Bonus Action",
+            reaction: "Reaction",
+            minute: "Minute",
+            hour: "Hour",
+            day: "Day"
+          };
+          time = `${cost}${typeMap[activation.type] || activation.type}`;
+        }
+
+        // Range formatting
+        let range = "—";
+        const rng = sys.range;
+        if (typeof rng === "string") {
+          range = rng;
+        } else if (rng?.units === "self") {
+          range = "Self";
+        } else if (rng?.units === "touch") {
+          range = "Touch";
+        } else if (rng?.units === "sight") {
+          range = "Sight";
+        } else if (rng?.value) {
+          range = `${rng.value}${rng.units ? ` ${rng.units}` : ""}`;
+        } else if (rng?.units) {
+          range = rng.units;
+        }
+
+        // Duration formatting
+        let duration = "—";
+        const dur = sys.duration;
+        if (typeof dur === "string") {
+          duration = dur;
+        } else if (dur?.units) {
+          const val = dur.value ? `${dur.value} ` : "";
+          const unitsMap = {
+            turn: "Turn",
+            round: "Round",
+            minute: "Minute",
+            hour: "Hour",
+            day: "Day",
+            permanent: "Permanent",
+            instantaneous: "Instantaneous"
+          };
+          duration = `${val}${unitsMap[dur.units] || dur.units}`;
         }
 
         spells.push({
@@ -82,6 +149,10 @@ export class CompendiumSpellPicker extends HandlebarsApplicationMixin(Applicatio
           name: entry.name,
           img: entry.img || "icons/svg/spell-magic.svg",
           level: level,
+          school,
+          time,
+          range,
+          duration,
           inBook: existingUuids.has(entry.uuid)
         });
       }
