@@ -1,46 +1,28 @@
 import { MODULE_ID, getSpellbookSpells, removeSpellFromSpellbook } from "./data.js";
 import { CompendiumSpellPicker } from "./spellbook-compendium.js";
 
-const { DocumentSheetV2, HandlebarsApplicationMixin } = foundry.applications.api;
-
-export class NpcSpellbookSheet extends HandlebarsApplicationMixin(DocumentSheetV2) {
-  static DEFAULT_OPTIONS = {
-    id: "npc-spellbook-sheet-{id}",
-    classes: ["npc-spellbook", "dnd5e", "sheet", "item"],
-    tag: "window",
-    window: {
-      contentClasses: ["standard-form"],
-      icon: "fas fa-book"
-    },
-    position: {
+export class NpcSpellbookSheet extends ItemSheet {
+  static get defaultOptions() {
+    return foundry.utils.mergeObject(super.defaultOptions, {
+      classes: ["npc-spellbook", "dnd5e", "sheet", "item"],
+      template: "modules/npc-spell-book/templates/spellbook-sheet.hbs",
       width: 650,
-      height: 600
-    },
-    actions: {
-      addSpell: NpcSpellbookSheet._onAddSpell,
-      removeSpell: NpcSpellbookSheet._onRemoveSpell,
-      clearBook: NpcSpellbookSheet._onClearBook
-    }
-  };
-
-  static PARTS = {
-    sheet: {
-      template: "modules/npc-spell-book/templates/spellbook-sheet.hbs"
-    }
-  };
-
-  get title() {
-    return this.document.name;
+      height: 600,
+      tabs: [{ navSelector: ".sheet-tabs", contentSelector: ".sheet-body", initial: "spells" }]
+    });
   }
 
-  /** @override */
-  async _prepareContext(options) {
-    const context = await super._prepareContext(options);
-    const item = this.document;
+  get title() {
+    return `${this.object.name}`;
+  }
+
+  async getData(options) {
+    const context = await super.getData(options);
+    const item = this.object;
 
     context.item = item;
-    context.name = item.name;
-    context.img = item.img;
+    context.system = item.system;
+    context.flags = item.flags;
     
     // Group spells by level (1 to 9)
     const rawSpells = getSpellbookSpells(item);
@@ -72,32 +54,37 @@ export class NpcSpellbookSheet extends HandlebarsApplicationMixin(DocumentSheetV
     return context;
   }
 
-  static async _onAddSpell(event, target) {
-    event.preventDefault();
-    const sheet = this;
-    new CompendiumSpellPicker({ spellbook: sheet.document }).render(true);
-  }
+  activateListeners(html) {
+    super.activateListeners(html);
+    if (!this.isEditable) return;
 
-  static async _onRemoveSpell(event, target) {
-    event.preventDefault();
-    const uuid = target.dataset.uuid;
-    if (!uuid) return;
-    await removeSpellFromSpellbook(this.document, uuid);
-    this.render(false);
-  }
-
-  static async _onClearBook(event, target) {
-    event.preventDefault();
-    const confirmed = await foundry.applications.api.DialogV2.confirm({
-      window: { title: "Clear Spellbook" },
-      content: "<p>Are you sure you want to remove all spells from this spellbook?</p>",
-      yes: { label: "Clear", icon: "fas fa-trash" },
-      no: { label: "Cancel", icon: "fas fa-times" }
+    html.find(".add-spell-btn").click(async (ev) => {
+      ev.preventDefault();
+      new CompendiumSpellPicker({ spellbook: this.object }).render(true);
     });
 
-    if (confirmed) {
-      await this.document.unsetFlag(MODULE_ID, "spells");
+    html.find(".remove-spell-btn").click(async (ev) => {
+      ev.preventDefault();
+      const uuid = ev.currentTarget.dataset.uuid;
+      if (!uuid) return;
+      await removeSpellFromSpellbook(this.object, uuid);
       this.render(false);
-    }
+    });
+
+    html.find(".clear-book-btn").click(async (ev) => {
+      ev.preventDefault();
+      const confirmed = await Dialog.confirm({
+        title: "Clear Spellbook",
+        content: "<p>Are you sure you want to remove all spells from this spellbook?</p>",
+        yes: () => true,
+        no: () => false,
+        defaultYes: false
+      });
+
+      if (confirmed) {
+        await this.object.unsetFlag(MODULE_ID, "spells");
+        this.render(false);
+      }
+    });
   }
 }
