@@ -1,322 +1,169 @@
-/* Container & Root Window */
-.npc-spellbook-container,
-.study-spellbook-container {
-  display: flex;
-  flex-direction: column;
-  padding: 0.25rem 0.5rem 0.5rem 0.5rem;
-  width: 100%;
-  height: 100%;
-  box-sizing: border-box;
-  font-family: var(--font-primary, sans-serif);
-  min-height: 0; /* Crucial for nested flex scrolling */
+/* Container & Base Styles */
+.npc-spellbook-sheet {
+  background: #121318;
+  color: #d3d3d3;
+  font-family: var(--font-primary, "Signika", sans-serif);
 }
 
-/* Header - Moved closer to title bar */
-.npc-spellbook-container .sheet-header {
+.npc-spellbook-sheet .sheet-header {
   display: flex;
-  flex-direction: row;
+  justify-content: space-between;
   align-items: center;
-  gap: 0.75rem;
-  padding: 0.25rem 0.5rem;
-  background: rgba(0, 0, 0, 0.2);
-  border-radius: 4px;
-  margin-top: 0;
-  margin-bottom: 0.5rem;
+  padding: 10px;
+  border-bottom: 1px solid #2a2d37;
 }
 
-.npc-spellbook-container .profile-img {
-  width: 48px !important;
-  height: 48px !important;
-  min-width: 48px;
-  min-height: 48px;
-  max-width: 48px;
-  max-height: 48px;
-  object-fit: cover;
-  border: 1px solid var(--color-border-dark, #444);
-  border-radius: 4px;
-  flex: 0 0 48px;
-}
-
-.npc-spellbook-container .header-fields {
-  flex: 1;
-}
-
-.npc-spellbook-container .header-fields h1.charname {
+.npc-spellbook-sheet .item-name {
+  color: #ffffff;
+  font-size: 1.5em;
+  font-weight: bold;
   margin: 0;
   border: none;
-  padding: 0;
 }
 
-.npc-spellbook-container .header-fields input[name="name"] {
-  width: 100%;
-  font-size: 1.25rem;
-  font-weight: bold;
-  text-transform: uppercase;
-  background: transparent;
-  border: none;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
-  color: var(--color-text-light, #fff);
-  padding: 0 0 2px 0;
-}
-
-.npc-spellbook-container .notes {
-  margin: 0.2rem 0 0 0;
-  font-size: 0.8rem;
-  line-height: 1.2;
-  opacity: 0.85;
-}
-
-/* Sheet Body Flex Alignment */
-.npc-spellbook-container .sheet-body {
+.npc-spellbook-sheet .header-actions {
   display: flex;
-  flex-direction: column;
-  flex: 1;
-  min-height: 0; /* Allows body to yield scroll space */
+  gap: 8px;
 }
 
-/* Action Header Buttons & Gap before Level 0 */
-.npc-spellbook-container .sheet-actions {
-  display: flex;
-  gap: 0.5rem;
-  margin-bottom: 1rem; /* Gap between buttons and Level 0 */
-  flex-shrink: 0;
-}
-
-.npc-spellbook-container .sheet-actions button {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  padding: 0.4rem 0.5rem;
-  font-weight: bold;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 3px;
+.npc-spellbook-sheet .btn {
+  background: #1f222d;
+  color: #fff;
+  border: 1px solid #3a3f50;
+  border-radius: 4px;
+  padding: 4px 10px;
+  font-size: 0.85em;
   cursor: pointer;
 }
 
-.npc-spellbook-container .sheet-actions button:hover {
-  background: rgba(255, 255, 255, 0.15);
+.npc-spellbook-sheet .btn:hover {
+  background: #2a2e3d;
 }
 
-/* Spells List & Scroll Control */
-.spells-list {
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
+/* Level Group & Dark Red Header (Image 2 Matching) */
+.npc-spellbook-sheet .level-group {
+  margin-bottom: 12px;
+}
+
+.npc-spellbook-sheet .level-header {
+  display: flex;
+  align-items: center;
+  background: #4a151b; /* Dark reddish header bar */
+  color: #ffffff;
+  padding: 6px 10px;
+  font-weight: bold;
+  border-radius: 3px 3px 0 0;
+}
+
+.npc-spellbook-sheet .level-title {
+  flex: 2.5;
+  font-size: 1.05em;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.npc-spellbook-sheet .header-columns {
+  flex: 3;
+  display: flex;
+  font-size: 0.75em;
+  text-transform: uppercase;
+  color: #cccccc;
+  letter-spacing: 0.5px;
+}
+
+/* Row Formatting & Grid Columns */
+.npc-spellbook-sheet .spell-list {
   display: flex;
   flex-direction: column;
-  gap: 0.85rem;
-  padding-right: 4px;
 }
 
-.spell-level-block {
-  border-radius: 4px;
-  overflow: hidden;
-  flex-shrink: 0;
+.npc-spellbook-sheet .spell-row {
+  display: flex;
+  align-items: center;
+  padding: 6px 10px;
+  background: #181a22;
+  border-bottom: 1px solid #222530;
 }
 
-.spell-level-header {
-  background: #4a1c1d;
-  color: #ffffff;
-  padding: 0.35rem 0.6rem;
-  font-weight: bold;
-  font-size: 0.9rem;
-  letter-spacing: 0.03em;
-  text-transform: uppercase;
+.npc-spellbook-sheet .spell-row:nth-child(even) {
+  background: #14161d;
 }
 
-/* Table Formatting */
-.spells-table {
-  width: 100%;
-  border-collapse: collapse;
-  margin: 0;
-  background: rgba(0, 0, 0, 0.15);
+.npc-spellbook-sheet .spell-row:hover {
+  background: #202430;
 }
 
-.spells-table th {
-  padding: 0.35rem 0.5rem;
-  font-size: 0.75rem;
-  font-weight: bold;
-  text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.7);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+/* Column Alignment */
+.npc-spellbook-sheet .col-name {
+  flex: 2.5;
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
-.spells-table td {
-  padding: 0.3rem 0.5rem;
-  vertical-align: middle;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-  font-size: 0.85rem;
-}
-
-.spells-table tr:last-child td {
-  border-bottom: none;
-}
-
-/* Fixed Table Columns */
-.spells-table .col-name {
-  width: auto;
-  text-align: left;
-}
-
-.spells-table .col-time {
-  width: 70px;
+.npc-spellbook-sheet .col-time,
+.npc-spellbook-sheet .header-columns .col-time {
+  flex: 1;
   text-align: center;
+  font-size: 0.85em;
 }
 
-.spells-table .col-range {
-  width: 80px;
+.npc-spellbook-sheet .col-range,
+.npc-spellbook-sheet .header-columns .col-range {
+  flex: 1;
   text-align: center;
-  font-weight: bold;
+  font-size: 0.85em;
 }
 
-.spells-table .col-target {
-  width: 110px;
+.npc-spellbook-sheet .col-target,
+.npc-spellbook-sheet .header-columns .col-target {
+  flex: 1;
   text-align: center;
+  font-size: 0.85em;
 }
 
-.spells-table .col-actions {
+.npc-spellbook-sheet .col-actions,
+.npc-spellbook-sheet .header-columns .col-actions {
   width: 30px;
   text-align: right;
 }
 
-/* Spell Row Details & Icon Sizing */
-.spell-item .spell-name-cell {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-}
-
-.spell-item .spell-icon {
-  width: 32px !important;
-  height: 32px !important;
-  min-width: 32px;
-  min-height: 32px;
-  max-width: 32px;
-  max-height: 32px;
-  object-fit: cover;
+/* Icons & Labels */
+.npc-spellbook-sheet .spell-icon {
+  width: 36px;
+  height: 36px;
+  border: 1px solid #3a3f50;
   border-radius: 4px;
-  border: 1px solid #7a6238;
-  box-shadow: 0 0 3px rgba(0, 0, 0, 0.5);
-  flex: 0 0 32px;
+  object-fit: cover;
 }
 
-.spell-item .spell-details {
+.npc-spellbook-sheet .spell-details {
   display: flex;
   flex-direction: column;
-  justify-content: center;
 }
 
-.spell-item .spell-title {
-  font-weight: bold;
-  font-size: 0.85rem;
+.npc-spellbook-sheet .spell-title {
   color: #ffffff;
-  line-height: 1.1;
+  font-weight: bold;
+  font-size: 0.95em;
 }
 
-.spell-item .spell-components {
-  font-size: 0.7rem;
-  color: rgba(255, 255, 255, 0.5);
-  margin-top: 0.1rem;
+.npc-spellbook-sheet .spell-components {
+  color: #888888;
+  font-size: 0.75em;
 }
 
-.delete-spell {
-  color: rgba(255, 255, 255, 0.4);
+.npc-spellbook-sheet .spell-delete {
+  color: #666666;
   cursor: pointer;
-  transition: color 0.15s ease;
 }
 
-.delete-spell:hover {
+.npc-spellbook-sheet .spell-delete:hover {
   color: #ff5555;
 }
 
-/* Study Spellbook Specific Styles */
-.study-spellbook-container .wizard-selection-header {
-  background: rgba(0, 0, 0, 0.25);
-  padding: 0.5rem 0.75rem;
-  border-radius: 4px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  margin-bottom: 0.75rem;
-  gap: 0.4rem;
-}
-
-.study-spellbook-container .wizard-select-row {
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.study-spellbook-container .wizard-select-row select {
-  flex: 1;
-  background: rgba(0, 0, 0, 0.4);
-  color: #fff;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  padding: 0.25rem 0.5rem;
-  border-radius: 3px;
-}
-
-.study-spellbook-container .wizard-stats-bar {
-  font-size: 0.8rem;
-  opacity: 0.9;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.study-spellbook-container .wizard-stats-bar .sep {
-  opacity: 0.4;
-}
-
-/* Study Table Column Widths */
-.study-spells-table .col-cost {
-  width: 65px;
+.npc-spellbook-sheet .empty-notice {
   text-align: center;
-}
-
-.study-spells-table .col-time {
-  width: 65px;
-  text-align: center;
-}
-
-.study-spells-table .col-status {
-  width: 140px;
-  text-align: left;
-  font-size: 0.75rem;
-}
-
-.study-spells-table .col-actions {
-  width: 75px;
-  text-align: right;
-}
-
-/* Status Badges & Action Buttons */
-.study-spells-table .status-badge.blocked {
-  color: rgba(255, 255, 255, 0.5);
-  font-style: italic;
-}
-
-.study-spells-table .status-badge.learnable {
-  color: #8ce99a;
-  font-weight: bold;
-}
-
-.study-spells-table .transcribe-btn {
-  padding: 0.2rem 0.4rem;
-  font-size: 0.75rem;
-  line-height: 1;
-  background: #2b522b;
-  border: 1px solid #488248;
-  color: #ffffff;
-  border-radius: 3px;
-  cursor: pointer;
-  white-space: nowrap;
-}
-
-.study-spells-table .transcribe-btn:hover {
-  background: #396b39;
-}
-
-.study-spells-table tr.cannot-transcribe {
-  opacity: 0.7;
+  padding: 20px;
+  color: #777;
 }
