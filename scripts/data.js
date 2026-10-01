@@ -1,5 +1,8 @@
 export const MODULE_ID = "npc-spell-book";
 
+// Icon used for the spellbook item sheet registration
+export const SPELLBOOK_ICON = "icons/svg/book.svg";
+
 /**
  * Retrieves the stored spells array from the spellbook item.
  * @param {Item} item - The spellbook item.
