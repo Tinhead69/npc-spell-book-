@@ -40,15 +40,18 @@ export class NpcSpellbookSheet extends ItemSheet {
       if (!spell) continue;
 
       const sys = spell.system || spell.data || spell;
+      const labels = spell.labels || {};
       const lvl = sys.level ?? spell.level ?? 0;
 
-      // Format Activation Time
+      // 1. Time / Activation
       let time = "—";
-      const activation = sys.activation;
-      if (activation) {
+      if (labels.activation) {
+        time = labels.activation;
+      } else {
+        const activation = sys.activation;
         if (typeof activation === "string") {
           time = activation;
-        } else if (activation.type) {
+        } else if (activation?.type) {
           const cost = activation.cost ? `${activation.cost} ` : "";
           const typeMap = {
             action: "Action",
@@ -63,62 +66,69 @@ export class NpcSpellbookSheet extends ItemSheet {
         }
       }
 
-      // Format Range
+      // 2. Range
       let range = "—";
-      const rng = sys.range;
-      if (rng) {
+      if (labels.range) {
+        range = labels.range;
+      } else {
+        const rng = sys.range;
         if (typeof rng === "string") {
           range = rng;
-        } else if (rng.units === "self") {
+        } else if (rng?.units === "self") {
           range = "Self";
-        } else if (rng.units === "touch") {
+        } else if (rng?.units === "touch") {
           range = "Touch";
-        } else if (rng.units === "sight") {
+        } else if (rng?.units === "sight") {
           range = "Sight";
-        } else if (rng.value) {
+        } else if (rng?.value) {
           const units = rng.units ? ` ${rng.units}` : "";
           range = `${rng.value}${units}`;
-        } else if (rng.units) {
+        } else if (rng?.units) {
           range = typeof rng.units === "string" ? rng.units.capitalize() : "—";
         }
       }
 
-      // Format Target / Area
+      // 3. Target / Area
       let target = "—";
-      const tgt = sys.target;
-      const area = sys.area;
-      if (tgt && (tgt.value || tgt.type || tgt.units)) {
-        const val = tgt.value ? `${tgt.value} ` : "";
-        const units = tgt.units ? `${tgt.units} ` : "";
-        const type = tgt.type ? `${tgt.type}` : "";
-        target = `${val}${units}${type}`.trim();
-      } else if (area && (area.value || area.type)) {
-        const val = area.value ? `${area.value} ` : "";
-        const units = area.units ? `${area.units} ` : "";
-        const type = area.type ? `${area.type}` : "";
-        target = `${val}${units}${type}`.trim();
-      } else if (typeof tgt === "string") {
-        target = tgt;
+      if (labels.target) {
+        target = labels.target;
+      } else {
+        const tgt = sys.target;
+        const area = sys.area;
+        if (tgt && (tgt.value || tgt.type || tgt.units)) {
+          const val = tgt.value ? `${tgt.value} ` : "";
+          const units = tgt.units ? `${tgt.units} ` : "";
+          const type = tgt.type ? `${tgt.type}` : "";
+          target = `${val}${units}${type}`.trim();
+        } else if (area && (area.value || area.type)) {
+          const val = area.value ? `${area.value} ` : "";
+          const units = area.units ? `${area.units} ` : "";
+          const type = area.type ? `${area.type}` : "";
+          target = `${val}${units}${type}`.trim();
+        } else if (typeof tgt === "string") {
+          target = tgt;
+        }
       }
 
-      // Format Components (including material details if available)
-      const comp = sys.components || {};
-      let compsList = [];
-      if (comp.v || (Array.isArray(comp.value) && comp.value.includes("v"))) compsList.push("V");
-      if (comp.s || (Array.isArray(comp.value) && comp.value.includes("s"))) compsList.push("S");
-      if (comp.m || (Array.isArray(comp.value) && comp.value.includes("m"))) {
-        let mStr = "M";
-        if (comp.materials?.value) {
-          mStr += ` (${comp.materials.value})`;
-        }
-        compsList.push(mStr);
-      }
-      
+      // 4. Components
       let components = "";
-      if (compsList.length > 0) {
-        components = `(${compsList.join(", ")})`;
-      } else if (spell.labels?.components?.vsm) {
-        components = `(${spell.labels.components.vsm})`;
+      if (labels.components?.vsm) {
+        components = `(${labels.components.vsm})`;
+      } else {
+        const comp = sys.components || {};
+        let compsList = [];
+        if (comp.v || (Array.isArray(comp.value) && comp.value.includes("v"))) compsList.push("V");
+        if (comp.s || (Array.isArray(comp.value) && comp.value.includes("s"))) compsList.push("S");
+        if (comp.m || (Array.isArray(comp.value) && comp.value.includes("m"))) {
+          let mStr = "M";
+          if (comp.materials?.value) {
+            mStr += ` (${comp.materials.value})`;
+          }
+          compsList.push(mStr);
+        }
+        if (compsList.length > 0) {
+          components = `(${compsList.join(", ")})`;
+        }
       }
 
       const normalizedSpell = {
