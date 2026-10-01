@@ -1,12 +1,14 @@
 import { MODULE_ID, getSpellbookSpells, removeSpellFromSpellbook } from "./data.js";
 import { CompendiumSpellPicker } from "./spellbook-compendium.js";
 
-export class NpcSpellbookSheet extends ItemSheet {
+const ApplicationV1 = foundry.appv1?.sheets?.ItemSheet || ItemSheet;
+
+export class NpcSpellbookSheet extends ApplicationV1 {
   static get defaultOptions() {
     return foundry.utils.mergeObject(super.defaultOptions, {
       classes: ["npc-spellbook", "dnd5e", "sheet", "item"],
       template: "modules/npc-spell-book/templates/spellbook-sheet.hbs",
-      width: 650,
+      width: 750,
       height: 600,
       tabs: [{ navSelector: ".sheet-tabs", contentSelector: ".sheet-body", initial: "spells" }]
     });
@@ -76,11 +78,41 @@ export class NpcSpellbookSheet extends ItemSheet {
           if (!target) target = "—";
         }
 
+        let components = "—";
+        const comps = sys.components;
+        if (comps) {
+          const parts = [];
+          if (comps.v) parts.push("V");
+          if (comps.s) parts.push("S");
+          if (comps.m) parts.push("M");
+          components = parts.join(", ") || "—";
+        }
+
+        let duration = "—";
+        const dur = sys.duration;
+        if (typeof dur === "string") {
+          duration = dur;
+        } else if (dur?.units === "instantaneous") {
+          duration = "Instant";
+        } else if (dur?.units === "perm") {
+          duration = "Permanent";
+        } else if (dur?.units === "special") {
+          duration = "Special";
+        } else if (dur?.value) {
+          const unitMap = { turn: "Turn", round: "Round", minute: "Min", hour: "Hour", day: "Day" };
+          const uLabel = unitMap[dur.units] || dur.units;
+          duration = `${dur.value} ${uLabel}`;
+        } else if (dur?.units) {
+          duration = dur.units;
+        }
+
         levelGroups[level].spells.push({
           ...spell,
           time,
           range,
-          target
+          target,
+          components,
+          duration
         });
       }
     }
