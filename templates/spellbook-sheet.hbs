@@ -1,20 +1,7 @@
-<form class="{{cssClass}} flexcol" autocomplete="off" style="padding: 6px; background: #191919; color: #f0f0f0; border: none;">
+<form class="{{cssClass}} flexcol" autocomplete="off" style="padding: 6px; background: #111111; color: #f0f0f0; border: none;">
   <!-- Header / Action Buttons -->
-  <header class="sheet-header flexrow" style="padding: 4px; align-items: center; margin-bottom: 8px; border: none; gap: 8px;">
-    <img src="{{img}}" data-edit="img" alt="{{name}}" width="48" height="48" style="flex: 0 0 48px; border: none; border-radius: 4px; object-fit: contain;" />
-    <div style="flex: 1; font-size: 1.2rem; font-weight: bold; color: #fff;">{{name}}</div>
-    <div style="display: flex; gap: 6px;">
-      <button type="button" class="add-spell-btn" style="padding: 4px 8px; font-size: 0.85rem; background: #222; color: #fff; border: 1px solid #444;">
-        <i class="fas fa-plus"></i> Add Spell
-      </button>
-      <button type="button" class="clear-book-btn" style="padding: 4px 8px; font-size: 0.85rem; background: #222; color: #ff8888; border: 1px solid #444;" title="Clear Spellbook">
-        <i class="fas fa-trash"></i>
-      </button>
-    </div>
-  </header>a<form class="{{cssClass}} flexcol" autocomplete="off" style="padding: 6px; background: #191919; color: #f0f0f0; border: none;">
-  <!-- Header / Action Buttons -->
-  <header class="sheet-header flexrow" style="padding: 4px; align-items: center; margin-bottom: 8px; border: none; gap: 8px;">
-    <img src="{{#if img}}{{img}}{{else}}icons/svg/book.svg{{/if}}" data-edit="img" alt="{{name}}" width="48" height="48" style="flex: 0 0 48px; border: none; border-radius: 4px; object-fit: contain; cursor: pointer;" title="Click to change image" />
+  <header class="sheet-header flexrow" style="padding: 4px; align-items: center; margin-bottom: 8px; border: none; gap: 8px; background: #111111;">
+    <img src="{{#if img}}{{img}}{{else}}icons/svg/book.svg{{/if}}" data-edit="img" alt="{{name}}" width="48" height="48" style="flex: 0 0 48px; border: none; border-radius: 4px; object-fit: contain; cursor: pointer; background: #222;" title="Click to change image" />
     <div style="flex: 1; font-size: 1.2rem; font-weight: bold; color: #fff;">{{name}}</div>
     <div style="display: flex; gap: 6px;">
       <button type="button" class="add-spell-btn" style="padding: 4px 8px; font-size: 0.85rem; background: #222; color: #fff; border: 1px solid #444;">
@@ -27,8 +14,8 @@
   </header>
 
   <!-- Spell List Body Grouped by Level -->
-  <section class="sheet-body" style="flex: 1; overflow-y: auto; max-height: 520px; border: none;">
-    <ol class="items-list inventory-list directory-list" style="list-style: none; padding: 0; margin: 0;">
+  <section class="sheet-body" style="flex: 1; overflow-y: auto; max-height: 520px; border: none; background: #111111;">
+    <ol class="items-list inventory-list directory-list" style="list-style: none; padding: 0; margin: 0; background: #111111;">
       {{#if hasSpells}}
         {{#each activeLevels}}
           <!-- Matching Dark Red Header Bar -->
@@ -40,65 +27,20 @@
             <div class="item-controls" style="width: 40px; text-align: right;"></div>
           </li>
 
-          <ol class="item-list" style="list-style: none; padding: 0; margin: 2px 0 6px 0;">
+          <ol class="item-list" style="list-style: none; padding: 0; margin: 2px 0 6px 0; background: #111111;">
             {{#each spells}}
-              <li class="spell-row flexrow item" style="align-items: center; padding: 4px 6px; border-bottom: 1px solid #333;">
+              <li class="spell-row flexrow item" style="align-items: center; padding: 4px 6px; border-bottom: 1px solid #222; background: #161616;">
                 <div class="item-name flexrow" style="flex: 1; align-items: center; gap: 8px;">
-                  <img src="{{img}}" alt="{{name}}" width="28" height="28" style="width: 28px; height: 28px; flex: 0 0 28px; border: none; border-radius: 3px; object-fit: contain;" />
+                  <img src="{{img}}" alt="{{name}}" width="28" height="28" style="width: 28px; height: 28px; flex: 0 0 28px; border: none; border-radius: 3px; object-fit: contain; background: #222;" />
                   <span class="spell-name" style="font-weight: 500; color: #f0f0f0;">{{name}}</span>
                 </div>
-                <div class="item-detail" style="width: 75px; text-align: center; font-size: 0.85rem; opacity: 0.8;">
+                <div class="item-detail" style="width: 75px; text-align: center; font-size: 0.85rem; opacity: 0.8; color: #ccc;">
                   {{#if system.activation}}{{system.activation.cost}} {{system.activation.type}}{{else}}—{{/if}}
                 </div>
-                <div class="item-detail" style="width: 75px; text-align: center; font-size: 0.85rem; opacity: 0.8;">
+                <div class="item-detail" style="width: 75px; text-align: center; font-size: 0.85rem; opacity: 0.8; color: #ccc;">
                   {{#if system.range.units}}{{system.range.units}}{{else}}—{{/if}}
                 </div>
-                <div class="item-detail" style="width: 90px; text-align: center; font-size: 0.85rem; opacity: 0.8;">
-                  {{#if system.target.value}}{{system.target.value}} {{system.target.units}}{{else}}—{{/if}}
-                </div>
-                <div class="item-controls" style="width: 40px; text-align: right;">
-                  <button type="button" class="remove-spell-btn" data-uuid="{{uuid}}" style="background: none; border: none; color: #ff8888; cursor: pointer;" title="Remove Spell">
-                    <i class="fas fa-trash"></i>
-                  </button>
-                </div>
-              </li>
-            {{/each}}
-          </ol>
-        {{/each}}
-      {{else}}
-        <p class="notes" style="text-align: center; padding: 2rem; opacity: 0.7; color: #bbb;">This spellbook is empty. Click "Add Spell" to add spells.</p>
-      {{/if}}
-    </ol>
-  </section>
-</form>
-  <!-- Spell List Body Grouped by Level -->
-  <section class="sheet-body" style="flex: 1; overflow-y: auto; max-height: 520px; border: none;">
-    <ol class="items-list inventory-list directory-list" style="list-style: none; padding: 0; margin: 0;">
-      {{#if hasSpells}}
-        {{#each activeLevels}}
-          <!-- Matching Dark Red Header Bar -->
-          <li class="item-header flexrow" style="background-color: #3c1618 !important; background: #3c1618 !important; color: #fff !important; padding: 4px 8px; font-weight: bold; margin-top: 8px; border-radius: 3px; align-items: center; border: none;">
-            <div class="item-name" style="flex: 1; color: #fff;">{{label}}</div>
-            <div class="item-detail" style="width: 75px; text-align: center; color: #fff;">TIME</div>
-            <div class="item-detail" style="width: 75px; text-align: center; color: #fff;">RANGE</div>
-            <div class="item-detail" style="width: 90px; text-align: center; color: #fff;">TARGET</div>
-            <div class="item-controls" style="width: 40px; text-align: right;"></div>
-          </li>
-
-          <ol class="item-list" style="list-style: none; padding: 0; margin: 2px 0 6px 0;">
-            {{#each spells}}
-              <li class="spell-row flexrow item" style="align-items: center; padding: 4px 6px; border-bottom: 1px solid #333;">
-                <div class="item-name flexrow" style="flex: 1; align-items: center; gap: 8px;">
-                  <img src="{{img}}" alt="{{name}}" width="28" height="28" style="width: 28px; height: 28px; flex: 0 0 28px; border: none; border-radius: 3px; object-fit: contain;" />
-                  <span class="spell-name" style="font-weight: 500; color: #f0f0f0;">{{name}}</span>
-                </div>
-                <div class="item-detail" style="width: 75px; text-align: center; font-size: 0.85rem; opacity: 0.8;">
-                  {{#if system.activation}}{{system.activation.cost}} {{system.activation.type}}{{else}}—{{/if}}
-                </div>
-                <div class="item-detail" style="width: 75px; text-align: center; font-size: 0.85rem; opacity: 0.8;">
-                  {{#if system.range.units}}{{system.range.units}}{{else}}—{{/if}}
-                </div>
-                <div class="item-detail" style="width: 90px; text-align: center; font-size: 0.85rem; opacity: 0.8;">
+                <div class="item-detail" style="width: 90px; text-align: center; font-size: 0.85rem; opacity: 0.8; color: #ccc;">
                   {{#if system.target.value}}{{system.target.value}} {{system.target.units}}{{else}}—{{/if}}
                 </div>
                 <div class="item-controls" style="width: 40px; text-align: right;">
