@@ -11,6 +11,13 @@ export function isSpellbook(item) {
 }
 
 /**
+ * Marks an item as a spellbook.
+ */
+export async function markAsSpellbook(item) {
+  await item.setFlag(MODULE_ID, "isSpellbook", true);
+}
+
+/**
  * Helper to safely get an entry ID or identifier.
  */
 export function getEntryId(doc) {
