@@ -43,10 +43,92 @@ export class NpcSpellbookSheet extends ItemSheet {
       const labels = spell.labels || sys.labels || {};
       const lvl = sys.level ?? spell.level ?? 0;
 
-      let time = labels.activation || "—";
-      let range = labels.range || "—";
-      let target = labels.target || "—";
-      let components = labels.components?.vsm ? `(${labels.components.vsm})` : "";
+      // 1. Time / Activation
+      let time = "—";
+      if (labels.activation) {
+        time = labels.activation;
+      } else {
+        const activation = sys.activation;
+        if (typeof activation === "string") {
+          time = activation;
+        } else if (activation?.type) {
+          const cost = activation.cost ? `${activation.cost} ` : "";
+          const typeMap = {
+            action: "Action",
+            bonus: "Bonus Action",
+            reaction: "Reaction",
+            minute: "Minute",
+            hour: "Hour",
+            day: "Day"
+          };
+          const formattedType = typeMap[activation.type] || activation.type;
+          time = `${cost}${formattedType}`;
+        }
+      }
+
+      // 2. Range
+      let range = "—";
+      if (labels.range) {
+        range = labels.range;
+      } else {
+        const rng = sys.range;
+        if (typeof rng === "string") {
+          range = rng;
+        } else if (rng?.units === "self") {
+          range = "Self";
+        } else if (rng?.units === "touch") {
+          range = "Touch";
+        } else if (rng?.units === "sight") {
+          range = "Sight";
+        } else if (rng?.value) {
+          const units = rng.units ? ` ${rng.units}` : "";
+          range = `${rng.value}${units}`;
+        } else if (rng?.units) {
+          range = typeof rng.units === "string" ? rng.units : "—";
+        }
+      }
+
+      // 3. Target
+      let target = "—";
+      if (labels.target) {
+        target = labels.target;
+      } else {
+        const tgt = sys.target;
+        const area = sys.area;
+        if (tgt && (tgt.value || tgt.type || tgt.units)) {
+          const val = tgt.value ? `${tgt.value} ` : "";
+          const units = tgt.units ? `${tgt.units} ` : "";
+          const type = tgt.type ? `${tgt.type}` : "";
+          target = `${val}${units}${type}`.trim();
+        } else if (area && (area.value || area.type)) {
+          const val = area.value ? `${area.value} ` : "";
+          const units = area.units ? `${area.units} ` : "";
+          const type = area.type ? `${area.type}` : "";
+          target = `${val}${units}${type}`.trim();
+        } else if (typeof tgt === "string") {
+          target = tgt;
+        }
+      }
+
+      // 4. Components
+      let components = "";
+      if (labels.components?.vsm) {
+        components = `(${labels.components.vsm})`;
+      } else {
+        const comp = sys.components || {};
+        let compsList = [];
+        if (comp.v || (Array.isArray(comp.value) && comp.value.includes("v"))) compsList.push("V");
+        if (comp.s || (Array.isArray(comp.value) && comp.value.includes("s"))) compsList.push("S");
+        if (comp.m || (Array.isArray(comp.value) && comp.value.includes("m"))) {
+          let mStr = "M";
+          const matVal = comp.materials?.value;
+          if (matVal) mStr += ` (${matVal})`;
+          compsList.push(mStr);
+        }
+        if (compsList.length > 0) {
+          components = `(${compsList.join(", ")})`;
+        }
+      }
 
       const normalizedSpell = {
         _id: spell._id || spell.id || foundry.utils.randomID(),
@@ -54,7 +136,7 @@ export class NpcSpellbookSheet extends ItemSheet {
         img: spell.img || "icons/svg/book.svg",
         time,
         range,
-        target,
+        target: target || "—",
         components
       };
 
@@ -73,16 +155,13 @@ export class NpcSpellbookSheet extends ItemSheet {
   activateListeners(html) {
     super.activateListeners(html);
 
-    // Add Spell button listener - Opens the Spell compendium directory or pack
-    html.find(".add-spell-btn, button:has(.fa-plus), button:contains('Add Spell')").click(async (event) => {
+    // Add Spell button listener - Opens the Spell compendium pack
+    html.find(".add-spell-btn, button:has(.fa-plus)").click(async (event) => {
       event.preventDefault();
-      
-      // Find the dnd5e spells compendium or general item compendium pack
       const pack = game.packs.find(p => p.documentName === "Item" && (p.metadata.id.includes("spell") || p.metadata.name.includes("spell")));
       if (pack) {
         pack.render(true);
       } else {
-        // Fallback: Open the compendium tab sidebar
         ui.sidebar.activateTab("compendium");
       }
     });
@@ -111,7 +190,6 @@ export class NpcSpellbookSheet extends ItemSheet {
       let rawSpells =
         this.item.getFlag(MODULE_ID, "spells") ||
         this.item.flags?.[MODULE_ID]?.spells ||
-        item.flags?.["npc-spell-book"]?.spells ||
         this.item.system?.spells ||
         [];
 
@@ -128,43 +206,36 @@ export class NpcSpellbookSheet extends ItemSheet {
       await this.item.update({ "system.spells": updatedSpells });
       this.render();
     });
-  }
 
-  // Handle dropping spells directly onto the sheet
-  async _onDrop(event) {
-    event.preventDefault();
-    const data = TextEditor.getDragEventData(event);
-    if (data.type !== "Item") return;
+    // Drag and Drop Ingestion Listener
+    html.on("drop", async (event) => {
+      event.preventDefault();
+      const data = TextEditor.getDragEventData(event);
+      if (!data || data.type !== "Item") return;
 
-    const droppedItem = await Item.fromDropData(data);
-    if (!droppedItem || droppedItem.type !== "spell") return;
+      const droppedItem = await Item.fromDropData(data);
+      if (!droppedItem || droppedItem.type !== "spell") return;
 
-    let rawSpells =
-      this.item.getFlag(MODULE_ID, "spells") ||
-      this.item.flags?.[MODULE_ID]?.spells ||
-      this.item.system?.spells ||
-      [];
+      let rawSpells =
+        this.item.getFlag(MODULE_ID, "spells") ||
+        this.item.flags?.[MODULE_ID]?.spells ||
+        this.item.system?.spells ||
+        [];
 
-    if (!Array.isArray(rawSpells)) {
-      rawSpells = Object.values(rawSpells);
-    }
+      if (!Array.isArray(rawSpells)) {
+        rawSpells = Object.values(rawSpells);
+      }
 
-    // Prevent duplicates based on name or ID
-    if (rawSpells.some(s => s.name === droppedItem.name)) return;
+      // Prevent duplicate additions
+      if (rawSpells.some(s => s._id === droppedItem.id || s.name === droppedItem.name)) return;
 
-    const spellData = {
-      _id: droppedItem.id,
-      name: droppedItem.name,
-      img: droppedItem.img,
-      system: droppedItem.system,
-      labels: droppedItem.labels,
-      level: droppedItem.system?.level || 0
-    };
+      // Capture complete object data including system properties and labels
+      const spellData = droppedItem.toObject();
+      rawSpells.push(spellData);
 
-    rawSpells.push(spellData);
-
-    await this.item.setFlag(MODULE_ID, "spells", rawSpells);
-    await this.item.update({ "system.spells": rawSpells });
-    this.render();
+      await this.item.setFlag(MODULE_ID, "spells", rawSpells);
+      await this.item.update({ "system.spells": rawSpells });
+      this.render();
+    });
   }
 }
