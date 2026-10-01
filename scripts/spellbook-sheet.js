@@ -6,6 +6,14 @@ const { ItemSheetV2 } = foundry.applications.sheets;
 const { HandlebarsApplicationMixin } = foundry.applications.api;
 
 export class NpcSpellbookSheet extends HandlebarsApplicationMixin(ItemSheetV2) {
+  constructor(options = {}) {
+    // If passed as { item: doc }, convert to V2 standard { document: doc }
+    if (options.item && !options.document) {
+      options.document = options.item;
+    }
+    super(options);
+  }
+
   static DEFAULT_OPTIONS = {
     id: "npc-spellbook-sheet",
     classes: ["npc-spellbook", "sheet", "item"],
@@ -32,10 +40,13 @@ export class NpcSpellbookSheet extends HandlebarsApplicationMixin(ItemSheetV2) {
   /** @override */
   async _prepareContext(options) {
     const context = await super._prepareContext(options);
-    context.item = this.document;
+    
+    // Access document from this.document (ApplicationV2 standard)
+    const item = this.document;
+    context.item = item;
     context.isGM = game.user.isGM;
 
-    const spells = Data.getSpellbookSpells(this.document);
+    const spells = Data.getSpellbookSpells(item);
     const levels = {};
     for (const spell of spells) {
       const lvl = Number(spell.level ?? 0);
