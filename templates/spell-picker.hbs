@@ -1,76 +1,62 @@
-<div class="standard-form compendium-spell-picker-container flexcol">
+<form class="standard-form compendium-spell-picker-container flexcol" autocomplete="off" style="padding: 6px;">
   <!-- Controls Section -->
-  <header class="wizard-selection-header flexcol" style="gap: 0.5rem; padding: 0.5rem; background: rgba(0,0,0,0.2); border-radius: 4px;">
-    <div class="flexrow" style="gap: 0.5rem; align-items: center;">
-      <label for="pack-select"><strong>Compendium:</strong></label>
+  <header class="sheet-header flexrow" style="padding: 4px; align-items: center; margin-bottom: 8px;">
+    <div class="form-group flexrow" style="gap: 8px; align-items: center; width: 100%;">
+      <label for="pack-select" style="font-weight: bold; white-space: nowrap;">Compendium:</label>
       <select id="pack-select" style="flex: 1;">
         {{#each packs}}
           <option value="{{this.id}}" {{#if this.selected}}selected{{/if}}>{{this.label}}</option>
         {{/each}}
       </select>
     </div>
-
-    <div class="flexrow" style="gap: 0.5rem; align-items: center;">
-      <label for="level-select"><strong>Spell Level:</strong></label>
-      <select id="level-select" style="flex: 1;">
-        {{#each levels}}
-          <option value="{{this.id}}" {{#if this.selected}}selected{{/if}}>{{this.label}}</option>
-        {{/each}}
-      </select>
-    </div>
   </header>
 
-  <!-- Spell List Table -->
-  <div class="spell-list-container flexcol" style="margin-top: 0.5rem; max-height: 450px; overflow-y: auto;">
-    {{#if hasSpells}}
-      <table class="spell-picker-table" style="width: 100%; border-collapse: collapse; font-size: 0.9rem;">
-        <thead>
-          <tr style="border-bottom: 1px solid var(--color-border-light); text-align: left;">
-            <th style="padding: 6px; width: 36px;"></th>
-            <th style="padding: 6px;">Spell Name</th>
-            <th style="padding: 6px; width: 90px;">School</th>
-            <th style="padding: 6px; width: 90px;">Time</th>
-            <th style="padding: 6px; width: 90px;">Range</th>
-            <th style="padding: 6px; width: 90px;">Duration</th>
-            <th style="padding: 6px; width: 70px; text-align: right;">Action</th>
-          </tr>
-        </thead>
-        <tbody>
-          {{#each spells}}
-            <tr style="border-bottom: 1px solid var(--color-border-light-2);">
-              <td style="padding: 4px;">
-                <img src="{{img}}" alt="{{name}}" width="28" height="28" style="border: none; border-radius: 4px; vertical-align: middle;">
-              </td>
-              <td style="padding: 4px; font-weight: bold; vertical-align: middle;">
-                {{name}}
-              </td>
-              <td style="padding: 4px; vertical-align: middle; opacity: 0.8;">
-                {{school}}
-              </td>
-              <td style="padding: 4px; vertical-align: middle; opacity: 0.8;">
-                {{time}}
-              </td>
-              <td style="padding: 4px; vertical-align: middle; opacity: 0.8;">
-                {{range}}
-              </td>
-              <td style="padding: 4px; vertical-align: middle; opacity: 0.8;">
-                {{duration}}
-              </td>
-              <td style="padding: 4px; text-align: right; vertical-align: middle;">
-                {{#if inBook}}
-                  <span style="font-size: 0.75rem; opacity: 0.6; font-style: italic;">In Book</span>
-                {{else}}
-                  <button type="button" class="add-picker-spell-btn transcribe-btn" data-uuid="{{uuid}}" style="padding: 2px 6px; font-size: 0.8rem;">
-                    <i class="fas fa-plus"></i> Add
-                  </button>
-                {{/if}}
-              </td>
-            </tr>
-          {{/each}}
-        </tbody>
-      </table>
-    {{else}}
-      <p class="empty-notice" style="text-align: center; padding: 1rem;">No matching spells found in this compendium.</p>
-    {{/if}}
-  </div>
-</div>
+  <!-- Spell List Body Grouped by Level with Red Headers -->
+  <section class="sheet-body" style="flex: 1; overflow-y: auto; max-height: 520px;">
+    <ol class="items-list inventory-list directory-list" style="list-style: none; padding: 0; margin: 0;">
+      {{#if hasSpells}}
+        {{#each activeLevels}}
+          <!-- DND5E Standard Red Header Bar -->
+          <li class="item-header flexrow" style="background: var(--color-header-background, #b51c1c); color: #fff; padding: 4px 8px; font-weight: bold; margin-top: 8px; border-radius: 3px; align-items: center;">
+            <div class="item-name" style="flex: 1;">{{label}}</div>
+            <div class="item-detail" style="width: 90px; text-align: center;">School</div>
+            <div class="item-detail" style="width: 80px; text-align: center;">Time</div>
+            <div class="item-detail" style="width: 70px; text-align: center;">Range</div>
+            <div class="item-controls" style="width: 60px; text-align: right;"></div>
+          </li>
+
+          <ol class="item-list" style="list-style: none; padding: 0; margin: 2px 0 6px 0;">
+            {{#each spells}}
+              <li class="spell-row flexrow item" style="align-items: center; padding: 4px 6px; border-bottom: 1px solid var(--color-border-light-2);">
+                <div class="item-name flexrow" style="flex: 1; align-items: center; gap: 8px;">
+                  <img src="{{img}}" alt="{{name}}" width="28" height="28" style="border: none; border-radius: 3px;" />
+                  <span class="spell-name" style="font-weight: 500;">{{name}}</span>
+                </div>
+                <div class="item-detail" style="width: 90px; text-align: center; font-size: 0.85rem; opacity: 0.8;">
+                  {{school}}
+                </div>
+                <div class="item-detail" style="width: 80px; text-align: center; font-size: 0.85rem; opacity: 0.8;">
+                  {{time}}
+                </div>
+                <div class="item-detail" style="width: 70px; text-align: center; font-size: 0.85rem; opacity: 0.8;">
+                  {{range}}
+                </div>
+                <div class="item-controls" style="width: 60px; text-align: right;">
+                  {{#if inBook}}
+                    <span style="font-size: 0.75rem; opacity: 0.6; font-style: italic;">Added</span>
+                  {{else}}
+                    <button type="button" class="add-picker-spell-btn" data-uuid="{{uuid}}" style="padding: 2px 6px; font-size: 0.8rem;">
+                      <i class="fas fa-plus"></i> Add
+                    </button>
+                  {{/if}}
+                </div>
+              </li>
+            {{/each}}
+          </ol>
+        {{/each}}
+      {{else}}
+        <p class="notes" style="text-align: center; padding: 2rem; opacity: 0.7;">No spells found in this compendium.</p>
+      {{/if}}
+    </ol>
+  </section>
+</form>
