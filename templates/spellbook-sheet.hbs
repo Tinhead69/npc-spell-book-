@@ -1,14 +1,17 @@
 <form class="{{cssClass}}" autocomplete="off">
   <!-- Header Section -->
   <header class="sheet-header">
-    <h1 class="item-name">{{item.name}}</h1>
+    <div class="header-top-row">
+      <h1 class="item-name">{{item.name}}</h1>
+    </div>
     <div class="header-actions">
       <button type="button" class="btn add-spell-btn"><i class="fas fa-plus"></i> Add Spell</button>
       <button type="button" class="btn study-spellbook-btn"><i class="fas fa-book-reader"></i> Study Spellbook</button>
+      <button type="button" class="btn clear-spellbook-btn"><i class="fas fa-trash-alt"></i> Clear Spellbook</button>
     </div>
   </header>
 
-  <!-- Main Content Scroll Area -->
+  <!-- Main Scrollable Content Area -->
   <section class="sheet-body spellbook-body">
     {{#each activeLevels as |group|}}
       <div class="level-group">
