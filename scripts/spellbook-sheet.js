@@ -1,7 +1,5 @@
 import { MODULE_ID } from "./data.js";
-
-import { MODULE_ID } from "./data.js";
-import { SpellBrowserApp } from "./spellbook-compendium.js";
+import { CompendiumSpellPicker } from "./spellbook-compendium.js";
 
 export class NpcSpellbookSheet extends ItemSheet {
   static get defaultOptions() {
@@ -158,15 +156,10 @@ export class NpcSpellbookSheet extends ItemSheet {
   activateListeners(html) {
     super.activateListeners(html);
 
-    // Add Spell button listener - Opens the Spell compendium pack
-    html.find(".add-spell-btn, button:has(.fa-plus)").click(async (event) => {
+    // Open Compendium Spell Picker Window
+    html.find(".add-spell-btn, button:has(.fa-plus)").click((event) => {
       event.preventDefault();
-      const pack = game.packs.find(p => p.documentName === "Item" && (p.metadata.id.includes("spell") || p.metadata.name.includes("spell")));
-      if (pack) {
-        pack.render(true);
-      } else {
-        ui.sidebar.activateTab("compendium");
-      }
+      new CompendiumSpellPicker({ spellbook: this.item }).render(true);
     });
 
     // Clear Spellbook button listener
@@ -207,37 +200,6 @@ export class NpcSpellbookSheet extends ItemSheet {
 
       await this.item.setFlag(MODULE_ID, "spells", updatedSpells);
       await this.item.update({ "system.spells": updatedSpells });
-      this.render();
-    });
-
-    // Drag and Drop Ingestion Listener
-    html.on("drop", async (event) => {
-      event.preventDefault();
-      const data = TextEditor.getDragEventData(event);
-      if (!data || data.type !== "Item") return;
-
-      const droppedItem = await Item.fromDropData(data);
-      if (!droppedItem || droppedItem.type !== "spell") return;
-
-      let rawSpells =
-        this.item.getFlag(MODULE_ID, "spells") ||
-        this.item.flags?.[MODULE_ID]?.spells ||
-        this.item.system?.spells ||
-        [];
-
-      if (!Array.isArray(rawSpells)) {
-        rawSpells = Object.values(rawSpells);
-      }
-
-      // Prevent duplicate additions
-      if (rawSpells.some(s => s._id === droppedItem.id || s.name === droppedItem.name)) return;
-
-      // Capture complete object data including system properties and labels
-      const spellData = droppedItem.toObject();
-      rawSpells.push(spellData);
-
-      await this.item.setFlag(MODULE_ID, "spells", rawSpells);
-      await this.item.update({ "system.spells": rawSpells });
       this.render();
     });
   }
