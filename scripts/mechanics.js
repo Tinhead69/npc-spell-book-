@@ -1,4 +1,4 @@
-import { MODULE_ID, getTranscribedSpells } from "./data.js";
+import { MODULE_ID, getSpellbookSpells, getTranscribedSpells } from "./data.js";
 
 const GP_PER_LEVEL = 50;
 const HOURS_PER_LEVEL = 2;
@@ -106,7 +106,6 @@ export function actorKnowsSpell(actor, spellEntry) {
     if (item.type !== "spell") return false;
     if (item.name?.toLowerCase() === targetName) return true;
 
-    // Modern V12/V13 compendium source property check without calling deprecated core.sourceId flag
     const sourceUuid = item._stats?.compendiumSource ?? item.flags?.core?.sourceId ?? "";
     if (targetUuid && sourceUuid && sourceUuid === targetUuid) return true;
 
@@ -139,7 +138,6 @@ function buildSpellbookItemData(spellDoc, sourceSpellbook) {
   data.type = "spell";
   data.img = spellDoc.img;
 
-  // dnd5e: unprepared wizard spellbook entry
   data.system = data.system ?? {};
   data.system.preparation = foundry.utils.mergeObject(
     data.system.preparation ?? {},
@@ -147,7 +145,6 @@ function buildSpellbookItemData(spellDoc, sourceSpellbook) {
     { inplace: false }
   );
 
-  // Newer dnd5e versions may use method; keep preparation for 2014-style sheets.
   if ("method" in (spellDoc.system ?? {}) || "method" in data.system) {
     data.system.method = data.system.method ?? "spell";
   }
@@ -182,47 +179,38 @@ export function evaluateTranscription(wizard, spellEntry, options = {}) {
   const cost = getTranscriptionCost(spellLevel);
 
   if (!isWizard(wizard)) {
-    return { canLearn: false, reasonKey: "NPC_SPELLBOOK.Learn.Status.NotWizard" };
+    return { canLearn: false, reasonKey: "Not a Wizard" };
   }
 
   if (!isWizardSpell(spellEntry)) {
-    return { canLearn: false, reasonKey: "NPC_SPELLBOOK.Learn.Status.NotWizardSpell" };
+    return { canLearn: false, reasonKey: "Not a Wizard Spell" };
   }
 
   if (spellLevel < 1) {
-    return { canLearn: false, reasonKey: "NPC_SPELLBOOK.Learn.Status.CantripNotCopyable" };
+    return { canLearn: false, reasonKey: "Cantrips cannot be transcribed" };
   }
 
   if (spellLevel > maxLevel) {
-    return {
-      canLearn: false,
-      reasonKey: "NPC_SPELLBOOK.Learn.Status.TooHighLevel",
-      reasonData: { max: maxLevel }
-    };
+    return { canLearn: false, reasonKey: `Spell level too high (Max level: ${maxLevel})` };
   }
 
   if (actorKnowsSpell(wizard, spellEntry)) {
-    return { canLearn: false, reasonKey: "NPC_SPELLBOOK.Learn.Status.AlreadyKnown" };
+    return { canLearn: false, reasonKey: "Spell already known" };
   }
 
-  // Also block if only recorded in legacy module flag list.
   const known = getTranscribedSpells(wizard);
   if (known.some((s) => s.uuid === spellEntry.uuid || s.name === spellEntry.name)) {
-    return { canLearn: false, reasonKey: "NPC_SPELLBOOK.Learn.Status.AlreadyKnown" };
+    return { canLearn: false, reasonKey: "Spell already known" };
   }
 
   if (requireGold && checkAfford && cost > 0) {
     const gold = getGold(wizard);
     if (gold < cost) {
-      return {
-        canLearn: false,
-        reasonKey: "NPC_SPELLBOOK.Learn.Status.CannotAfford",
-        reasonData: { have: gold, need: cost }
-      };
+      return { canLearn: false, reasonKey: `Insufficient gold (Need: ${cost} GP, Have: ${gold} GP)` };
     }
   }
 
-  return { canLearn: true, reasonKey: "NPC_SPELLBOOK.Learn.Status.Learnable" };
+  return { canLearn: true, reasonKey: "Learnable" };
 }
 
 /**
@@ -256,7 +244,6 @@ export async function transcribeSpell(wizard, spellEntry, sourceSpellbook, optio
   const itemData = buildSpellbookItemData(spellDoc, sourceSpellbook);
   await wizard.createEmbeddedDocuments("Item", [itemData]);
 
-  // Keep a lightweight audit trail of NPC-book transcriptions.
   const transcribed = getTranscribedSpells(wizard);
   transcribed.push({
     uuid: spellDoc.uuid,
@@ -270,4 +257,103 @@ export async function transcribeSpell(wizard, spellEntry, sourceSpellbook, optio
   await wizard.setFlag(MODULE_ID, "transcribedSpells", transcribed);
 
   return true;
+}
+
+/**
+ * Opens a dialog to pick a Wizard actor in the world and transcribe spells to them.
+ * @param {Item} sourceSpellbook
+ */
+export async function openTranscribeDialog(sourceSpellbook) {
+  const spells = getSpellbookSpells(sourceSpellbook);
+  if (!spells.length) {
+    ui.notifications?.warn("There are no spells in this spellbook to transcribe.");
+    return;
+  }
+
+  const wizardActors = game.actors.filter((actor) => isWizard(actor));
+  if (!wizardActors.length) {
+    ui.notifications?.warn("No Wizard actors found in this world.");
+    return;
+  }
+
+  const optionsHtml = wizardActors
+    .map((a) => `<option value="${a.uuid}">${a.name} (${getGold(a)} GP)</option>`)
+    .join("");
+
+  const content = `
+    <form style="display: flex; flex-direction: column; gap: 8px;">
+      <p style="margin: 0 0 8px 0; font-size: 0.9rem;">
+        Select a Wizard actor to transcribe <strong>${spells.length}</strong> spell(s) from <em>${sourceSpellbook.name}</em>:
+      </p>
+      <div class="form-group" style="display: flex; align-items: center; gap: 8px;">
+        <label style="font-weight: bold; flex-shrink: 0;">Target Wizard:</label>
+        <select name="wizardUuid" style="flex: 1; padding: 4px;">${optionsHtml}</select>
+      </div>
+    </form>
+  `;
+
+  new Dialog({
+    title: "Transcribe Spells",
+    content: content,
+    buttons: {
+      transcribe: {
+        icon: '<i class="fas fa-scroll"></i>',
+        label: "Transcribe",
+        callback: async (html) => {
+          const form = html instanceof HTMLElement ? html : html[0];
+          const selectedUuid = form.querySelector('[name="wizardUuid"]')?.value;
+          if (!selectedUuid) return;
+
+          const wizardActor = await fromUuid(selectedUuid);
+          if (!wizardActor) {
+            ui.notifications?.error("Could not locate the selected Wizard actor.");
+            return;
+          }
+
+          let successCount = 0;
+          let skippedCount = 0;
+          let totalCost = 0;
+
+          for (const spellEntry of spells) {
+            const evaluation = evaluateTranscription(wizardActor, spellEntry, {
+              requireGold: true,
+              checkAfford: true
+            });
+
+            if (evaluation.canLearn) {
+              const success = await transcribeSpell(wizardActor, spellEntry, sourceSpellbook, {
+                deductGold: true,
+                requireGold: true
+              });
+
+              if (success) {
+                successCount++;
+                totalCost += getTranscriptionCost(Number(spellEntry.level ?? 0));
+              } else {
+                skippedCount++;
+              }
+            } else {
+              skippedCount++;
+            }
+          }
+
+          if (successCount > 0) {
+            ui.notifications?.info(
+              `Transcribed ${successCount} spell(s) to ${wizardActor.name} for ${totalCost} GP.`
+            );
+          }
+          if (skippedCount > 0) {
+            ui.notifications?.warn(
+              `Skipped ${skippedCount} spell(s) (already known, cantrips, level too high, or insufficient gold).`
+            );
+          }
+        }
+      },
+      cancel: {
+        icon: '<i class="fas fa-times"></i>',
+        label: "Cancel"
+      }
+    },
+    default: "transcribe"
+  }).render(true);
 }
