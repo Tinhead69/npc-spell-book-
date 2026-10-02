@@ -43,10 +43,10 @@ export class NpcSpellbookSheet extends ApplicationV1 {
         const sys = spell.system || {};
 
         // 1. Casting Time (Activation)
-        let time = "—";
-        const activation = sys.activation;
-        if (activation) {
-          const cost = activation.value ? `${activation.value} ` : "";
+        let castTime = "—";
+        const act = sys.activation;
+        if (act) {
+          const cost = act.value ? `${act.value} ` : "";
           const typeMap = { 
             action: "Action", 
             bonus: "Bonus", 
@@ -58,9 +58,9 @@ export class NpcSpellbookSheet extends ApplicationV1 {
             mythic: "Mythic",
             special: "Special"
           };
-          const typeLabel = typeMap[activation.type] || activation.type || "";
+          const typeLabel = typeMap[act.type] || act.type || "";
           if (typeLabel) {
-            time = `${cost}${typeLabel}`.trim();
+            castTime = `${cost}${typeLabel}`.trim();
           }
         }
 
@@ -87,7 +87,6 @@ export class NpcSpellbookSheet extends ApplicationV1 {
         let target = "—";
         const tgt = sys.target;
         if (tgt) {
-          // Check dnd5e modern affects sub-object structure if present
           const affects = tgt.affects || tgt;
           const count = affects.scalar?.value ?? affects.value ?? "";
           const type = affects.type ?? "";
@@ -97,14 +96,13 @@ export class NpcSpellbookSheet extends ApplicationV1 {
             target = special;
           } else if (count || type) {
             const countStr = count ? `${count} ` : "";
-            // Capitalize / clean up type
             const typeStr = type ? type.replace(/_/g, " ") : "";
             target = `${countStr}${typeStr}`.trim();
           }
           if (!target || target === "") target = "—";
         }
 
-        // 4. Components (derived from sys.properties array like ['vocal', 'somatic'])
+        // 4. Components
         let components = "—";
         const props = sys.properties || [];
         const compParts = [];
@@ -141,7 +139,7 @@ export class NpcSpellbookSheet extends ApplicationV1 {
 
         levelGroups[level].spells.push({
           ...spell,
-          time,
+          castTime,
           range,
           target,
           components,
