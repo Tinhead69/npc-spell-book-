@@ -6,6 +6,10 @@ const { HandlebarsApplicationMixin, DocumentSheetV2 } = foundry.applications.api
 export class NpcSpellbookSheet extends HandlebarsApplicationMixin(DocumentSheetV2) {
   static DEFAULT_OPTIONS = {
     classes: ["npc-spellbook", "dnd5e", "sheet", "item"],
+    position: {
+      width: 750,
+      height: 600
+    },
     tag: "form",
     form: {
       handler: NpcSpellbookSheet._onSubmitForm,
@@ -14,9 +18,7 @@ export class NpcSpellbookSheet extends HandlebarsApplicationMixin(DocumentSheetV
     },
     window: {
       title: "Spellbook",
-      resizable: true,
-      width: 750,
-      height: 600
+      resizable: true
     },
     actions: {
       addSpell: NpcSpellbookSheet._onAddSpell,
