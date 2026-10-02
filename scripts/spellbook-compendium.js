@@ -1,8 +1,10 @@
 import { MODULE_ID, addSpellToSpellbook, getSpellbookSpells } from "./data.js";
 
-const { HandlebarsApplicationMixin, ApplicationV2 } = foundry.applications.api;
 
-export class CompendiumSpellPicker extends HandlebarsApplicationMixin(ApplicationV2) {
+const { HandlebarsApplicationMixin } = foundry.applications.api;
+const { ItemSheetV2 } = foundry.applications.sheets;
+
+export class SpellbookSheet extends HandlebarsApplicationMixin(ItemSheetV2) {
   constructor(options = {}) {
     super(options);
     this.spellbook = options.spellbook;
