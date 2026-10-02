@@ -4,15 +4,24 @@ import { openTranscribeDialog } from "./mechanics.js";
 let SpellbookSheetClass = null;
 
 /**
- * Returns the SpellbookSheet class, constructing it inside the init lifecycle 
- * to ensure foundry.applications.api is fully populated.
+ * Safely resolves DocumentSheetV2 across V13 ApplicationV2 namespaces
+ */
+function getBaseDocumentSheet() {
+  return foundry.applications.sheets?.DocumentSheetV2 ||
+         foundry.applications.api?.DocumentSheetV2 ||
+         foundry.applications.api?.ApplicationV2;
+}
+
+/**
+ * Constructs and caches the SpellbookSheet class during the init lifecycle
  */
 export function getSpellbookSheetClass() {
   if (SpellbookSheetClass) return SpellbookSheetClass;
 
-  const { HandlebarsApplicationMixin, DocumentSheetV2, DialogV2 } = foundry.applications.api;
+  const BaseSheet = getBaseDocumentSheet();
+  const { HandlebarsApplicationMixin, DialogV2 } = foundry.applications.api;
 
-  SpellbookSheetClass = class SpellbookSheet extends HandlebarsApplicationMixin(DocumentSheetV2) {
+  SpellbookSheetClass = class SpellbookSheet extends HandlebarsApplicationMixin(BaseSheet) {
     static DEFAULT_OPTIONS = {
       tag: "form",
       id: "spellbook-sheet",
