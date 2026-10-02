@@ -1,7 +1,16 @@
-import { MODULE_ID, getSpellbookSpells, getTranscribedSpells } from "./data.js";
+import { MODULE_ID, getSpellbookSpells } from "./data.js";
 
 const GP_PER_LEVEL = 50;
 const HOURS_PER_LEVEL = 2;
+
+/**
+ * Safely retrieve transcribed spells recorded on an actor.
+ * @param {Actor} actor
+ * @returns {Array}
+ */
+export function getTranscribedSpells(actor) {
+  return actor?.getFlag(MODULE_ID, "transcribedSpells") ?? [];
+}
 
 /**
  * PHB 2014: max spell slot level = ceil(wizardLevel / 2), capped at 9.
@@ -244,7 +253,7 @@ export async function transcribeSpell(wizard, spellEntry, sourceSpellbook, optio
   const itemData = buildSpellbookItemData(spellDoc, sourceSpellbook);
   await wizard.createEmbeddedDocuments("Item", [itemData]);
 
-  const transcribed = getTranscribedSpells(wizard);
+  const transcribed = Array.from(getTranscribedSpells(wizard));
   transcribed.push({
     uuid: spellDoc.uuid,
     name: spellDoc.name,
