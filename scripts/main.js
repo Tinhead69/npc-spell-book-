@@ -1,98 +1,72 @@
-import {
-  MODULE_ID,
-  SPELLBOOK_ICON,
-  getEntryId,
-  isSpellbook,
-  markAsSpellbook
-} from "./data.js";
+import { MODULE_ID } from "./data.js";
 import { NpcSpellbookSheet } from "./spellbook-sheet.js";
 
-Hooks.once("init", async () => {
-  console.log("NPC Spellbook | Initialising V2 Module");
-
-  // Preload Handlebars templates
-  await foundry.applications.handlebars.loadTemplates([
-    "modules/npc-spell-book/templates/spellbook-sheet.hbs",
-    "modules/npc-spell-book/templates/learn-spells.hbs",
-    "modules/npc-spell-book/templates/spell-picker.hbs"
-  ]);
-
-  // Register the sheet safely using DocumentSheetConfig for Item documents
-  DocumentSheetConfig.registerSheet(Item, MODULE_ID, NpcSpellbookSheet, {
-    types: ["loot"],
-    label: "Study Spell Book Sheet",
-    makeDefault: false
+// Register Sheet on Init
+Hooks.once("init", () => {
+  Items.registerSheet("dnd5e", NpcSpellbookSheet, {
+    types: ["loot", "container", "consumable"],
+    makeDefault: false,
+    label: "NPC Spellbook Sheet"
   });
-
-  patchItemDirectoryContextMenu();
 });
 
-Hooks.once("setup", () => {
-  // UI and notifications are fully ready by the setup hook
-  ui.notifications.info("NPC Spellbook | Sheet registered successfully!");
-});
+// Inject "Spellbook" into the "Create Item" Dialog
+Hooks.on("renderDocumentCreateDialog", (app, html, data) => {
+  if (app.documentName !== "Item") return;
 
-/** Intercept default sheet opening and swap to NpcSpellbookSheet for spellbook items */
-Hooks.on("getItemSheetHeaderButtons", (sheet, buttons) => {
-  if (isSpellbook(sheet.document) && !(sheet instanceof NpcSpellbookSheet)) {
-    setTimeout(() => {
-      new NpcSpellbookSheet({ document: sheet.document }).render(true);
-      sheet.close();
-    }, 0);
+  const htmlElement = html[0] || html;
+  const listContainer = htmlElement.querySelector("ol, ul, .form-group");
+
+  if (!listContainer) return;
+
+  // Create the Spellbook option element matching dnd5e radio styling
+  const spellbookOption = document.createElement("li");
+  spellbookOption.className = "form-group";
+  spellbookOption.innerHTML = `
+    <label class="radio-label flexrow" style="align-items: center; cursor: pointer; padding: 4px 0;">
+      <i class="fas fa-book" style="width: 24px; text-align: center; font-size: 1.1rem; margin-right: 8px; color: #aaa;"></i>
+      <span style="flex: 1; font-weight: 500;">Spellbook</span>
+      <input type="radio" name="type" value="spellbook" style="margin-left: auto;">
+    </label>
+  `;
+
+  listContainer.appendChild(spellbookOption);
+
+  // Intercept form submission when "Spellbook" is selected
+  const form = htmlElement.querySelector("form");
+  if (form) {
+    form.addEventListener("submit", async (event) => {
+      const selectedType = form.querySelector('input[name="type"]:checked')?.value;
+      if (selectedType === "spellbook") {
+        event.preventDefault();
+        event.stopPropagation();
+
+        const nameInput = form.querySelector('input[name="name"]');
+        const bookName = nameInput?.value?.trim() || "New Spellbook";
+        const folder = form.querySelector('select[name="folder"]')?.value || null;
+
+        // Create the underlying item as 'loot' with the spellbook flag and given name
+        const createdItem = await Item.create({
+          name: bookName,
+          type: "loot",
+          img: "icons/svg/book.svg",
+          folder: folder,
+          flags: {
+            [MODULE_ID]: {
+              isSpellbook: true,
+              spells: []
+            }
+          }
+        });
+
+        if (createdItem) {
+          // Assign sheet class and open
+          await createdItem.setFlag("core", "sheetClass", `dnd5e.${NpcSpellbookSheet.name}`);
+          createdItem.sheet.render(true);
+        }
+
+        app.close();
+      }
+    }, { capture: true });
   }
 });
-
-/** Context menu items for the Item Directory */
-function patchItemDirectoryContextMenu() {
-  const ItemDirectoryClass =
-    foundry?.applications?.sidebar?.tabs?.ItemDirectory ?? globalThis.ItemDirectory;
-
-  if (!ItemDirectoryClass?.prototype?._getEntryContextOptions) return;
-
-  const original = ItemDirectoryClass.prototype._getEntryContextOptions;
-
-  ItemDirectoryClass.prototype._getEntryContextOptions = function () {
-    const options = original.call(this) ?? [];
-
-    options.push({
-      name: "NPC_SPELLBOOK.Actions.MarkAsSpellbook",
-      icon: '<i class="fas fa-book"></i>',
-      condition: (li) => {
-        const item = game.items.get(getEntryId(li));
-        return item?.type === "loot" && !isSpellbook(item);
-      },
-      callback: async (li) => {
-        const item = game.items.get(getEntryId(li));
-        if (!item) return;
-        await markAsSpellbook(item);
-        ui.notifications.info(`Marked ${item.name} as a spellbook.`);
-        new NpcSpellbookSheet({ document: item }).render(true);
-      }
-    });
-
-    options.push({
-      name: "NPC_SPELLBOOK.Actions.RemoveSpellbookFlag",
-      icon: '<i class="fas fa-book-dead"></i>',
-      condition: (li) => isSpellbook(game.items.get(getEntryId(li))),
-      callback: async (li) => {
-        const item = game.items.get(getEntryId(li));
-        if (!item) return;
-        await item.unsetFlag(MODULE_ID, "isSpellbook");
-        await item.unsetFlag(MODULE_ID, "spells");
-        ui.notifications.info(`Unmarked ${item.name} as a spellbook.`);
-      }
-    });
-
-    options.push({
-      name: "NPC_SPELLBOOK.Actions.OpenSpellbook",
-      icon: '<i class="fas fa-book-open"></i>',
-      condition: (li) => isSpellbook(game.items.get(getEntryId(li))),
-      callback: (li) => {
-        const item = game.items.get(getEntryId(li));
-        if (item) new NpcSpellbookSheet({ document: item }).render(true);
-      }
-    });
-
-    return options;
-  };
-}
