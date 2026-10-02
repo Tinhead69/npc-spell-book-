@@ -1,8 +1,7 @@
 import { MODULE_ID, getSpellbookSpells, removeSpellFromSpellbook } from "./data.js";
 import { openTranscribeDialog } from "./mechanics.js";
 
-const { HandlebarsApplicationMixin } = foundry.applications.api;
-const { DocumentSheetV2 } = foundry.applications.sheets;
+const { HandlebarsApplicationMixin, DocumentSheetV2 } = foundry.applications.api;
 
 export class SpellbookSheet extends HandlebarsApplicationMixin(DocumentSheetV2) {
   static DEFAULT_OPTIONS = {
