@@ -1,4 +1,4 @@
-<div class="spellbook-sheet-container flexcol" style="display: flex; flex-direction: column; height: 100%;">
+<form class="spellbook-sheet flexcol" autocomplete="off" style="display: flex; flex-direction: column; height: 100%;">
   <!-- Spellbook Header Name & Icon -->
   <header class="sheet-header" style="display: flex; align-items: center; gap: 10px; margin-bottom: 12px; padding: 4px;">
     <img class="profile-img" src="{{item.img}}" data-edit="img" title="{{item.name}}" width="44" height="44" style="border: 1px solid #444; border-radius: 4px; object-fit: cover; cursor: pointer; flex-shrink: 0;"/>
@@ -24,26 +24,32 @@
 
   <!-- Spell Categories Container -->
   <div class="spellbook-body" style="flex: 1; overflow-y: auto;">
-    {{#each spellGroups as |group|}}
-      <div class="spell-group" style="margin-bottom: 10px; border: 1px solid #333; border-radius: 4px; overflow: hidden;">
-        <div class="group-header" style="background: #4a1515; color: #fff; display: flex; justify-content: space-between; padding: 4px 10px; font-weight: bold; font-size: 0.85rem;">
-          <span>{{group.label}}</span>
-          <span>{{group.spells.length}} Spells</span>
-        </div>
-        <div class="group-spells">
-          {{#each group.spells as |spell|}}
-            <div class="spell-item" style="display: flex; align-items: center; justify-content: space-between; padding: 6px 10px; background: #1a1a1a; border-bottom: 1px solid #222;">
-              <div style="display: flex; align-items: center; gap: 8px;">
-                <img src="{{spell.img}}" width="24" height="24" style="border: none; border-radius: 3px;"/>
-                <span style="color: #64b5f6; font-weight: 500;">{{spell.name}}</span>
+    {{#if spellGroups.length}}
+      {{#each spellGroups as |group|}}
+        <div class="spell-group" style="margin-bottom: 10px; border: 1px solid #333; border-radius: 4px; overflow: hidden;">
+          <div class="group-header" style="background: #4a1515; color: #fff; display: flex; justify-content: space-between; padding: 4px 10px; font-weight: bold; font-size: 0.85rem;">
+            <span>{{group.label}}</span>
+            <span>{{group.spells.length}} Spells</span>
+          </div>
+          <div class="group-spells">
+            {{#each group.spells as |spell|}}
+              <div class="spell-item" style="display: flex; align-items: center; justify-content: space-between; padding: 6px 10px; background: #1a1a1a; border-bottom: 1px solid #222;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <img src="{{spell.img}}" width="24" height="24" style="border: none; border-radius: 3px;"/>
+                  <span style="color: #64b5f6; font-weight: 500;">{{spell.name}}</span>
+                </div>
+                <a class="delete-spell" data-uuid="{{spell.uuid}}" title="Remove Spell" style="color: #e57373; cursor: pointer;">
+                  <i class="fas fa-trash"></i>
+                </a>
               </div>
-              <a class="delete-spell" data-uuid="{{spell.uuid}}" title="Remove Spell" style="color: #e57373; cursor: pointer;">
-                <i class="fas fa-trash"></i>
-              </a>
-            </div>
-          {{/each}}
+            {{#eachGroupSpellsEnd}}{{/each}}
+          </div>
         </div>
+      {{/each}}
+    {{else}}
+      <div style="text-align: center; color: #888; padding: 30px; font-style: italic;">
+        No spells in this spellbook yet.<br/>Click "Add Spells" or drag & drop spells here.
       </div>
-    {{/each}}
+    {{/if}}
   </div>
-</div>
+</form>
