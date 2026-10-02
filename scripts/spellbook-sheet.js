@@ -3,7 +3,7 @@ import { CompendiumSpellPicker } from "./spellbook-compendium.js";
 
 const { HandlebarsApplicationMixin, ApplicationV2 } = foundry.applications.api;
 
-export class SpellbookSheet extends HandlebarsApplicationMixin(ApplicationV2) {
+export class NpcSpellbookSheet extends HandlebarsApplicationMixin(ApplicationV2) {
   constructor(options = {}) {
     super(options);
     this.item = options.document || options.item;
@@ -21,10 +21,10 @@ export class SpellbookSheet extends HandlebarsApplicationMixin(ApplicationV2) {
       resizable: true
     },
     actions: {
-      openPicker: SpellbookSheet._onOpenPicker,
-      transcribeSpells: SpellbookSheet._onTranscribeSpells,
-      clearSpellbook: SpellbookSheet._onClearSpellbook,
-      removeSpell: SpellbookSheet._onRemoveSpell
+      openPicker: NpcSpellbookSheet._onOpenPicker,
+      transcribeSpells: NpcSpellbookSheet._onTranscribeSpells,
+      clearSpellbook: NpcSpellbookSheet._onClearSpellbook,
+      removeSpell: NpcSpellbookSheet._onRemoveSpell
     }
   };
 
