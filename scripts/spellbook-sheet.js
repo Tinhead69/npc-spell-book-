@@ -154,7 +154,7 @@ export class NpcSpellbookSheet extends HandlebarsApplicationMixin(DocumentSheetV
     return context;
   }
 
-  // Handle form changes (e.g., updating the item name)
+  // Handle form changes (e.g. updating item name in real time)
   static async _onSubmitForm(event, form, formData) {
     const updateData = formData.object;
     if (updateData.name && updateData.name !== this.document.name) {
