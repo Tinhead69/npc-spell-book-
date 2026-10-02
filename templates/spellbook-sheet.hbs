@@ -1,165 +1,39 @@
-import { MODULE_ID, getSpellbookSpells, addSpellToSpellbook, removeSpellFromSpellbook, clearSpellbook } from "./data.js";
-import { openTranscribeDialog } from "./mechanics.js";
+<div class="spellbook-content flexcol">
+  <header class="sheet-header flexrow" style="align-items: center; gap: 10px; margin-bottom: 12px;">
+    <img class="profile-img" src="{{item.img}}" data-edit="img" title="{{item.name}}" width="48" height="48" style="border: 1px solid #444; border-radius: 4px;"/>
+    <div class="header-fields flex1">
+      <h1 class="charname" style="margin: 0;">
+        <input name="name" type="text" value="{{item.name}}" placeholder="Spellbook Name" style="width: 100%; font-size: 1.2rem; padding: 4px;"/>
+      </h1>
+    </div>
+  </header>
 
-const { HandlebarsApplicationMixin, ItemSheetV2 } = foundry.applications.api;
+  <div class="sheet-body flexcol" style="gap: 10px;">
+    <div class="spellbook-actions flexrow" style="gap: 6px;">
+      <button type="button" data-action="addSpells"><i class="fas fa-plus"></i> Add Spells</button>
+      <button type="button" data-action="transcribeSpells"><i class="fas fa-file-export"></i> Transcribe</button>
+      <button type="button" data-action="clearSpellbook"><i class="fas fa-trash"></i> Clear All</button>
+    </div>
 
-export class SpellbookSheet extends HandlebarsApplicationMixin(ItemSheetV2) {
-  static DEFAULT_OPTIONS = {
-    tag: "form",
-    id: "spellbook-sheet",
-    classes: ["dnd5e", "sheet", "item", "spellbook-sheet"],
-    position: { width: 480, height: 560 },
-    actions: {},
-    form: {
-      handler: SpellbookSheet._onFormSubmit,
-      submitOnChange: true,
-      closeOnSubmit: false
-    }
-  };
-
-  static PARTS = {
-    sheet: {
-      template: `modules/${MODULE_ID}/templates/spellbook-sheet.hbs`
-    }
-  };
-
-  get item() {
-    return this.document;
-  }
-
-  async _prepareContext(options) {
-    const context = await super._prepareContext(options);
-    context.item = this.document;
-
-    // Fetch spells currently stored in item flags
-    const spells = getSpellbookSpells(this.document);
-
-    // Group spells by level
-    const groups = {};
-    for (const spell of spells) {
-      const lvl = Number(spell.level ?? 0);
-      const label = lvl === 0 ? "Cantrips" : `Level ${lvl}`;
-      if (!groups[lvl]) {
-        groups[lvl] = { level: lvl, label, spells: [] };
-      }
-      groups[lvl].spells.push(spell);
-    }
-
-    // Sort groups in ascending level order
-    context.spellGroups = Object.keys(groups)
-      .map(Number)
-      .sort((a, b) => a - b)
-      .map((lvl) => groups[lvl]);
-
-    return context;
-  }
-
-  _onRender(context, options) {
-    super._onRender(context, options);
-    const html = this.element;
-
-    // Add Spells button handler
-    html.querySelector(".btn-add-spells")?.addEventListener("click", (e) => {
-      e.preventDefault();
-      this._openAddSpellsDialog();
-    });
-
-    // Transcribe Spells button handler
-    html.querySelector(".btn-transcribe-spells")?.addEventListener("click", (e) => {
-      e.preventDefault();
-      openTranscribeDialog(this.document);
-    });
-
-    // Clear Spellbook button handler
-    html.querySelector(".btn-clear-spellbook")?.addEventListener("click", async (e) => {
-      e.preventDefault();
-      const confirm = await Dialog.confirm({
-        title: "Clear Spellbook",
-        content: "<p>Are you sure you want to remove all spells from this spellbook?</p>"
-      });
-      if (confirm) {
-        await clearSpellbook(this.document);
-        this.render(true);
-      }
-    });
-
-    // Single spell delete handlers
-    html.querySelectorAll(".delete-spell").forEach((el) => {
-      el.addEventListener("click", async (e) => {
-        e.preventDefault();
-        const uuid = el.dataset.uuid;
-        if (uuid) {
-          await removeSpellFromSpellbook(this.document, uuid);
-          this.render(true);
-        }
-      });
-    });
-  }
-
-  /**
-   * Dialog to browse and add spells from world compendiums
-   */
-  async _openAddSpellsDialog() {
-    const packs = game.packs.filter((p) => p.metadata.type === "Item");
-    let allSpells = [];
-
-    for (const pack of packs) {
-      const index = await pack.getIndex({ fields: ["system.level", "img", "type"] });
-      const spells = index.filter((i) => i.type === "spell");
-      allSpells.push(...spells);
-    }
-
-    if (!allSpells.length) {
-      ui.notifications.warn("No spell compendiums found in world.");
-      return;
-    }
-
-    // Sort alphabetically
-    allSpells.sort((a, b) => a.name.localeCompare(b.name));
-
-    const options = allSpells
-      .map((s) => `<option value="${s.uuid}">${s.name} (Lvl ${s.system?.level ?? 0})</option>`)
-      .join("");
-
-    const content = `
-      <div style="padding: 6px;">
-        <label style="font-weight: bold;">Select Spell to Add:</label>
-        <select id="spell-select" style="width: 100%; margin-top: 6px; padding: 4px; background: #111; color: #fff; border: 1px solid #444;">
-          ${options}
-        </select>
-      </div>
-    `;
-
-    new Dialog({
-      title: "Add Spell to Spellbook",
-      content: content,
-      buttons: {
-        add: {
-          icon: '<i class="fas fa-plus"></i>',
-          label: "Add",
-          callback: async (html) => {
-            const root = html instanceof HTMLElement ? html : html[0];
-            const uuid = root.querySelector("#spell-select")?.value;
-            if (uuid) {
-              const spellDoc = await fromUuid(uuid);
-              if (spellDoc) {
-                await addSpellToSpellbook(this.document, spellDoc);
-                this.render(true);
-              }
-            }
-          }
-        },
-        cancel: {
-          icon: '<i class="fas fa-times"></i>',
-          label: "Cancel"
-        }
-      },
-      default: "add"
-    }).render(true);
-  }
-
-  static async _onFormSubmit(event, form, formData) {
-    const updateData = formData.object;
-    await this.document.update(updateData);
-  }
-}
+    <div class="spell-list flexcol" style="gap: 8px; max-height: 400px; overflow-y: auto;">
+      {{#each spellGroups}}
+        <div class="spell-group" style="background: rgba(0,0,0,0.1); padding: 6px; border-radius: 4px;">
+          <h3 class="spell-group-header" style="margin: 0 0 6px 0; border-bottom: 1px solid #555; padding-bottom: 2px;">{{this.label}}</h3>
+          <ul class="items-list" style="list-style: none; margin: 0; padding: 0;">
+            {{#each this.spells}}
+              <li class="item flexrow" data-uuid="{{this.uuid}}" style="align-items: center; justify-content: space-between; padding: 3px 0;">
+                <div class="flexrow" style="align-items: center; gap: 8px;">
+                  <img src="{{this.img}}" width="24" height="24" style="border-radius: 2px;"/>
+                  <span class="item-name">{{this.name}}</span>
+                </div>
+                <a data-action="deleteSpell" data-uuid="{{this.uuid}}" title="Delete Spell" style="color: #a33535; cursor: pointer;">
+                  <i class="fas fa-trash"></i>
+                </a>
+              </li>
+            {{/each}}
+          </ul>
+        </div>
+      {{/each}}
+    </div>
+  </div>
+</div>
