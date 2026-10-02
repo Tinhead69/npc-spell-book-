@@ -1,32 +1,50 @@
 import { MODULE_ID, getSpellbookSpells, removeSpellFromSpellbook } from "./data.js";
 import { CompendiumSpellPicker } from "./spellbook-compendium.js";
 
-const ApplicationV1 = foundry.appv1?.sheets?.ItemSheet || ItemSheet;
+const { HandlebarsApplicationMixin, ItemSheetV2 } = foundry.applications.api;
 
-export class NpcSpellbookSheet extends ApplicationV1 {
-  static get defaultOptions() {
-    return foundry.utils.mergeObject(super.defaultOptions, {
-      classes: ["npc-spellbook", "dnd5e", "sheet", "item"],
-      template: "modules/npc-spell-book/templates/spellbook-sheet.hbs",
+export class NpcSpellbookSheet extends HandlebarsApplicationMixin(ItemSheetV2) {
+  static DEFAULT_OPTIONS = {
+    classes: ["npc-spellbook", "dnd5e", "sheet", "item"],
+    tag: "form",
+    form: {
+      submitOnChange: true,
+      closeOnSubmit: false
+    },
+    window: {
+      title: "Spellbook",
+      resizable: true,
       width: 750,
-      height: 600,
-      tabs: [{ navSelector: ".sheet-tabs", contentSelector: ".sheet-body", initial: "spells" }]
-    });
-  }
+      height: 600
+    },
+    actions: {
+      addSpell: NpcSpellbookSheet._onAddSpell,
+      removeSpell: NpcSpellbookSheet._onRemoveSpell,
+      clearBook: NpcSpellbookSheet._onClearBook
+    }
+  };
+
+  static PARTS = {
+    sheet: {
+      template: "modules/npc-spell-book/templates/spellbook-sheet.hbs"
+    }
+  };
 
   get title() {
-    return `${this.object.name}`;
+    return `${this.document.name}`;
   }
 
-  async getData(options) {
-    const context = await super.getData(options);
-    const item = this.object;
+  async _prepareContext(options) {
+    const context = await super._prepareContext(options);
+    const item = this.document;
 
     context.item = item;
+    context.name = item.name;
+    context.img = item.img;
     context.system = item.system;
     context.flags = item.flags;
     
-    // Group spells by level (0 to 9, where 0 is cantrips)
+    // Group spells by level (0 to 9)
     const rawSpells = getSpellbookSpells(item);
     const levelGroups = {};
     for (let i = 0; i <= 9; i++) {
@@ -42,45 +60,31 @@ export class NpcSpellbookSheet extends ApplicationV1 {
       if (level >= 0 && level <= 9) {
         const sys = spell.system || {};
 
-        // 1. Casting Time (Activation)
+        // 1. Activation
         let castTime = "—";
         const act = sys.activation;
         if (act) {
           const cost = act.value ? `${act.value} ` : "";
           const typeMap = { 
-            action: "Action", 
-            bonus: "Bonus", 
-            reaction: "Reaction", 
-            minute: "Min", 
-            hour: "Hour", 
-            day: "Day",
-            legendary: "Legendary",
-            mythic: "Mythic",
-            special: "Special"
+            action: "Action", bonus: "Bonus", reaction: "Reaction", 
+            minute: "Min", hour: "Hour", day: "Day", 
+            legendary: "Legendary", mythic: "Mythic", special: "Special"
           };
           const typeLabel = typeMap[act.type] || act.type || "";
-          if (typeLabel) {
-            castTime = `${cost}${typeLabel}`.trim();
-          }
+          if (typeLabel) castTime = `${cost}${typeLabel}`.trim();
         }
 
         // 2. Range
         let range = "—";
         const rng = sys.range;
         if (rng) {
-          if (rng.units === "self") {
-            range = "Self";
-          } else if (rng.units === "touch") {
-            range = "Touch";
-          } else if (rng.units === "sight") {
-            range = "Sight";
-          } else if (rng.value) {
+          if (rng.units === "self") range = "Self";
+          else if (rng.units === "touch") range = "Touch";
+          else if (rng.units === "sight") range = "Sight";
+          else if (rng.value) {
             const unitMap = { ft: "ft", mi: "mi", m: "m", km: "km" };
-            const uLabel = unitMap[rng.units] || rng.units || "";
-            range = `${rng.value}${uLabel ? ` ${uLabel}` : ""}`;
-          } else if (rng.units) {
-            range = rng.units;
-          }
+            range = `${rng.value}${unitMap[rng.units] ? ` ${unitMap[rng.units]}` : ""}`;
+          } else if (rng.units) range = rng.units;
         }
 
         // 3. Target
@@ -92,14 +96,13 @@ export class NpcSpellbookSheet extends ApplicationV1 {
           const type = affects.type ?? "";
           const special = affects.special ?? "";
 
-          if (special) {
-            target = special;
-          } else if (count || type) {
+          if (special) target = special;
+          else if (count || type) {
             const countStr = count ? `${count} ` : "";
             const typeStr = type ? type.replace(/_/g, " ") : "";
             target = `${countStr}${typeStr}`.trim();
           }
-          if (!target || target === "") target = "—";
+          if (!target) target = "—";
         }
 
         // 4. Components
@@ -111,29 +114,21 @@ export class NpcSpellbookSheet extends ApplicationV1 {
         if (props.includes("material") || props.includes("m") || (sys.materials?.value && sys.materials.value.length > 0)) {
           compParts.push("M");
         }
-        if (compParts.length > 0) {
-          components = compParts.join(", ");
-        }
+        if (compParts.length > 0) components = compParts.join(", ");
 
         // 5. Duration
         let duration = "—";
         const dur = sys.duration;
         if (dur) {
-          if (dur.units === "instantaneous") {
-            duration = "Instant";
-          } else if (dur.units === "perm") {
-            duration = "Permanent";
-          } else if (dur.units === "special") {
-            duration = "Special";
-          } else if (dur.value || dur.units) {
+          if (dur.units === "instantaneous") duration = "Instant";
+          else if (dur.units === "perm") duration = "Permanent";
+          else if (dur.units === "special") duration = "Special";
+          else if (dur.value || dur.units) {
             const val = dur.value ? `${dur.value} ` : "";
             const unitMap = { turn: "Turn", round: "Round", minute: "Min", hour: "Hour", day: "Day", inst: "Instant" };
-            const uLabel = unitMap[dur.units] || dur.units || "";
-            duration = `${val}${uLabel}`.trim();
+            duration = `${val}${unitMap[dur.units] || dur.units}`.trim();
           }
-          if (dur.concentration) {
-            duration = `C. ${duration}`;
-          }
+          if (dur.concentration) duration = `C. ${duration}`;
           if (!duration) duration = "—";
         }
 
@@ -148,9 +143,7 @@ export class NpcSpellbookSheet extends ApplicationV1 {
       }
     }
 
-    Object.values(levelGroups).forEach(group => {
-      group.spells.sort((a, b) => a.name.localeCompare(b.name));
-    });
+    Object.values(levelGroups).forEach(group => group.spells.sort((a, b) => a.name.localeCompare(b.name)));
 
     context.activeLevels = Object.values(levelGroups)
       .filter(group => group.spells.length > 0)
@@ -160,37 +153,39 @@ export class NpcSpellbookSheet extends ApplicationV1 {
     return context;
   }
 
-  activateListeners(html) {
-    super.activateListeners(html);
-    if (!this.isEditable) return;
+  // Handle automatic form updates (e.g. updating the item name)
+  async _updateObject(event, formData) {
+    if (formData.name && formData.name !== this.document.name) {
+      await this.document.update({ name: formData.name });
+    }
+  }
 
-    html.find(".add-spell-btn").click(async (ev) => {
-      ev.preventDefault();
-      new CompendiumSpellPicker({ spellbook: this.object }).render(true);
+  static async _onAddSpell(event, target) {
+    event.preventDefault();
+    new CompendiumSpellPicker({ spellbook: this.document }).render(true);
+  }
+
+  static async _onRemoveSpell(event, target) {
+    event.preventDefault();
+    const uuid = target.dataset.uuid;
+    if (!uuid) return;
+    await removeSpellFromSpellbook(this.document, uuid);
+    this.render();
+  }
+
+  static async _onClearBook(event, target) {
+    event.preventDefault();
+    const confirmed = await Dialog.confirm({
+      title: "Clear Spellbook",
+      content: "<p>Are you sure you want to remove all spells from this spellbook?</p>",
+      yes: () => true,
+      no: () => false,
+      defaultYes: false
     });
 
-    html.find(".remove-spell-btn").click(async (ev) => {
-      ev.preventDefault();
-      const uuid = ev.currentTarget.dataset.uuid;
-      if (!uuid) return;
-      await removeSpellFromSpellbook(this.object, uuid);
-      this.render(false);
-    });
-
-    html.find(".clear-book-btn").click(async (ev) => {
-      ev.preventDefault();
-      const confirmed = await Dialog.confirm({
-        title: "Clear Spellbook",
-        content: "<p>Are you sure you want to remove all spells from this spellbook?</p>",
-        yes: () => true,
-        no: () => false,
-        defaultYes: false
-      });
-
-      if (confirmed) {
-        await this.object.unsetFlag(MODULE_ID, "spells");
-        this.render(false);
-      }
-    });
+    if (confirmed) {
+      await this.document.unsetFlag(MODULE_ID, "spells");
+      this.render();
+    }
   }
 }
