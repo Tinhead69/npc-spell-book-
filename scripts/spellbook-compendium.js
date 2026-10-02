@@ -26,7 +26,7 @@ export class CompendiumSpellPicker extends HandlebarsApplicationMixin(Applicatio
 
   static PARTS = {
     picker: {
-      template: "modules/npc-spell-book/templates/spellbook-compendium.hbs"
+      template: "modules/npc-spell-book/templates/spellbook-picker.hbs"
     }
   };
 
