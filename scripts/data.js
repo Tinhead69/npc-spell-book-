@@ -1,76 +1,50 @@
 export const MODULE_ID = "npc-spell-book";
 
-// Icon used for the spellbook item sheet registration
-export const SPELLBOOK_ICON = "icons/svg/book.svg";
-
-/**
- * Checks if an item is a spellbook.
- */
-export function isSpellbook(item) {
-  return item?.type === "spellbook" || item?.flags?.[MODULE_ID]?.isSpellbook;
+export function getSpellbookSpells(spellbook) {
+  return foundry.utils.getProperty(spellbook, `flags.${MODULE_ID}.spells`) || [];
 }
 
-/**
- * Marks an item as a spellbook.
- */
-export async function markAsSpellbook(item) {
-  await item.setFlag(MODULE_ID, "isSpellbook", true);
-}
+export async function addSpellToSpellbook(spellbook, spellUuid) {
+  if (!spellbook || !spellUuid) return;
 
-/**
- * Helper to safely get an entry ID or identifier.
- */
-export function getEntryId(doc) {
-  return doc?._id || doc?.id || foundry.utils.randomID();
-}
+  try {
+    const spellDoc = await fromUuid(spellUuid);
+    if (!spellDoc) {
+      ui.notifications?.warn(`Could not find spell document for UUID: ${spellUuid}`);
+      return;
+    }
 
-/**
- * Retrieves the stored spells array from the spellbook item.
- * @param {Item} item - The spellbook item.
- * @returns {Array} List of stored spells.
- */
-export function getSpellbookSpells(item) {
-  let rawSpells =
-    item.getFlag(MODULE_ID, "spells") ||
-    item.flags?.[MODULE_ID]?.spells ||
-    item.system?.spells ||
-    [];
+    // Extract pure, serializable plain object data safely
+    let spellData;
+    if (typeof spellDoc.toObject === "function") {
+      spellData = spellDoc.toObject();
+    } else {
+      spellData = JSON.parse(JSON.stringify(spellDoc));
+    }
 
-  if (!Array.isArray(rawSpells) && typeof rawSpells === "object") {
-    rawSpells = Object.values(rawSpells);
+    // Retain original UUID for state tracking
+    spellData.uuid = spellUuid;
+
+    const existingSpells = foundry.utils.deepClone(getSpellbookSpells(spellbook));
+
+    // Prevent duplicate additions
+    const alreadyInBook = existingSpells.some(
+      (s) => s.uuid === spellUuid || (s._id && s._id === spellDoc._id)
+    );
+
+    if (!alreadyInBook) {
+      existingSpells.push(spellData);
+      await spellbook.setFlag(MODULE_ID, "spells", existingSpells);
+    }
+  } catch (err) {
+    console.error("NPC Spell Book | Failed to add spell:", err);
+    ui.notifications?.error("Failed to add spell to spellbook. Check console for details.");
   }
-  return rawSpells;
 }
 
-/**
- * Adds a spell document to the spellbook item's flags and system data.
- * @param {Item} spellbook - The spellbook item.
- * @param {Item} spellDoc - The spell document being added.
- */
-export async function addSpellToSpellbook(spellbook, spellDoc) {
-  let rawSpells = getSpellbookSpells(spellbook);
-
-  const uuid = spellDoc.uuid;
-  if (rawSpells.some(s => s.uuid === uuid || s._id === spellDoc.id || s.name === spellDoc.name)) {
-    return;
-  }
-
-  const spellData = spellDoc.toObject();
-  rawSpells.push(spellData);
-
-  await spellbook.setFlag(MODULE_ID, "spells", rawSpells);
-  await spellbook.update({ "system.spells": rawSpells });
-}
-
-/**
- * Removes a spell document from the spellbook item's flags and system data.
- * @param {Item} spellbook - The spellbook item.
- * @param {string} uuid - The UUID of the spell being removed.
- */
-export async function removeSpellFromSpellbook(spellbook, uuid) {
-  let rawSpells = getSpellbookSpells(spellbook);
-  const updatedSpells = rawSpells.filter(s => s.uuid !== uuid);
-
-  await spellbook.setFlag(MODULE_ID, "spells", updatedSpells);
-  await spellbook.update({ "system.spells": updatedSpells });
+export async function removeSpellFromSpellbook(spellbook, spellUuid) {
+  if (!spellbook || !spellUuid) return;
+  const existingSpells = foundry.utils.deepClone(getSpellbookSpells(spellbook));
+  const updated = existingSpells.filter((s) => s.uuid !== spellUuid && s._id !== spellUuid);
+  await spellbook.setFlag(MODULE_ID, "spells", updated);
 }
