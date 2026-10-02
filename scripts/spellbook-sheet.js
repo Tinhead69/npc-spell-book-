@@ -1,30 +1,30 @@
 import { MODULE_ID, getSpellbookSpells, removeSpellFromSpellbook } from "./data.js";
 import { CompendiumSpellPicker } from "./spellbook-compendium.js";
 
-const { HandlebarsApplicationMixin, DocumentSheetV2 } = foundry.applications.api;
+const { HandlebarsApplicationMixin, ApplicationV2 } = foundry.applications.api;
 
-export class NpcSpellbookSheet extends HandlebarsApplicationMixin(DocumentSheetV2) {
+export class SpellbookSheet extends HandlebarsApplicationMixin(ApplicationV2) {
+  constructor(options = {}) {
+    super(options);
+    this.item = options.document || options.item;
+  }
+
   static DEFAULT_OPTIONS = {
-    classes: ["npc-spellbook", "dnd5e", "sheet", "item"],
+    id: "npc-spellbook-sheet",
+    classes: ["npc-spellbook-sheet"],
     position: {
-      width: 750,
+      width: 550,
       height: 600
     },
-    tag: "form",
-    form: {
-      handler: NpcSpellbookSheet._onSubmitForm,
-      submitOnChange: true,
-      closeOnSubmit: false
-    },
     window: {
-      title: "Spellbook",
+      title: "NPC Spellbook",
       resizable: true
     },
     actions: {
-      editImage: NpcSpellbookSheet._onEditImage,
-      addSpell: NpcSpellbookSheet._onAddSpell,
-      removeSpell: NpcSpellbookSheet._onRemoveSpell,
-      clearBook: NpcSpellbookSheet._onClearBook
+      openPicker: SpellbookSheet._onOpenPicker,
+      transcribeSpells: SpellbookSheet._onTranscribeSpells,
+      clearSpellbook: SpellbookSheet._onClearSpellbook,
+      removeSpell: SpellbookSheet._onRemoveSpell
     }
   };
 
@@ -34,185 +34,94 @@ export class NpcSpellbookSheet extends HandlebarsApplicationMixin(DocumentSheetV
     }
   };
 
-  get title() {
-    return `${this.document.name}`;
-  }
-
+  /** @override */
   async _prepareContext(options) {
     const context = await super._prepareContext(options);
-    const item = this.document;
-
-    context.item = item;
-    context.name = item.name;
-    context.img = item.img || "icons/svg/book.svg";
-    context.system = item.system;
-    context.flags = item.flags;
-    
-    // Group spells by level (0 to 9)
+    const item = this.item || this.document;
     const rawSpells = getSpellbookSpells(item);
-    const levelGroups = {};
+
+    const levelMap = {};
     for (let i = 0; i <= 9; i++) {
-      levelGroups[i] = {
-        level: i,
+      levelMap[i] = {
         label: i === 0 ? "CANTRIPS" : `LEVEL ${i}`,
+        level: i,
         spells: []
       };
     }
 
     for (const spell of rawSpells) {
-      const level = Number(spell.system?.level ?? 0);
-      if (level >= 0 && level <= 9) {
-        const sys = spell.system || {};
-
-        // 1. Activation (A, BA, R, or time)
-        let castTime = "—";
-        const act = sys.activation;
-        if (act && act.type) {
-          const actType = act.type.toLowerCase();
-          if (actType === "action") {
-            castTime = "A";
-          } else if (actType === "bonus") {
-            castTime = "BA";
-          } else if (actType === "reaction") {
-            castTime = "R";
-          } else {
-            const cost = act.value ? `${act.value} ` : "";
-            const typeMap = { 
-              minute: "Min", hour: "Hour", day: "Day", 
-              legendary: "Legendary", mythic: "Mythic", special: "Special"
-            };
-            const typeLabel = typeMap[actType] || act.type || "";
-            if (typeLabel) castTime = `${cost}${typeLabel}`.trim();
-          }
-        }
-
-        // 2. Range
-        let range = "—";
-        const rng = sys.range;
-        if (rng) {
-          if (rng.units === "self") range = "Self";
-          else if (rng.units === "touch") range = "Touch";
-          else if (rng.units === "sight") range = "Sight";
-          else if (rng.value) {
-            const unitMap = { ft: "ft", mi: "mi", m: "m", km: "km" };
-            range = `${rng.value}${unitMap[rng.units] ? ` ${unitMap[rng.units]}` : ""}`;
-          } else if (rng.units) range = rng.units;
-        }
-
-        // 3. Target
-        let target = "—";
-        const tgt = sys.target;
-        if (tgt) {
-          const affects = tgt.affects || tgt;
-          const count = affects.scalar?.value ?? affects.value ?? "";
-          const type = affects.type ?? "";
-          const special = affects.special ?? "";
-
-          if (special) target = special;
-          else if (count || type) {
-            const countStr = count ? `${count} ` : "";
-            const typeStr = type ? type.replace(/_/g, " ") : "";
-            target = `${countStr}${typeStr}`.trim();
-          }
-          if (!target) target = "—";
-        }
-
-        // 4. Components
-        let components = "—";
-        const props = sys.properties || [];
-        const compParts = [];
-        if (props.includes("vocal") || props.includes("v")) compParts.push("V");
-        if (props.includes("somatic") || props.includes("s")) compParts.push("S");
-        if (props.includes("material") || props.includes("m") || (sys.materials?.value && sys.materials.value.length > 0)) {
-          compParts.push("M");
-        }
-        if (compParts.length > 0) components = compParts.join(", ");
-
-        // 5. Duration
-        let duration = "—";
-        const dur = sys.duration;
-        if (dur) {
-          if (dur.units === "instantaneous") duration = "Instant";
-          else if (dur.units === "perm") duration = "Permanent";
-          else if (dur.units === "special") duration = "Special";
-          else if (dur.value || dur.units) {
-            const val = dur.value ? `${dur.value} ` : "";
-            const unitMap = { turn: "Turn", round: "Round", minute: "Min", hour: "Hour", day: "Day", inst: "Instant" };
-            duration = `${val}${unitMap[dur.units] || dur.units}`.trim();
-          }
-          if (dur.concentration) duration = `C. ${duration}`;
-          if (!duration) duration = "—";
-        }
-
-        levelGroups[level].spells.push({
-          ...spell,
-          castTime,
-          range,
-          target,
-          components,
-          duration
-        });
+      const lvl = Number(spell.system?.level ?? spell.level ?? 0);
+      if (levelMap[lvl]) {
+        levelMap[lvl].spells.push(spell);
+      } else {
+        levelMap[0].spells.push(spell);
       }
     }
 
-    Object.values(levelGroups).forEach(group => group.spells.sort((a, b) => a.name.localeCompare(b.name)));
-
-    context.activeLevels = Object.values(levelGroups)
-      .filter(group => group.spells.length > 0)
+    context.activeLevels = Object.values(levelMap)
+      .filter((g) => g.spells.length > 0)
       .sort((a, b) => a.level - b.level);
 
     context.hasSpells = context.activeLevels.length > 0;
+    context.item = item;
+
     return context;
   }
 
-  // Handle form changes (e.g. updating item name in real time)
-  static async _onSubmitForm(event, form, formData) {
-    const updateData = formData.object;
-    if (updateData.name && updateData.name !== this.document.name) {
-      await this.document.update({ name: updateData.name });
+  /**
+   * Action handler: Open Compendium Spell Picker
+   */
+  static async _onOpenPicker(event, target) {
+    event.preventDefault();
+    const item = this.item || this.document;
+    new CompendiumSpellPicker({ spellbook: item }).render(true);
+  }
+
+  /**
+   * Action handler: Transcribe Spells
+   */
+  static async _onTranscribeSpells(event, target) {
+    event.preventDefault();
+    const item = this.item || this.document;
+    const spells = getSpellbookSpells(item);
+
+    if (!spells.length) {
+      ui.notifications?.warn("There are no spells in this spellbook to transcribe.");
+      return;
     }
+
+    ui.notifications?.info(`Transcribing ${spells.length} spell(s) from spellbook...`);
   }
 
-  static async _onEditImage(event, target) {
-    const attr = target.dataset.edit || "img";
-    const current = foundry.utils.getProperty(this.document, attr);
-    const fp = new FilePicker({
-      type: "image",
-      current: current,
-      callback: path => {
-        this.document.update({ [attr]: path });
-      },
-      top: this.position.top + 40,
-      left: this.position.left + 10
-    });
-    return fp.browse();
-  }
-
-  static async _onAddSpell(event, target) {
+  /**
+   * Action handler: Clear all spells from spellbook
+   */
+  static async _onClearSpellbook(event, target) {
     event.preventDefault();
-    new CompendiumSpellPicker({ spellbook: this.document }).render(true);
-  }
-
-  static async _onRemoveSpell(event, target) {
-    event.preventDefault();
-    const uuid = target.dataset.uuid;
-    if (!uuid) return;
-    await removeSpellFromSpellbook(this.document, uuid);
-    this.render();
-  }
-
-  static async _onClearBook(event, target) {
-    event.preventDefault();
-    const confirmed = await Dialog.confirm({
+    const item = this.item || this.document;
+    
+    const confirm = await Dialog.confirm({
       title: "Clear Spellbook",
       content: "<p>Are you sure you want to remove all spells from this spellbook?</p>",
-      yes: () => true,
-      no: () => false,
       defaultYes: false
     });
 
-    if (confirmed) {
-      await this.document.unsetFlag(MODULE_ID, "spells");
+    if (confirm) {
+      await item.unsetFlag(MODULE_ID, "spells");
+      this.render();
+    }
+  }
+
+  /**
+   * Action handler: Remove a single spell
+   */
+  static async _onRemoveSpell(event, target) {
+    event.preventDefault();
+    const uuid = target.dataset.uuid;
+    const item = this.item || this.document;
+
+    if (uuid && item) {
+      await removeSpellFromSpellbook(item, uuid);
       this.render();
     }
   }
