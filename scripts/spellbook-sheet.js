@@ -32,10 +32,8 @@ export class SpellbookSheet extends HandlebarsApplicationMixin(DocumentSheetV2) 
     const item = this.document;
     context.item = item;
 
-    // Fetch spells stored in flags
     const spells = getSpellbookSpells(item);
 
-    // Group spells by level (0 to 9)
     const groups = {};
     for (const spell of spells) {
       const lvl = Number(spell.level ?? spell.system?.level ?? 0);
@@ -46,7 +44,6 @@ export class SpellbookSheet extends HandlebarsApplicationMixin(DocumentSheetV2) 
       groups[lvl].spells.push(spell);
     }
 
-    // Sort groups in ascending level order
     context.spellGroups = Object.keys(groups)
       .map(Number)
       .sort((a, b) => a - b)
@@ -60,19 +57,16 @@ export class SpellbookSheet extends HandlebarsApplicationMixin(DocumentSheetV2) 
     super._onRender(context, options);
     const html = this.element;
 
-    // Add Spells button handler
     html.querySelector(".btn-add-spells")?.addEventListener("click", (e) => {
       e.preventDefault();
       this._openAddSpellsDialog();
     });
 
-    // Transcribe Spells button handler
     html.querySelector(".btn-transcribe-spells")?.addEventListener("click", (e) => {
       e.preventDefault();
       openTranscribeDialog(this.document);
     });
 
-    // Clear Spellbook button handler
     html.querySelector(".btn-clear-spellbook")?.addEventListener("click", async (e) => {
       e.preventDefault();
       const confirm = await Dialog.confirm({
@@ -85,7 +79,6 @@ export class SpellbookSheet extends HandlebarsApplicationMixin(DocumentSheetV2) 
       }
     });
 
-    // Individual spell delete handlers
     html.querySelectorAll(".delete-spell").forEach((el) => {
       el.addEventListener("click", async (e) => {
         e.preventDefault();
@@ -98,16 +91,10 @@ export class SpellbookSheet extends HandlebarsApplicationMixin(DocumentSheetV2) 
     });
   }
 
-  /**
-   * Form submission handler for ApplicationV2
-   */
   static async _onFormSubmit(event, form, formData) {
     await this.document.update(formData.object);
   }
 
-  /**
-   * Dialog to browse and add spells from world item compendiums
-   */
   async _openAddSpellsDialog() {
     const packs = game.packs.filter((p) => p.metadata.type === "Item");
     let allSpells = [];
@@ -178,5 +165,4 @@ export class SpellbookSheet extends HandlebarsApplicationMixin(DocumentSheetV2) 
   }
 }
 
-// Export named alias to match imports in main.js
 export { SpellbookSheet as NpcSpellbookSheet };
