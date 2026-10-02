@@ -7,14 +7,10 @@ export class CompendiumSpellPicker extends HandlebarsApplicationMixin(Applicatio
     super(options);
     this.spellbook = options.spellbook;
 
-    // Track initial spells present in the book when opened
     const existing = getSpellbookSpells(this.spellbook);
     this.initialUuids = new Set(existing.map((s) => s.uuid || s._id));
-
-    // Track spells added during this picker session
     this.addedSessionUuids = new Set();
 
-    // Default filters
     this.selectedLevels = new Set([1, 2, 3, 4, 5, 6, 7, 8, 9]);
     this.selectedSchools = new Set(
       Object.keys(
@@ -225,10 +221,22 @@ export class CompendiumSpellPicker extends HandlebarsApplicationMixin(Applicatio
     const uuid = target.dataset.uuid;
     if (!uuid || !this.spellbook) return;
 
+    // Save current scroll position before re-render
+    const scrollContainer = this.element?.querySelector(".spell-picker-scroll-container");
+    const scrollTop = scrollContainer ? scrollContainer.scrollTop : 0;
+
     await addSpellToSpellbook(this.spellbook, uuid);
 
     this.addedSessionUuids.add(uuid);
-    this.render();
+
+    // Re-render UI
+    await this.render();
+
+    // Restore scroll position
+    const restoredContainer = this.element?.querySelector(".spell-picker-scroll-container");
+    if (restoredContainer) {
+      restoredContainer.scrollTop = scrollTop;
+    }
 
     if (this.spellbook.sheet && this.spellbook.sheet.rendered) {
       this.spellbook.sheet.render();
