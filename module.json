@@ -2,7 +2,7 @@
   "id": "npc-spell-book",
   "title": "NPC Spellbook",
   "description": "Lootable NPC wizard spellbooks that let wizard PCs transcribe spells using 5e 2014 rules, independent of the built-in spellbook.",
-  "version": "0.22.51.18",
+  "version": "0.22.51.19",
   "compatibility": {
     "minimum": "13",
     "verified": "13.351"
