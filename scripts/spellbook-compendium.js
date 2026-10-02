@@ -1,4 +1,4 @@
-import { MODULE_ID, addSpellToSpellbook } from "./data.js";
+import { MODULE_ID, addSpellToSpellbook, getSpellbookSpells } from "./data.js";
 
 const { HandlebarsApplicationMixin, ApplicationV2 } = foundry.applications.api;
 
@@ -6,20 +6,35 @@ export class CompendiumSpellPicker extends HandlebarsApplicationMixin(Applicatio
   constructor(options = {}) {
     super(options);
     this.spellbook = options.spellbook;
+
+    // Filter states
+    this.selectedLevels = new Set([1, 2, 3, 4, 5, 6, 7, 8, 9]); // Default level 1 to 9 selected
+    this.selectedSchools = new Set(Object.keys(CONFIG.DND5E?.spellSchools || {
+      abj: "Abjuration", con: "Conjuration", div: "Divination", enc: "Enchantment",
+      evo: "Evocation", ill: "Illusion", nec: "Necromancy", trs: "Transmutation"
+    }));
+    
+    // Select all spell compendiums by default
+    const availablePacks = game.packs.filter(p => p.metadata.type === "Item");
+    this.selectedPacks = new Set(availablePacks.map(p => p.collection));
+    this.searchQuery = "";
   }
 
   static DEFAULT_OPTIONS = {
     id: "compendium-spell-picker",
-    classes: ["spell-picker", "dnd5e"],
+    classes: ["compendium-spell-picker"],
     position: {
-      width: 600,
-      height: 700
+      width: 850,
+      height: 600
     },
     window: {
-      title: "Add Spells to Spellbook",
+      title: "Compendium Spell Picker",
       resizable: true
     },
     actions: {
+      toggleLevel: CompendiumSpellPicker._onToggleLevel,
+      toggleSchool: CompendiumSpellPicker._onToggleSchool,
+      togglePack: CompendiumSpellPicker._onTogglePack,
       addSpell: CompendiumSpellPicker._onAddSpell
     }
   };
@@ -30,29 +45,180 @@ export class CompendiumSpellPicker extends HandlebarsApplicationMixin(Applicatio
     }
   };
 
+  _onRender(context, options) {
+    super._onRender(context, options);
+
+    // Attach listener to search bar for real-time filtering
+    const searchInput = this.element.querySelector('input[data-action="searchSpells"]');
+    if (searchInput) {
+      searchInput.addEventListener("input", (e) => {
+        this.searchQuery = e.target.value.toLowerCase().trim();
+        this.render();
+      });
+    }
+  }
+
   async _prepareContext(options) {
     const context = await super._prepareContext(options);
-    const spells = [];
 
-    const packs = game.packs.filter(p => p.metadata.type === "Item");
-    for (const pack of packs) {
-      const index = await pack.getIndex({ fields: ["system.level", "img"] });
+    // 1. Prepare Levels 1 through 9 (excluding Level 0 Cantrips)
+    context.levels = Array.from({ length: 9 }, (_, i) => {
+      const lvl = i + 1;
+      return {
+        level: lvl,
+        label: `Level ${lvl}`,
+        selected: this.selectedLevels.has(lvl)
+      };
+    });
+
+    // 2. Prepare Schools of Magic
+    const schoolConfig = CONFIG.DND5E?.spellSchools || {
+      abj: { label: "Abjuration" },
+      con: { label: "Conjuration" },
+      div: { label: "Divination" },
+      enc: { label: "Enchantment" },
+      evo: { label: "Evocation" },
+      ill: { label: "Illusion" },
+      nec: { label: "Necromancy" },
+      trs: { label: "Transmutation" }
+    };
+
+    context.schools = Object.entries(schoolConfig).map(([key, val]) => ({
+      id: key,
+      label: typeof val === "string" ? val : val.label,
+      selected: this.selectedSchools.has(key)
+    }));
+
+    // 3. Prepare Installed Compendiums
+    const itemPacks = game.packs.filter(p => p.metadata.type === "Item");
+    context.packs = itemPacks.map(p => ({
+      id: p.collection,
+      label: p.metadata.label,
+      selected: this.selectedPacks.has(p.collection)
+    }));
+
+    // Existing spells in current book
+    const existingSpells = getSpellbookSpells(this.spellbook);
+    const existingUuids = new Set(existingSpells.map(s => s.uuid));
+
+    // 4. Fetch & Filter Spells
+    const allMatchingSpells = [];
+    for (const packKey of this.selectedPacks) {
+      const pack = game.packs.get(packKey);
+      if (!pack) continue;
+
+      const index = await pack.getIndex({ fields: ["system.level", "system.school", "system.activation", "system.range", "system.target"] });
       for (const entry of index) {
-        if (entry.type === "spell") {
-          spells.push({
-            name: entry.name,
-            uuid: entry.uuid,
-            img: entry.img || "icons/svg/item-bag.svg",
-            level: entry.system?.level ?? 0,
-            pack: pack.metadata.label
-          });
+        if (entry.type !== "spell") continue;
+
+        const level = Number(entry.system?.level ?? 0);
+        const school = entry.system?.school || "";
+        const name = entry.name || "";
+
+        // Apply filters (Level 1-9 check, school check, search term check)
+        if (!this.selectedLevels.has(level)) continue;
+        if (school && !this.selectedSchools.has(school)) continue;
+        if (this.searchQuery && !name.toLowerCase().includes(this.searchQuery)) continue;
+
+        // Activation / Time
+        let time = "—";
+        const act = entry.system?.activation;
+        if (act?.type) {
+          const t = act.type.toLowerCase();
+          time = t === "action" ? "A" : t === "bonus" ? "BA" : t === "reaction" ? "R" : act.type;
         }
+
+        // Range
+        let range = "—";
+        const rng = entry.system?.range;
+        if (rng?.units === "self") range = "Self";
+        else if (rng?.units === "touch") range = "Touch";
+        else if (rng?.value) range = `${rng.value} ${rng.units || ""}`.trim();
+
+        // Target
+        let target = "—";
+        const tgt = entry.system?.target;
+        if (tgt?.affects?.type) target = `${tgt.affects.value || ""} ${tgt.affects.type}`.trim();
+        else if (tgt?.type) target = `${tgt.value || ""} ${tgt.type}`.trim();
+
+        // School label
+        const schoolObj = schoolConfig[school];
+        const schoolName = schoolObj ? (typeof schoolObj === "string" ? schoolObj : schoolObj.label) : school;
+
+        allMatchingSpells.push({
+          uuid: entry.uuid || `Compendium.${packKey}.${entry._id}`,
+          name: entry.name,
+          img: entry.img,
+          level,
+          school,
+          schoolName,
+          time,
+          range,
+          target,
+          inBook: existingUuids.has(entry.uuid || `Compendium.${packKey}.${entry._id}`)
+        });
       }
     }
 
-    spells.sort((a, b) => a.level - b.level || a.name.localeCompare(b.name));
-    context.spells = spells;
+    // Group matching spells by level
+    const levelMap = {};
+    for (let i = 1; i <= 9; i++) {
+      if (this.selectedLevels.has(i)) {
+        levelMap[i] = {
+          label: `LEVEL ${i}`,
+          level: i,
+          spells: []
+        };
+      }
+    }
+
+    for (const spell of allMatchingSpells) {
+      if (levelMap[spell.level]) {
+        levelMap[spell.level].spells.push(spell);
+      }
+    }
+
+    context.searchQuery = this.searchQuery;
+    context.spellCount = allMatchingSpells.length;
+    context.activeLevels = Object.values(levelMap)
+      .filter(g => g.spells.length > 0)
+      .sort((a, b) => a.level - b.level);
+    
+    context.hasSpells = context.activeLevels.length > 0;
+
     return context;
+  }
+
+  // --- ACTIONS ---
+
+  static _onToggleLevel(event, target) {
+    const level = Number(target.dataset.level);
+    if (this.selectedLevels.has(level)) {
+      this.selectedLevels.delete(level);
+    } else {
+      this.selectedLevels.add(level);
+    }
+    this.render();
+  }
+
+  static _onToggleSchool(event, target) {
+    const school = target.dataset.school;
+    if (this.selectedSchools.has(school)) {
+      this.selectedSchools.delete(school);
+    } else {
+      this.selectedSchools.add(school);
+    }
+    this.render();
+  }
+
+  static _onTogglePack(event, target) {
+    const pack = target.dataset.pack;
+    if (this.selectedPacks.has(pack)) {
+      this.selectedPacks.delete(pack);
+    } else {
+      this.selectedPacks.add(pack);
+    }
+    this.render();
   }
 
   static async _onAddSpell(event, target) {
@@ -61,7 +227,9 @@ export class CompendiumSpellPicker extends HandlebarsApplicationMixin(Applicatio
     if (!uuid || !this.spellbook) return;
 
     await addSpellToSpellbook(this.spellbook, uuid);
-
+    this.render();
+    
+    // Refresh the spellbook sheet behind it if open
     if (this.spellbook.sheet) {
       this.spellbook.sheet.render();
     }
