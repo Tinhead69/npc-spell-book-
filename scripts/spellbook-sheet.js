@@ -1,8 +1,8 @@
 import { MODULE_ID, getSpellbookSpells, removeSpellFromSpellbook } from "./data.js";
 import { openTranscribeDialog } from "./mechanics.js";
 
-const { HandlebarsApplicationMixin, DialogV2 } = foundry.applications.api;
-const DocumentSheetV2 = foundry.applications.sheets.DocumentSheetV2;
+// In V13, DocumentSheetV2 is exported directly from foundry.applications.api
+const { HandlebarsApplicationMixin, DocumentSheetV2, DialogV2 } = foundry.applications.api;
 
 export class SpellbookSheet extends HandlebarsApplicationMixin(DocumentSheetV2) {
   static DEFAULT_OPTIONS = {
@@ -147,7 +147,7 @@ export class SpellbookSheet extends HandlebarsApplicationMixin(DocumentSheetV2) 
   }
 
   /**
-   * Action: Delete an individual spell
+   * Action: Delete individual spell
    */
   static async _onDeleteSpell(event, target) {
     const uuid = target.dataset.uuid;
