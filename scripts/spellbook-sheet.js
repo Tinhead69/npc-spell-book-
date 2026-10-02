@@ -1,13 +1,14 @@
 import { MODULE_ID, getSpellbookSpells, removeSpellFromSpellbook } from "./data.js";
 import { CompendiumSpellPicker } from "./spellbook-compendium.js";
 
-const { HandlebarsApplicationMixin, ItemSheetV2 } = foundry.applications.api;
+const { HandlebarsApplicationMixin, DocumentSheetV2 } = foundry.applications.api;
 
-export class NpcSpellbookSheet extends HandlebarsApplicationMixin(ItemSheetV2) {
+export class NpcSpellbookSheet extends HandlebarsApplicationMixin(DocumentSheetV2) {
   static DEFAULT_OPTIONS = {
     classes: ["npc-spellbook", "dnd5e", "sheet", "item"],
     tag: "form",
     form: {
+      handler: NpcSpellbookSheet._onSubmitForm,
       submitOnChange: true,
       closeOnSubmit: false
     },
@@ -153,10 +154,11 @@ export class NpcSpellbookSheet extends HandlebarsApplicationMixin(ItemSheetV2) {
     return context;
   }
 
-  // Handle automatic form updates (e.g. updating the item name)
-  async _updateObject(event, formData) {
-    if (formData.name && formData.name !== this.document.name) {
-      await this.document.update({ name: formData.name });
+  // Handle form changes (e.g., updating the item name)
+  static async _onSubmitForm(event, form, formData) {
+    const updateData = formData.object;
+    if (updateData.name && updateData.name !== this.document.name) {
+      await this.document.update({ name: updateData.name });
     }
   }
 
