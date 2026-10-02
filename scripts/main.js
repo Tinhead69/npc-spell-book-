@@ -1,9 +1,9 @@
 import { MODULE_ID } from "./data.js";
 import { NpcSpellbookSheet } from "./spellbook-sheet.js";
 
-// 1. Fix V13 Items registration deprecation warning
+// 1. Register the custom item sheet
 Hooks.once("init", () => {
-  foundry.documents.collections.Items.registerSheet("dnd5e", NpcSpellbookSheet, {
+  Items.registerSheet(MODULE_ID, NpcSpellbookSheet, {
     types: ["loot", "container", "consumable"],
     makeDefault: false,
     label: "NPC Spellbook Sheet"
@@ -82,7 +82,7 @@ function addSpellbookToCreateDialog(app, html) {
         const folderSelect = form.querySelector('select[name="folder"]');
         const folder = folderSelect?.value || null;
 
-        // Create item tagged with module flag
+        // Create item with spellbook flags and sheetClass pre-configured
         const createdItem = await Item.create({
           name: bookName,
           type: "loot",
@@ -92,13 +92,16 @@ function addSpellbookToCreateDialog(app, html) {
             [MODULE_ID]: {
               isSpellbook: true,
               spells: []
+            },
+            core: {
+              sheetClass: `${MODULE_ID}.${NpcSpellbookSheet.name}`
             }
           }
         });
 
         if (createdItem) {
-          await createdItem.setFlag("core", "sheetClass", `dnd5e.${NpcSpellbookSheet.name}`);
-          createdItem.sheet.render(true);
+          const sheet = createdItem.sheet ?? new NpcSpellbookSheet({ document: createdItem });
+          sheet.render(true);
         }
 
         app.close();
