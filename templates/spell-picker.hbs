@@ -1,9 +1,9 @@
-<form class="standard-form compendium-spell-picker-container flexcol" autocomplete="off" style="padding: 6px; background: #191919; color: #f0f0f0; border: none;">
+<div class="standard-form compendium-spell-picker-container flexcol" style="display: flex; flex-direction: column; height: 100%; padding: 6px; background: #191919; color: #f0f0f0; border: none; overflow: hidden;">
   <!-- Controls Section -->
-  <header class="sheet-header flexrow" style="padding: 4px; align-items: center; margin-bottom: 8px; border: none;">
+  <header class="sheet-header flexrow" style="padding: 4px; align-items: center; margin-bottom: 8px; border: none; flex-shrink: 0;">
     <div class="form-group flexrow" style="gap: 8px; align-items: center; width: 100%;">
       <label for="pack-select" style="font-weight: bold; white-space: nowrap; color: #f0f0f0;">Compendium:</label>
-      <select id="pack-select" style="flex: 1; background: #222; color: #fff; border: 1px solid #444;">
+      <select id="pack-select" data-action="changePack" style="flex: 1; background: #222; color: #fff; border: 1px solid #444;">
         {{#each packs}}
           <option value="{{this.id}}" {{#if this.selected}}selected{{/if}}>{{this.label}}</option>
         {{/each}}
@@ -12,7 +12,7 @@
   </header>
 
   <!-- Spell List Body Grouped by Level with Matching Red Headers -->
-  <section class="sheet-body" style="flex: 1; overflow-y: auto; max-height: 520px; border: none;">
+  <section class="sheet-body" style="flex: 1; overflow-y: auto; border: none; min-height: 0;">
     <ol class="items-list inventory-list directory-list" style="list-style: none; padding: 0; margin: 0;">
       {{#if hasSpells}}
         {{#each activeLevels}}
@@ -45,7 +45,7 @@
                   {{#if inBook}}
                     <span style="font-size: 0.75rem; opacity: 0.6; font-style: italic; color: #aaa;">Added</span>
                   {{else}}
-                    <button type="button" class="add-picker-spell-btn" data-uuid="{{uuid}}" style="padding: 2px 6px; font-size: 0.8rem; background: #222; color: #fff; border: 1px solid #444;">
+                    <button type="button" data-action="addSpell" data-uuid="{{uuid}}" style="padding: 2px 6px; font-size: 0.8rem; background: #222; color: #fff; border: 1px solid #444; cursor: pointer;">
                       <i class="fas fa-plus"></i> Add
                     </button>
                   {{/if}}
@@ -59,4 +59,4 @@
       {{/if}}
     </ol>
   </section>
-</form>
+</div>
