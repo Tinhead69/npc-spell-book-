@@ -13,8 +13,11 @@
 
   <!-- Header Controls -->
   <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px; background: #1a1a1a; border-bottom: 1px solid #333; flex-shrink: 0;">
-    <!-- Book Name Field -->
-    <div style="display: flex; align-items: center; gap: 6px; flex: 1;">
+    <!-- Book Icon & Name Field -->
+    <div style="display: flex; align-items: center; gap: 8px; flex: 1;">
+      <!-- Editable Book Icon -->
+      <img src="{{img}}" data-action="editImage" title="Click to change icon" width="32" height="32" style="width: 32px; height: 32px; object-fit: contain; border: 1px solid #444; border-radius: 4px; cursor: pointer; background: #222; flex-shrink: 0;" />
+
       <label style="font-size: 0.8rem; color: #aaaaaa; white-space: nowrap; font-weight: bold;">Book Name:</label>
       <input type="text" name="name" value="{{name}}" placeholder="Spellbook Name" style="background: #2b2b2b; border: 1px solid #444; color: #fff; padding: 4px 8px; border-radius: 3px; font-size: 0.85rem; width: 100%;" />
     </div>
