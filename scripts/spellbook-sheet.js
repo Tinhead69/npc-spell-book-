@@ -21,6 +21,7 @@ export class NpcSpellbookSheet extends HandlebarsApplicationMixin(DocumentSheetV
       resizable: true
     },
     actions: {
+      editImage: NpcSpellbookSheet._onEditImage,
       addSpell: NpcSpellbookSheet._onAddSpell,
       removeSpell: NpcSpellbookSheet._onRemoveSpell,
       clearBook: NpcSpellbookSheet._onClearBook
@@ -43,7 +44,7 @@ export class NpcSpellbookSheet extends HandlebarsApplicationMixin(DocumentSheetV
 
     context.item = item;
     context.name = item.name;
-    context.img = item.img;
+    context.img = item.img || "icons/svg/book.svg";
     context.system = item.system;
     context.flags = item.flags;
     
@@ -170,6 +171,21 @@ export class NpcSpellbookSheet extends HandlebarsApplicationMixin(DocumentSheetV
     if (updateData.name && updateData.name !== this.document.name) {
       await this.document.update({ name: updateData.name });
     }
+  }
+
+  static async _onEditImage(event, target) {
+    const attr = target.dataset.edit || "img";
+    const current = foundry.utils.getProperty(this.document, attr);
+    const fp = new FilePicker({
+      type: "image",
+      current: current,
+      callback: path => {
+        this.document.update({ [attr]: path });
+      },
+      top: this.position.top + 40,
+      left: this.position.left + 10
+    });
+    return fp.browse();
   }
 
   static async _onAddSpell(event, target) {
