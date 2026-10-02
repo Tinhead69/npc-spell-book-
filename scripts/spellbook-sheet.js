@@ -1,7 +1,8 @@
 import { MODULE_ID, getSpellbookSpells, removeSpellFromSpellbook } from "./data.js";
 import { openTranscribeDialog } from "./mechanics.js";
 
-const { HandlebarsApplicationMixin, DocumentSheetV2 } = foundry.applications.api;
+const { HandlebarsApplicationMixin, DialogV2 } = foundry.applications.api;
+const DocumentSheetV2 = foundry.applications.sheets.DocumentSheetV2;
 
 export class SpellbookSheet extends HandlebarsApplicationMixin(DocumentSheetV2) {
   static DEFAULT_OPTIONS = {
@@ -13,6 +14,12 @@ export class SpellbookSheet extends HandlebarsApplicationMixin(DocumentSheetV2) 
       handler: SpellbookSheet._onFormSubmit,
       submitOnChange: true,
       closeOnSubmit: false
+    },
+    actions: {
+      addSpells: SpellbookSheet._onAddSpells,
+      transcribeSpells: SpellbookSheet._onTranscribeSpells,
+      clearSpellbook: SpellbookSheet._onClearSpellbook,
+      deleteSpell: SpellbookSheet._onDeleteSpell
     }
   };
 
@@ -52,50 +59,10 @@ export class SpellbookSheet extends HandlebarsApplicationMixin(DocumentSheetV2) 
     return context;
   }
 
-  /** @override */
-  _onRender(context, options) {
-    super._onRender(context, options);
-    const html = this.element;
-
-    html.querySelector(".btn-add-spells")?.addEventListener("click", (e) => {
-      e.preventDefault();
-      this._openAddSpellsDialog();
-    });
-
-    html.querySelector(".btn-transcribe-spells")?.addEventListener("click", (e) => {
-      e.preventDefault();
-      openTranscribeDialog(this.document);
-    });
-
-    html.querySelector(".btn-clear-spellbook")?.addEventListener("click", async (e) => {
-      e.preventDefault();
-      const confirm = await Dialog.confirm({
-        title: "Clear Spellbook",
-        content: "<p>Are you sure you want to remove all spells from this spellbook?</p>"
-      });
-      if (confirm) {
-        await this.document.unsetFlag(MODULE_ID, "spells");
-        this.render(true);
-      }
-    });
-
-    html.querySelectorAll(".delete-spell").forEach((el) => {
-      el.addEventListener("click", async (e) => {
-        e.preventDefault();
-        const uuid = el.dataset.uuid;
-        if (uuid) {
-          await removeSpellFromSpellbook(this.document, uuid);
-          this.render(true);
-        }
-      });
-    });
-  }
-
-  static async _onFormSubmit(event, form, formData) {
-    await this.document.update(formData.object);
-  }
-
-  async _openAddSpellsDialog() {
+  /**
+   * Action: Open dialog to browse and add spells
+   */
+  static async _onAddSpells(event, target) {
     const packs = game.packs.filter((p) => p.metadata.type === "Item");
     let allSpells = [];
 
@@ -125,43 +92,76 @@ export class SpellbookSheet extends HandlebarsApplicationMixin(DocumentSheetV2) 
       </div>
     `;
 
-    new Dialog({
-      title: "Add Spell to Spellbook",
+    const selectedUuid = await DialogV2.prompt({
+      window: { title: "Add Spell to Spellbook" },
       content: content,
-      buttons: {
-        add: {
-          icon: '<i class="fas fa-plus"></i>',
-          label: "Add",
-          callback: async (html) => {
-            const root = html instanceof HTMLElement ? html : html[0];
-            const uuid = root.querySelector("#spell-select")?.value;
-            if (uuid) {
-              const spellDoc = await fromUuid(uuid);
-              if (spellDoc) {
-                const spells = Array.from(getSpellbookSpells(this.document));
-                if (!spells.some((s) => s.uuid === spellDoc.uuid)) {
-                  spells.push({
-                    uuid: spellDoc.uuid,
-                    name: spellDoc.name,
-                    level: spellDoc.system?.level ?? 0,
-                    img: spellDoc.img
-                  });
-                  await this.document.setFlag(MODULE_ID, "spells", spells);
-                  this.render(true);
-                } else {
-                  ui.notifications.info(`"${spellDoc.name}" is already in this spellbook.`);
-                }
-              }
-            }
-          }
-        },
-        cancel: {
-          icon: '<i class="fas fa-times"></i>',
-          label: "Cancel"
-        }
+      ok: {
+        label: "Add",
+        icon: "fas fa-plus",
+        callback: (event, button) => button.form.querySelector("#spell-select")?.value
       },
-      default: "add"
-    }).render(true);
+      rejectClose: false
+    });
+
+    if (selectedUuid) {
+      const spellDoc = await fromUuid(selectedUuid);
+      if (spellDoc) {
+        const spells = Array.from(getSpellbookSpells(this.document));
+        if (!spells.some((s) => s.uuid === spellDoc.uuid)) {
+          spells.push({
+            uuid: spellDoc.uuid,
+            name: spellDoc.name,
+            level: spellDoc.system?.level ?? 0,
+            img: spellDoc.img
+          });
+          await this.document.setFlag(MODULE_ID, "spells", spells);
+          this.render(true);
+        } else {
+          ui.notifications.info(`"${spellDoc.name}" is already in this spellbook.`);
+        }
+      }
+    }
+  }
+
+  /**
+   * Action: Open transcribe dialog
+   */
+  static _onTranscribeSpells(event, target) {
+    openTranscribeDialog(this.document);
+  }
+
+  /**
+   * Action: Clear all spells from spellbook
+   */
+  static async _onClearSpellbook(event, target) {
+    const confirmed = await DialogV2.confirm({
+      window: { title: "Clear Spellbook" },
+      content: "<p>Are you sure you want to remove all spells from this spellbook?</p>",
+      rejectClose: false
+    });
+
+    if (confirmed) {
+      await this.document.unsetFlag(MODULE_ID, "spells");
+      this.render(true);
+    }
+  }
+
+  /**
+   * Action: Delete an individual spell
+   */
+  static async _onDeleteSpell(event, target) {
+    const uuid = target.dataset.uuid;
+    if (uuid) {
+      await removeSpellFromSpellbook(this.document, uuid);
+      this.render(true);
+    }
+  }
+
+  /**
+   * Form submission handler for ApplicationV2
+   */
+  static async _onFormSubmit(event, form, formData) {
+    await this.document.update(formData.object);
   }
 }
 
