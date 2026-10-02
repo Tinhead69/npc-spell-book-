@@ -269,7 +269,7 @@ export async function transcribeSpell(wizard, spellEntry, sourceSpellbook, optio
 }
 
 /**
- * Opens a interactive dialog to pick a Wizard actor and transcribe individual spells.
+ * Opens an interactive dialog to pick a Wizard actor and transcribe individual spells.
  * @param {Item} sourceSpellbook
  */
 export async function openTranscribeDialog(sourceSpellbook) {
@@ -293,6 +293,11 @@ export async function openTranscribeDialog(sourceSpellbook) {
 
     const goldDisplay = rootEl.querySelector(".wizard-gold-display");
     if (goldDisplay) goldDisplay.textContent = `${getGold(wizard)} GP`;
+
+    if (!spells.length) {
+      listContainer.innerHTML = `<div style="padding: 10px; text-align: center; color: #888;">No spells in this spellbook.</div>`;
+      return;
+    }
 
     const rowsHtml = spells.map((spell) => {
       const level = Number(spell.level ?? 0);
@@ -322,7 +327,7 @@ export async function openTranscribeDialog(sourceSpellbook) {
           <div style="display: flex; align-items: center; gap: 8px;">
             <img src="${spell.img || "icons/svg/book.svg"}" width="24" height="24" style="border: none; border-radius: 3px;" />
             <span style="font-size: 0.85rem; font-weight: 500; color: #eee;">${spell.name}</span>
-            <span style="font-size: 0.7rem; color: #888;">(Lvl ${level})</span>
+            <span style="font-size: 0.75rem; color: #888;">(Lvl ${level})</span>
           </div>
           <div>${actionHtml}</div>
         </div>
@@ -362,9 +367,9 @@ export async function openTranscribeDialog(sourceSpellbook) {
     .join("");
 
   const content = `
-    <div class="transcribe-dialog-box" style="display: flex; flex-direction: column; gap: 10px; max-height: 500px;">
+    <div class="transcribe-dialog-box" style="display: flex; flex-direction: column; gap: 10px; width: 100%;">
       <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; background: #222; padding: 8px; border-radius: 4px;">
-        <label style="font-weight: bold; font-size: 0.85rem; flex-shrink: 0;">Target Wizard:</label>
+        <label style="font-weight: bold; font-size: 0.85rem; flex-shrink: 0; color: #ccc;">Target Wizard:</label>
         <select name="wizardSelect" style="flex: 1; padding: 4px; background: #111; color: #fff; border: 1px solid #444; border-radius: 3px;">
           ${optionsHtml}
         </select>
@@ -373,7 +378,7 @@ export async function openTranscribeDialog(sourceSpellbook) {
         </span>
       </div>
 
-      <div class="transcribe-spell-list" style="flex: 1; overflow-y: auto; max-height: 380px; border: 1px solid #333; border-radius: 4px; background: #111;">
+      <div class="transcribe-spell-list" style="max-height: 320px; min-height: 150px; overflow-y: auto; border: 1px solid #333; border-radius: 4px; background: #111;">
       </div>
     </div>
   `;
@@ -392,7 +397,7 @@ export async function openTranscribeDialog(sourceSpellbook) {
       const rootEl = html instanceof HTMLElement ? html : html[0];
 
       // Initial list render
-      renderSpelllist(selectedWizard, rootEl);
+      renderSpellList(selectedWizard, rootEl);
 
       // Handle dropdown switch
       const select = rootEl.querySelector('[name="wizardSelect"]');
@@ -406,5 +411,5 @@ export async function openTranscribeDialog(sourceSpellbook) {
         });
       }
     }
-  }, { width: 480 }).render(true);
+  }, { width: 500, height: "auto" }).render(true);
 }
