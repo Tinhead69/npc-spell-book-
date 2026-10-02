@@ -8,7 +8,55 @@
     </button>
 
     <!-- Transcribe Spells Button -->
-    <button type="button" data-action="transcribeSpells" style="flex: 1; padding: 6px 12px; font-size: 0.8rem; background: #2b3a4c; color: #fff; border: 1px solid #4a5d7c; border-radius: 3px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;">
+    <button type="button" data-action="transcribeSpells" style="flex: 1; padding: 6p<form class="{{cssClass}} flexcol" autocomplete="off">
+  <!-- Spellbook Header Name & Icon -->
+  <header class="sheet-header" style="display: flex; align-items: center; gap: 10px; margin-bottom: 12px; padding: 4px;">
+    <img class="profile-img" src="{{item.img}}" data-edit="img" title="{{item.name}}" width="44" height="44" style="border: 1px solid #444; border-radius: 4px; object-fit: cover; cursor: pointer; flex-shrink: 0;"/>
+    <div class="header-fields" style="flex: 1;">
+      <h1 class="charname" style="margin: 0; border: none;">
+        <input name="name" type="text" value="{{item.name}}" placeholder="Spellbook Name" style="width: 100%; height: 36px; font-size: 1.2rem; font-weight: bold; background: rgba(0, 0, 0, 0.3); color: #fff; border: 1px solid #444; border-radius: 4px; padding: 4px 8px;"/>
+      </h1>
+    </div>
+  </header>
+
+  <!-- Action Buttons -->
+  <div class="spellbook-actions" style="display: flex; gap: 8px; margin-bottom: 12px;">
+    <button type="button" class="btn-add-spells" style="flex: 1; background: #2d5a27; color: #fff; border: 1px solid #4a8c43; padding: 6px; border-radius: 4px; cursor: pointer; font-weight: bold;">
+      <i class="fas fa-plus"></i> Add Spells
+    </button>
+    <button type="button" class="btn-transcribe-spells" style="flex: 1; background: #2b3a4c; color: #fff; border: 1px solid #4a5d7c; padding: 6px; border-radius: 4px; cursor: pointer; font-weight: bold;">
+      <i class="fas fa-scroll"></i> Transcribe Spells
+    </button>
+    <button type="button" class="btn-clear-spellbook" style="flex: 1; background: #5a2727; color: #fff; border: 1px solid #8c4343; padding: 6px; border-radius: 4px; cursor: pointer; font-weight: bold;">
+      <i class="fas fa-trash"></i> Clear Spellbook
+    </button>
+  </div>
+
+  <!-- Spell Categories Container -->
+  <div class="spellbook-body" style="flex: 1; overflow-y: auto;">
+    {{#each spellGroups as |group|}}
+      <div class="spell-group" style="margin-bottom: 10px; border: 1px solid #333; border-radius: 4px; overflow: hidden;">
+        <div class="group-header" style="background: #4a1515; color: #fff; display: flex; justify-content: space-between; padding: 4px 10px; font-weight: bold; font-size: 0.85rem;">
+          <span>{{group.label}}</span>
+          <span>{{group.spells.length}} Spells</span>
+        </div>
+        <div class="group-spells">
+          {{#each group.spells as |spell|}}
+            <div class="spell-item" style="display: flex; align-items: center; justify-content: space-between; padding: 6px 10px; background: #1a1a1a; border-bottom: 1px solid #222;">
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <img src="{{spell.img}}" width="24" height="24" style="border: none; border-radius: 3px;"/>
+                <span style="color: #64b5f6; font-weight: 500;">{{spell.name}}</span>
+              </div>
+              <a class="delete-spell" data-uuid="{{spell.uuid}}" title="Remove Spell" style="color: #e57373; cursor: pointer;">
+                <i class="fas fa-trash"></i>
+              </a>
+            </div>
+          {{/each}}
+        </div>
+      </div>
+    {{/each}}
+  </div>
+</form> 12px; font-size: 0.8rem; background: #2b3a4c; color: #fff; border: 1px solid #4a5d7c; border-radius: 3px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;">
       <i class="fas fa-scroll"></i> Transcribe Spells
     </button>
 
