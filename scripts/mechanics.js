@@ -200,22 +200,22 @@ export function evaluateTranscription(wizard, spellEntry, options = {}) {
   }
 
   if (spellLevel > maxLevel) {
-    return { canLearn: false, reasonKey: `Spell level too high (Max level: ${maxLevel})` };
+    return { canLearn: false, reasonKey: `Spell level too high (Max: Lvl ${maxLevel})` };
   }
 
   if (actorKnowsSpell(wizard, spellEntry)) {
-    return { canLearn: false, reasonKey: "Spell already known" };
+    return { canLearn: false, reasonKey: "Already in spellbook" };
   }
 
   const known = getTranscribedSpells(wizard);
   if (known.some((s) => s.uuid === spellEntry.uuid || s.name === spellEntry.name)) {
-    return { canLearn: false, reasonKey: "Spell already known" };
+    return { canLearn: false, reasonKey: "Already in spellbook" };
   }
 
   if (requireGold && checkAfford && cost > 0) {
     const gold = getGold(wizard);
     if (gold < cost) {
-      return { canLearn: false, reasonKey: `Insufficient gold (Need: ${cost} GP, Have: ${gold} GP)` };
+      return { canLearn: false, reasonKey: `Cannot afford (${cost} GP needed)` };
     }
   }
 
@@ -269,7 +269,7 @@ export async function transcribeSpell(wizard, spellEntry, sourceSpellbook, optio
 }
 
 /**
- * Opens a dialog to pick a Wizard actor in the world and transcribe spells to them.
+ * Opens a interactive dialog to pick a Wizard actor and transcribe individual spells.
  * @param {Item} sourceSpellbook
  */
 export async function openTranscribeDialog(sourceSpellbook) {
@@ -285,84 +285,126 @@ export async function openTranscribeDialog(sourceSpellbook) {
     return;
   }
 
+  let selectedWizard = wizardActors[0];
+
+  const renderSpellList = (wizard, rootEl) => {
+    const listContainer = rootEl.querySelector(".transcribe-spell-list");
+    if (!listContainer) return;
+
+    const goldDisplay = rootEl.querySelector(".wizard-gold-display");
+    if (goldDisplay) goldDisplay.textContent = `${getGold(wizard)} GP`;
+
+    const rowsHtml = spells.map((spell) => {
+      const level = Number(spell.level ?? 0);
+      const evalResult = evaluateTranscription(wizard, spell, { requireGold: true, checkAfford: true });
+      const cost = getTranscriptionCost(level);
+      const hours = getTranscriptionHours(level);
+
+      let actionHtml = "";
+
+      if (evalResult.reasonKey === "Already in spellbook" || actorKnowsSpell(wizard, spell)) {
+        actionHtml = `<span style="color: #888; font-style: italic; font-size: 0.8rem;"><i class="fas fa-check-circle" style="color: #4a7c4a;"></i> Already in spellbook</span>`;
+      } else if (!evalResult.canLearn) {
+        actionHtml = `<span style="color: #aa4444; font-size: 0.8rem;" title="${evalResult.reasonKey}"><i class="fas fa-times-circle"></i> ${evalResult.reasonKey}</span>`;
+      } else {
+        actionHtml = `
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span style="font-size: 0.75rem; color: #bbb;">${cost} GP &bull; ${hours} hrs</span>
+            <button type="button" class="btn-transcribe-single" data-uuid="${spell.uuid}" style="padding: 3px 8px; font-size: 0.75rem; background: #2b3a4c; color: #fff; border: 1px solid #4a5d7c; border-radius: 3px; cursor: pointer;">
+              <i class="fas fa-scroll"></i> Transcribe
+            </button>
+          </div>
+        `;
+      }
+
+      return `
+        <div class="spell-row" style="display: flex; align-items: center; justify-content: space-between; padding: 6px 8px; border-bottom: 1px solid #222; background: #141414;">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <img src="${spell.img || "icons/svg/book.svg"}" width="24" height="24" style="border: none; border-radius: 3px;" />
+            <span style="font-size: 0.85rem; font-weight: 500; color: #eee;">${spell.name}</span>
+            <span style="font-size: 0.7rem; color: #888;">(Lvl ${level})</span>
+          </div>
+          <div>${actionHtml}</div>
+        </div>
+      `;
+    }).join("");
+
+    listContainer.innerHTML = rowsHtml;
+
+    // Attach click listeners to individual Transcribe buttons
+    listContainer.querySelectorAll(".btn-transcribe-single").forEach((btn) => {
+      btn.addEventListener("click", async (e) => {
+        e.preventDefault();
+        const uuid = btn.dataset.uuid;
+        const spellEntry = spells.find((s) => s.uuid === uuid);
+        if (!spellEntry) return;
+
+        btn.disabled = true;
+        btn.textContent = "Transcribing...";
+
+        const success = await transcribeSpell(wizard, spellEntry, sourceSpellbook, {
+          deductGold: true,
+          requireGold: true
+        });
+
+        if (success) {
+          ui.notifications?.info(`Transcribed "${spellEntry.name}" to ${wizard.name}.`);
+        }
+
+        // Refresh rows to reflect new state & deducted gold
+        renderSpellList(wizard, rootEl);
+      });
+    });
+  };
+
   const optionsHtml = wizardActors
-    .map((a) => `<option value="${a.uuid}">${a.name} (${getGold(a)} GP)</option>`)
+    .map((a) => `<option value="${a.uuid}">${a.name}</option>`)
     .join("");
 
   const content = `
-    <form style="display: flex; flex-direction: column; gap: 8px;">
-      <p style="margin: 0 0 8px 0; font-size: 0.9rem;">
-        Select a Wizard actor to transcribe <strong>${spells.length}</strong> spell(s) from <em>${sourceSpellbook.name}</em>:
-      </p>
-      <div class="form-group" style="display: flex; align-items: center; gap: 8px;">
-        <label style="font-weight: bold; flex-shrink: 0;">Target Wizard:</label>
-        <select name="wizardUuid" style="flex: 1; padding: 4px;">${optionsHtml}</select>
+    <div class="transcribe-dialog-box" style="display: flex; flex-direction: column; gap: 10px; max-height: 500px;">
+      <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; background: #222; padding: 8px; border-radius: 4px;">
+        <label style="font-weight: bold; font-size: 0.85rem; flex-shrink: 0;">Target Wizard:</label>
+        <select name="wizardSelect" style="flex: 1; padding: 4px; background: #111; color: #fff; border: 1px solid #444; border-radius: 3px;">
+          ${optionsHtml}
+        </select>
+        <span class="wizard-gold-display" style="font-weight: bold; font-size: 0.85rem; color: #d1b87a; flex-shrink: 0;">
+          ${getGold(selectedWizard)} GP
+        </span>
       </div>
-    </form>
+
+      <div class="transcribe-spell-list" style="flex: 1; overflow-y: auto; max-height: 380px; border: 1px solid #333; border-radius: 4px; background: #111;">
+      </div>
+    </div>
   `;
 
   new Dialog({
-    title: "Transcribe Spells",
+    title: `Transcribe Spells — ${sourceSpellbook.name}`,
     content: content,
     buttons: {
-      transcribe: {
-        icon: '<i class="fas fa-scroll"></i>',
-        label: "Transcribe",
-        callback: async (html) => {
-          const form = html instanceof HTMLElement ? html : html[0];
-          const selectedUuid = form.querySelector('[name="wizardUuid"]')?.value;
-          if (!selectedUuid) return;
-
-          const wizardActor = await fromUuid(selectedUuid);
-          if (!wizardActor) {
-            ui.notifications?.error("Could not locate the selected Wizard actor.");
-            return;
-          }
-
-          let successCount = 0;
-          let skippedCount = 0;
-          let totalCost = 0;
-
-          for (const spellEntry of spells) {
-            const evaluation = evaluateTranscription(wizardActor, spellEntry, {
-              requireGold: true,
-              checkAfford: true
-            });
-
-            if (evaluation.canLearn) {
-              const success = await transcribeSpell(wizardActor, spellEntry, sourceSpellbook, {
-                deductGold: true,
-                requireGold: true
-              });
-
-              if (success) {
-                successCount++;
-                totalCost += getTranscriptionCost(Number(spellEntry.level ?? 0));
-              } else {
-                skippedCount++;
-              }
-            } else {
-              skippedCount++;
-            }
-          }
-
-          if (successCount > 0) {
-            ui.notifications?.info(
-              `Transcribed ${successCount} spell(s) to ${wizardActor.name} for ${totalCost} GP.`
-            );
-          }
-          if (skippedCount > 0) {
-            ui.notifications?.warn(
-              `Skipped ${skippedCount} spell(s) (already known, cantrips, level too high, or insufficient gold).`
-            );
-          }
-        }
-      },
-      cancel: {
+      close: {
         icon: '<i class="fas fa-times"></i>',
-        label: "Cancel"
+        label: "Close"
       }
     },
-    default: "transcribe"
-  }).render(true);
+    default: "close",
+    render: (html) => {
+      const rootEl = html instanceof HTMLElement ? html : html[0];
+
+      // Initial list render
+      renderSpelllist(selectedWizard, rootEl);
+
+      // Handle dropdown switch
+      const select = rootEl.querySelector('[name="wizardSelect"]');
+      if (select) {
+        select.addEventListener("change", async (e) => {
+          const wizardActor = await fromUuid(e.target.value);
+          if (wizardActor) {
+            selectedWizard = wizardActor;
+            renderSpellList(selectedWizard, rootEl);
+          }
+        });
+      }
+    }
+  }, { width: 480 }).render(true);
 }
