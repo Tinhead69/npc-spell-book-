@@ -10,31 +10,48 @@ Hooks.once("init", () => {
   });
 });
 
-// Inject "Spellbook" into the "Create Item" Dialog
-Hooks.on("renderDocumentCreateDialog", (app, html, data) => {
-  if (app.documentName !== "Item") return;
+// Inject "Spellbook" into Item Creation Dialog
+function injectSpellbookOption(app, html) {
+  if (app.documentName !== "Item" && !app.options?.title?.includes("Item")) return;
 
-  const htmlElement = html[0] || html;
-  const listContainer = htmlElement.querySelector("ol, ul, .form-group");
+  const root = html[0] || html;
+  
+  // Prevent duplicate insertion
+  if (root.querySelector('input[value="spellbook"]')) return;
 
-  if (!listContainer) return;
+  const container = root.querySelector("ol, ul, .dialog-content, form");
+  if (!container) return;
 
-  // Create the Spellbook option element matching dnd5e radio styling
-  const spellbookOption = document.createElement("li");
-  spellbookOption.className = "form-group";
-  spellbookOption.innerHTML = `
-    <label class="radio-label flexrow" style="align-items: center; cursor: pointer; padding: 4px 0;">
-      <i class="fas fa-book" style="width: 24px; text-align: center; font-size: 1.1rem; margin-right: 8px; color: #aaa;"></i>
-      <span style="flex: 1; font-weight: 500;">Spellbook</span>
-      <input type="radio" name="type" value="spellbook" style="margin-left: auto;">
+  const li = document.createElement("li");
+  li.className = "form-group flexrow";
+  li.style.cssText = "display: flex; align-items: center; justify-content: space-between; padding: 4px 8px; margin: 2px 0; border-radius: 3px; cursor: pointer;";
+  
+  li.innerHTML = `
+    <label class="radio-label flexrow" style="display: flex; align-items: center; width: 100%; cursor: pointer; gap: 8px;">
+      <i class="fas fa-book" style="width: 20px; text-align: center; font-size: 1.1rem; color: #a33535;"></i>
+      <span style="flex: 1; font-weight: 600; font-size: 0.95rem;">Spellbook</span>
+      <input type="radio" name="type" value="spellbook" style="margin: 0; cursor: pointer;">
     </label>
   `;
 
-  listContainer.appendChild(spellbookOption);
+  // Insert right after the "Spell" radio option
+  const spellRadio = root.querySelector('input[value="spell"]');
+  if (spellRadio) {
+    const spellRow = spellRadio.closest("li, .form-group, div");
+    if (spellRow && spellRow.parentNode) {
+      spellRow.parentNode.insertBefore(li, spellRow.nextSibling);
+    } else {
+      container.appendChild(li);
+    }
+  } else {
+    container.appendChild(li);
+  }
 
   // Intercept form submission when "Spellbook" is selected
-  const form = htmlElement.querySelector("form");
-  if (form) {
+  const form = root.querySelector("form") || root.closest("form");
+  if (form && !form.dataset.spellbookHooked) {
+    form.dataset.spellbookHooked = "true";
+    
     form.addEventListener("submit", async (event) => {
       const selectedType = form.querySelector('input[name="type"]:checked')?.value;
       if (selectedType === "spellbook") {
@@ -43,9 +60,9 @@ Hooks.on("renderDocumentCreateDialog", (app, html, data) => {
 
         const nameInput = form.querySelector('input[name="name"]');
         const bookName = nameInput?.value?.trim() || "New Spellbook";
-        const folder = form.querySelector('select[name="folder"]')?.value || null;
+        const folderSelect = form.querySelector('select[name="folder"]');
+        const folder = folderSelect?.value || null;
 
-        // Create the underlying item as 'loot' with the spellbook flag and given name
         const createdItem = await Item.create({
           name: bookName,
           type: "loot",
@@ -60,7 +77,6 @@ Hooks.on("renderDocumentCreateDialog", (app, html, data) => {
         });
 
         if (createdItem) {
-          // Assign sheet class and open
           await createdItem.setFlag("core", "sheetClass", `dnd5e.${NpcSpellbookSheet.name}`);
           createdItem.sheet.render(true);
         }
@@ -69,4 +85,7 @@ Hooks.on("renderDocumentCreateDialog", (app, html, data) => {
       }
     }, { capture: true });
   }
-});
+}
+
+Hooks.on("renderDocumentCreateDialog", injectSpellbookOption);
+Hooks.on("renderDialog", injectSpellbookOption);
