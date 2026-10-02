@@ -61,18 +61,26 @@ export class NpcSpellbookSheet extends HandlebarsApplicationMixin(DocumentSheetV
       if (level >= 0 && level <= 9) {
         const sys = spell.system || {};
 
-        // 1. Activation
+        // 1. Activation (A, BA, R, or time)
         let castTime = "—";
         const act = sys.activation;
-        if (act) {
-          const cost = act.value ? `${act.value} ` : "";
-          const typeMap = { 
-            action: "Action", bonus: "Bonus", reaction: "Reaction", 
-            minute: "Min", hour: "Hour", day: "Day", 
-            legendary: "Legendary", mythic: "Mythic", special: "Special"
-          };
-          const typeLabel = typeMap[act.type] || act.type || "";
-          if (typeLabel) castTime = `${cost}${typeLabel}`.trim();
+        if (act && act.type) {
+          const actType = act.type.toLowerCase();
+          if (actType === "action") {
+            castTime = "A";
+          } else if (actType === "bonus") {
+            castTime = "BA";
+          } else if (actType === "reaction") {
+            castTime = "R";
+          } else {
+            const cost = act.value ? `${act.value} ` : "";
+            const typeMap = { 
+              minute: "Min", hour: "Hour", day: "Day", 
+              legendary: "Legendary", mythic: "Mythic", special: "Special"
+            };
+            const typeLabel = typeMap[actType] || act.type || "";
+            if (typeLabel) castTime = `${cost}${typeLabel}`.trim();
+          }
         }
 
         // 2. Range
