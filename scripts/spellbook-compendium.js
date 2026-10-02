@@ -1,165 +1,69 @@
-import { addSpellToSpellbook, getSpellbookSpells } from "./data.js";
+import { MODULE_ID, addSpellToSpellbook } from "./data.js";
 
-export class CompendiumSpellPicker extends FormApplication {
-  constructor(object = {}, options = {}) {
-    super(object, options);
-    this.spellbook = options.spellbook || object.spellbook;
-    this.selectedPackId = options.selectedPackId ?? "dnd5e.spells";
+const { HandlebarsApplicationMixin, ApplicationV2 } = foundry.applications.api;
+
+export class CompendiumSpellPicker extends HandlebarsApplicationMixin(ApplicationV2) {
+  constructor(options = {}) {
+    super(options);
+    this.spellbook = options.spellbook;
   }
 
-  static get defaultOptions() {
-    return foundry.utils.mergeObject(super.defaultOptions, {
-      id: "compendium-spell-picker",
-      classes: ["compendium-spell-picker", "dnd5e", "sheet"],
-      template: "modules/npc-spell-book/templates/spell-picker.hbs",
-      width: 750,
-      height: 700,
-      closeOnSubmit: false,
-      submitOnChange: false
-    });
-  }
-
-  get title() {
-    return `Add Spells to ${this.spellbook?.name ?? "Study Spell Book"}`;
-  }
-
-  async getData(options) {
-    const context = await super.getData(options);
-
-    const itemPacks = game.packs.filter((p) => p.metadata.type === "Item");
-    if (!itemPacks.some((p) => p.collection === this.selectedPackId) && itemPacks.length > 0) {
-      this.selectedPackId = itemPacks[0].collection;
+  static DEFAULT_OPTIONS = {
+    id: "compendium-spell-picker",
+    classes: ["spell-picker", "dnd5e"],
+    position: {
+      width: 600,
+      height: 700
+    },
+    window: {
+      title: "Add Spells to Spellbook",
+      resizable: true
+    },
+    actions: {
+      addSpell: CompendiumSpellPicker._onAddSpell
     }
+  };
 
-    context.packs = itemPacks.map((p) => ({
-      id: p.collection,
-      label: `${p.metadata.label} (${p.metadata.packageName})`,
-      selected: p.collection === this.selectedPackId
-    }));
-
-    const targetPack = game.packs.get(this.selectedPackId);
-    
-    // Initialize level groups from 1 to 9 (excluding cantrips)
-    const levelGroups = {};
-    for (let i = 1; i <= 9; i++) {
-      levelGroups[i] = {
-        level: i,
-        label: `LEVEL ${i}`,
-        spells: []
-      };
+  static PARTS = {
+    picker: {
+      template: "modules/npc-spell-book/templates/spellbook-compendium.hbs"
     }
+  };
 
-    if (targetPack) {
-      const index = await targetPack.getIndex({
-        fields: [
-          "system.level",
-          "img",
-          "system.school",
-          "system.activation",
-          "system.range",
-          "system.target"
-        ]
-      });
-      const currentSpells = getSpellbookSpells(this.spellbook);
-      const existingUuids = new Set(currentSpells.map((s) => s.uuid));
+  async _prepareContext(options) {
+    const context = await super._prepareContext(options);
+    const spells = [];
 
+    const packs = game.packs.filter(p => p.metadata.type === "Item");
+    for (const pack of packs) {
+      const index = await pack.getIndex({ fields: ["system.level", "img"] });
       for (const entry of index) {
-        if (entry.type !== "spell") continue;
-
-        const sys = entry.system || {};
-        const level = Number(sys.level ?? 0);
-        if (level < 1 || level > 9) continue; // Skip cantrips and invalid levels
-
-        const school = sys.school ? (CONFIG.dnd5e?.spellSchools?.[sys.school] ?? sys.school) : "—";
-
-        let time = "—";
-        const activation = sys.activation;
-        if (typeof activation === "string") {
-          time = activation;
-        } else if (activation?.type) {
-          const cost = activation.cost ? `${activation.cost} ` : "";
-          const typeMap = { action: "Action", bonus: "Bonus Action", reaction: "Reaction", minute: "Minute", hour: "Hour", day: "Day" };
-          time = `${cost}${typeMap[activation.type] || activation.type}`;
+        if (entry.type === "spell") {
+          spells.push({
+            name: entry.name,
+            uuid: entry.uuid,
+            img: entry.img || "icons/svg/item-bag.svg",
+            level: entry.system?.level ?? 0,
+            pack: pack.metadata.label
+          });
         }
-
-        let range = "—";
-        const rng = sys.range;
-        if (typeof rng === "string") {
-          range = rng;
-        } else if (rng?.units === "self") {
-          range = "Self";
-        } else if (rng?.units === "touch") {
-          range = "Touch";
-        } else if (rng?.value) {
-          range = `${rng.value}${rng.units ? ` ${rng.units}` : ""}`;
-        } else if (rng?.units) {
-          range = rng.units;
-        }
-
-        let target = "—";
-        const tgt = sys.target;
-        if (typeof tgt === "string") {
-          target = tgt;
-        } else if (tgt?.value || tgt?.type) {
-          const val = tgt.value ? `${tgt.value} ` : "";
-          const units = tgt.units ? `${tgt.units} ` : "";
-          const type = tgt.type ? `${tgt.type}` : "";
-          target = `${val}${units}${type}`.trim();
-          if (!target) target = "—";
-        }
-
-        levelGroups[level].spells.push({
-          uuid: entry.uuid,
-          name: entry.name,
-          img: entry.img || "icons/svg/spell-magic.svg",
-          school,
-          time,
-          range,
-          target,
-          inBook: existingUuids.has(entry.uuid)
-        });
       }
     }
 
-    Object.values(levelGroups).forEach(group => {
-      group.spells.sort((a, b) => a.name.localeCompare(b.name));
-    });
-
-    context.activeLevels = Object.values(levelGroups)
-      .filter((group) => group.spells.length > 0)
-      .sort((a, b) => a.level - b.level);
-
-    context.hasSpells = context.activeLevels.length > 0;
-
+    spells.sort((a, b) => a.level - b.level || a.name.localeCompare(b.name));
+    context.spells = spells;
     return context;
   }
 
-  activateListeners(html) {
-    super.activateListeners(html);
+  static async _onAddSpell(event, target) {
+    event.preventDefault();
+    const uuid = target.dataset.uuid;
+    if (!uuid || !this.spellbook) return;
 
-    html.find("#pack-select").change((e) => {
-      this.selectedPackId = e.target.value;
-      this.render(false);
-    });
+    await addSpellToSpellbook(this.spellbook, uuid);
 
-    html.find(".add-picker-spell-btn").click(async (e) => {
-      e.preventDefault();
-      const btn = $(e.currentTarget);
-      const uuid = btn.data("uuid");
-      if (!uuid || !this.spellbook) return;
-
-      const spellDoc = await fromUuid(uuid);
-      if (!spellDoc) return;
-
-      btn.prop("disabled", true).text("Added");
-      await addSpellToSpellbook(this.spellbook, spellDoc);
-
-      ui.notifications.info(`Added "${spellDoc.name}" to ${this.spellbook.name}.`);
-      this.render(false);
-    });
-  }
-
-  async _updateObject(event, formData) {
-    // No-op form update handler needed for FormApplication
+    if (this.spellbook.sheet) {
+      this.spellbook.sheet.render();
+    }
   }
 }
