@@ -1,141 +1,159 @@
-import { MODULE_ID } from "./data.js";
-import { SpellbookSheet } from "./spellbook-sheet.js";
+import { MODULE_ID, getSpellbookSpells, removeSpellFromSpellbook } from "./data.js";
+import { openTranscribeDialog } from "./mechanics.js";
 
-const DocumentSheetConfig = foundry.applications.config.DocumentSheetConfig || globalThis.DocumentSheetConfig;
+// V13 ApplicationV2 Namespace Imports
+const { HandlebarsApplicationMixin, DialogV2 } = foundry.applications.api;
+const DocumentSheetV2 = foundry.applications.sheets.DocumentSheetV2;
 
-// 1. Register custom item sheet in V13
-Hooks.once("init", () => {
-  DocumentSheetConfig.registerSheet(Item, MODULE_ID, SpellbookSheet, {
-    types: ["loot", "container", "consumable"],
-    makeDefault: false,
-    label: "NPC Spellbook Sheet"
-  });
-});
+export class SpellbookSheet extends HandlebarsApplicationMixin(DocumentSheetV2) {
+  static DEFAULT_OPTIONS = {
+    tag: "form",
+    id: "spellbook-sheet",
+    classes: ["dnd5e", "sheet", "item", "spellbook-sheet"],
+    position: { width: 480, height: 560 },
+    form: {
+      handler: SpellbookSheet._onFormSubmit,
+      submitOnChange: true,
+      closeOnSubmit: false
+    },
+    actions: {
+      addSpells: SpellbookSheet._onAddSpells,
+      transcribeSpells: SpellbookSheet._onTranscribeSpells,
+      clearSpellbook: SpellbookSheet._onClearSpellbook,
+      deleteSpell: SpellbookSheet._onDeleteSpell
+    }
+  };
 
-// 2. Inject "Spellbook" option into Create Item dialogs
-function addSpellbookToCreateDialog(app, html) {
-  const root = html instanceof HTMLElement ? html : (html[0] || html);
-  if (!root || !(root instanceof HTMLElement)) return;
+  static PARTS = {
+    sheet: {
+      template: `modules/${MODULE_ID}/templates/spellbook-sheet.hbs`
+    }
+  };
 
-  const radios = Array.from(root.querySelectorAll('input[name="type"]'));
-  const select = root.querySelector('select[name="type"]');
+  get item() {
+    return this.document;
+  }
 
-  if (!radios.length && !select) return;
-  if (root.querySelector('[value="spellbook"]')) return; // Prevent duplicates
+  /** @override */
+  async _prepareContext(options) {
+    const context = await super._prepareContext(options);
+    const item = this.document;
+    context.item = item;
 
-  // Option A: Handle <select name="type"> dropdowns
-  if (select) {
-    const option = document.createElement("option");
-    option.value = "spellbook";
-    option.textContent = "Spellbook";
-    select.appendChild(option);
-  } 
-  // Option B: Handle radio / card grid list
-  else if (radios.length) {
-    // Find a target radio row to clone (e.g. "spell" or "loot")
-    const targetRadio = radios.find(r => r.value === "spell") ||
-                        radios.find(r => r.value === "loot") ||
-                        radios[radios.length - 1];
+    const spells = getSpellbookSpells(item);
 
-    // Isolate the immediate row container wrapping ONLY this radio
-    let row = targetRadio.parentElement;
-    while (row && row !== root && row.querySelectorAll('input[name="type"]').length === 1) {
-      if (["LI", "LABEL", "DIV", "TR"].includes(row.tagName)) break;
-      row = row.parentElement;
+    const groups = {};
+    for (const spell of spells) {
+      const lvl = Number(spell.level ?? spell.system?.level ?? 0);
+      const label = lvl === 0 ? "CANTRIPS" : `LEVEL ${lvl}`;
+      if (!groups[lvl]) {
+        groups[lvl] = { level: lvl, label, spells: [] };
+      }
+      groups[lvl].spells.push(spell);
     }
 
-    if (row && row.parentNode) {
-      const clone = row.cloneNode(true);
+    context.spellGroups = Object.keys(groups)
+      .map(Number)
+      .sort((a, b) => a - b)
+      .map((lvl) => groups[lvl]);
 
-      // Update cloned radio value
-      const radio = clone.querySelector('input[name="type"]');
-      if (radio) {
-        radio.value = "spellbook";
-        radio.checked = false;
-        radio.id = `type-spellbook-${Math.random().toString(36).substring(2, 7)}`;
-      }
+    return context;
+  }
 
-      // Update text label
-      const textElements = Array.from(clone.querySelectorAll("span, label, p, div, strong, b"));
-      let updatedLabel = false;
-      for (const el of textElements) {
-        if (el.children.length === 0 && el.textContent.trim().length > 0) {
-          el.textContent = "Spellbook";
-          updatedLabel = true;
-          break;
+  /** Action: Open dialog to browse and add spells */
+  static async _onAddSpells(event, target) {
+    const packs = game.packs.filter((p) => p.metadata.type === "Item");
+    let allSpells = [];
+
+    for (const pack of packs) {
+      const index = await pack.getIndex({ fields: ["system.level", "img", "type"] });
+      const spells = index.filter((i) => i.type === "spell");
+      allSpells.push(...spells);
+    }
+
+    if (!allSpells.length) {
+      ui.notifications.warn("No spell compendiums found in world.");
+      return;
+    }
+
+    allSpells.sort((a, b) => a.name.localeCompare(b.name));
+
+    const optionsHtml = allSpells
+      .map((s) => `<option value="${s.uuid}">${s.name} (Lvl ${s.system?.level ?? 0})</option>`)
+      .join("");
+
+    const content = `
+      <div style="padding: 6px;">
+        <label style="font-weight: bold; font-size: 0.85rem;">Select Spell to Add:</label>
+        <select id="spell-select" style="width: 100%; margin-top: 6px; padding: 4px; background: #111; color: #fff; border: 1px solid #444;">
+          ${optionsHtml}
+        </select>
+      </div>
+    `;
+
+    const selectedUuid = await DialogV2.prompt({
+      window: { title: "Add Spell to Spellbook" },
+      content: content,
+      ok: {
+        label: "Add",
+        icon: "fas fa-plus",
+        callback: (event, button) => button.form.querySelector("#spell-select")?.value
+      },
+      rejectClose: false
+    });
+
+    if (selectedUuid) {
+      const spellDoc = await fromUuid(selectedUuid);
+      if (spellDoc) {
+        const spells = Array.from(getSpellbookSpells(this.document));
+        if (!spells.some((s) => s.uuid === spellDoc.uuid)) {
+          spells.push({
+            uuid: spellDoc.uuid,
+            name: spellDoc.name,
+            level: spellDoc.system?.level ?? 0,
+            img: spellDoc.img
+          });
+          await this.document.setFlag(MODULE_ID, "spells", spells);
+          this.render(true);
+        } else {
+          ui.notifications.info(`"${spellDoc.name}" is already in this spellbook.`);
         }
       }
-      if (!updatedLabel) {
-        for (const child of clone.childNodes) {
-          if (child.nodeType === Node.TEXT_NODE && child.textContent.trim().length > 0) {
-            child.textContent = "Spellbook";
-            break;
-          }
-        }
-      }
-
-      // Update icon to book
-      const icon = clone.querySelector("i, img, svg");
-      if (icon) {
-        if (icon.tagName.toLowerCase() === "i") {
-          icon.className = "fas fa-book";
-          icon.style.color = "#a33535";
-        } else if (icon.tagName.toLowerCase() === "img") {
-          icon.src = "icons/svg/book.svg";
-        }
-      }
-
-      // Insert directly after target row
-      row.parentNode.insertBefore(clone, row.nextSibling);
     }
   }
 
-  // Intercept submit when "Spellbook" is chosen
-  const form = root.tagName === "FORM" ? root : root.querySelector("form") || root.closest("form");
-  if (form && !form.dataset.spellbookHooked) {
-    form.dataset.spellbookHooked = "true";
+  /** Action: Open transcribe dialog */
+  static _onTranscribeSpells(event, target) {
+    openTranscribeDialog(this.document);
+  }
 
-    form.addEventListener("submit", async (event) => {
-      const formData = new FormData(form);
-      const selectedType = formData.get("type") || form.querySelector('[name="type"]:checked, select[name="type"]')?.value;
+  /** Action: Clear all spells */
+  static async _onClearSpellbook(event, target) {
+    const confirmed = await DialogV2.confirm({
+      window: { title: "Clear Spellbook" },
+      content: "<p>Are you sure you want to remove all spells from this spellbook?</p>",
+      rejectClose: false
+    });
 
-      if (selectedType === "spellbook") {
-        event.preventDefault();
-        event.stopPropagation();
+    if (confirmed) {
+      await this.document.unsetFlag(MODULE_ID, "spells");
+      this.render(true);
+    }
+  }
 
-        const nameInput = form.querySelector('input[name="name"]');
-        const bookName = nameInput?.value?.trim() || "New Spellbook";
-        const folderSelect = form.querySelector('select[name="folder"]');
-        const folder = folderSelect?.value || null;
+  /** Action: Delete individual spell */
+  static async _onDeleteSpell(event, target) {
+    const uuid = target.dataset.uuid;
+    if (uuid) {
+      await removeSpellFromSpellbook(this.document, uuid);
+      this.render(true);
+    }
+  }
 
-        const createdItem = await Item.create({
-          name: bookName,
-          type: "loot",
-          img: "icons/svg/book.svg",
-          folder: folder,
-          flags: {
-            [MODULE_ID]: {
-              isSpellbook: true,
-              spells: []
-            },
-            core: {
-              sheetClass: `${MODULE_ID}.${SpellbookSheet.name}`
-            }
-          }
-        });
-
-        if (createdItem) {
-          createdItem.sheet?.render(true);
-        }
-
-        if (typeof app.close === "function") app.close();
-      }
-    }, { capture: true });
+  /** Form submission handler */
+  static async _onFormSubmit(event, form, formData) {
+    await this.document.update(formData.object);
   }
 }
 
-// Hook into dialog renders
-Hooks.on("renderDocumentCreateDialog", addSpellbookToCreateDialog);
-Hooks.on("renderCreateDocumentDialog", addSpellbookToCreateDialog);
-Hooks.on("renderDialog", addSpellbookToCreateDialog);
-Hooks.on("renderApplication", addSpellbookToCreateDialog);
+export { SpellbookSheet as NpcSpellbookSheet };
