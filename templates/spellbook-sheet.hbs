@@ -1,14 +1,4 @@
-<div class="npc-spellbook-container" style="display: flex; flex-direction: column; height: 100%; width: 100%; padding: 8px; box-sizing: border-box; background: #181818; color: #f0f0f0; font-family: sans-serif; overflow: hidden;">
-  
-  <!-- HEADER ACTION BUTTONS -->
-  <div class="spellbook-header-actions" style="display: flex; gap: 8px; margin-bottom: 12px; flex-shrink: 0;">
-    <!-- Add Spells Button -->
-    <button type="button" data-action="openPicker" style="flex: 1; padding: 6px 12px; font-size: 0.8rem; background: #2b4c2b; color: #fff; border: 1px solid #4a7c4a; border-radius: 3px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;">
-      <i class="fas fa-plus"></i> Add Spells
-    </button>
-
-    <!-- Transcribe Spells Button -->
-    <button type="button" data-action="transcribeSpells" style="flex: 1; padding: 6p<form class="{{cssClass}} flexcol" autocomplete="off">
+<div class="spellbook-sheet-container flexcol" style="display: flex; flex-direction: column; height: 100%;">
   <!-- Spellbook Header Name & Icon -->
   <header class="sheet-header" style="display: flex; align-items: center; gap: 10px; margin-bottom: 12px; padding: 4px;">
     <img class="profile-img" src="{{item.img}}" data-edit="img" title="{{item.name}}" width="44" height="44" style="border: 1px solid #444; border-radius: 4px; object-fit: cover; cursor: pointer; flex-shrink: 0;"/>
@@ -56,54 +46,4 @@
       </div>
     {{/each}}
   </div>
-</form> 12px; font-size: 0.8rem; background: #2b3a4c; color: #fff; border: 1px solid #4a5d7c; border-radius: 3px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;">
-      <i class="fas fa-scroll"></i> Transcribe Spells
-    </button>
-
-    <!-- Clear Spellbook Button -->
-    <button type="button" data-action="clearSpellbook" style="flex: 1; padding: 6px 12px; font-size: 0.8rem; background: #4c2b2b; color: #fff; border: 1px solid #7c4a4a; border-radius: 3px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;">
-      <i class="fas fa-trash"></i> Clear Spellbook
-    </button>
-  </div>
-
-  <!-- SPELL LIST CONTENT -->
-  <div class="spellbook-contents" style="flex: 1; overflow-y: auto; border: 1px solid #333; background: #121212; border-radius: 3px; padding: 8px;">
-    {{#if hasSpells}}
-      {{#each activeLevels}}
-        <div style="margin-bottom: 12px;">
-          <!-- Level Header -->
-          <div style="background-color: #3c1618; color: #fff; padding: 4px 8px; font-weight: bold; font-size: 0.8rem; border-radius: 3px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-            <span>{{label}}</span>
-            <span style="font-size: 0.7rem; opacity: 0.7;">{{spells.length}} Spells</span>
-          </div>
-
-          <!-- Table of Spells -->
-          <table style="width: 100%; border-collapse: collapse; font-size: 0.8rem;">
-            <tbody>
-              {{#each spells}}
-                <tr style="border-bottom: 1px solid #222;">
-                  <td style="padding: 4px; vertical-align: middle;">
-                    <div style="display: flex; align-items: center; gap: 8px;">
-                      <img src="{{this.img}}" width="24" height="24" style="border: none; border-radius: 3px; object-fit: contain;" />
-                      <span style="font-weight: 500; color: #eee;">{{this.name}}</span>
-                    </div>
-                  </td>
-                  <td style="padding: 4px; text-align: right; vertical-align: middle; width: 40px;">
-                    <button type="button" data-action="removeSpell" data-uuid="{{this.uuid}}" style="background: none; border: none; color: #a44; cursor: pointer; font-size: 0.85rem;" title="Remove Spell">
-                      <i class="fas fa-trash"></i>
-                    </button>
-                  </td>
-                </tr>
-              {{/each}}
-            </tbody>
-          </table>
-        </div>
-      {{/each}}
-    {{else}}
-      <div style="text-align: center; padding: 40px; color: #666; font-style: italic;">
-        No spells currently stored in this spellbook.
-      </div>
-    {{/if}}
-  </div>
-
 </div>
