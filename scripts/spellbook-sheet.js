@@ -26,84 +26,117 @@ export class NpcSpellbookSheet extends ApplicationV1 {
     context.system = item.system;
     context.flags = item.flags;
     
-    // Group spells by level (1 to 9)
+    // Group spells by level (0 to 9, where 0 is cantrips)
     const rawSpells = getSpellbookSpells(item);
     const levelGroups = {};
-    for (let i = 1; i <= 9; i++) {
+    for (let i = 0; i <= 9; i++) {
       levelGroups[i] = {
         level: i,
-        label: `LEVEL ${i}`,
+        label: i === 0 ? "CANTRIPS" : `LEVEL ${i}`,
         spells: []
       };
     }
 
     for (const spell of rawSpells) {
-      const level = Number(spell.system?.level ?? 1);
-      if (level >= 1 && level <= 9) {
+      const level = Number(spell.system?.level ?? 0);
+      if (level >= 0 && level <= 9) {
         const sys = spell.system || {};
 
+        // 1. Casting Time (Activation)
         let time = "—";
         const activation = sys.activation;
-        if (typeof activation === "string") {
-          time = activation;
-        } else if (activation?.type) {
-          const cost = activation.cost ? `${activation.cost} ` : "";
-          const typeMap = { action: "Action", bonus: "Bonus Action", reaction: "Reaction", minute: "Minute", hour: "Hour", day: "Day" };
-          time = `${cost}${typeMap[activation.type] || activation.type}`;
+        if (activation) {
+          const cost = activation.value ? `${activation.value} ` : "";
+          const typeMap = { 
+            action: "Action", 
+            bonus: "Bonus", 
+            reaction: "Reaction", 
+            minute: "Min", 
+            hour: "Hour", 
+            day: "Day",
+            legendary: "Legendary",
+            mythic: "Mythic",
+            special: "Special"
+          };
+          const typeLabel = typeMap[activation.type] || activation.type || "";
+          if (typeLabel) {
+            time = `${cost}${typeLabel}`.trim();
+          }
         }
 
+        // 2. Range
         let range = "—";
         const rng = sys.range;
-        if (typeof rng === "string") {
-          range = rng;
-        } else if (rng?.units === "self") {
-          range = "Self";
-        } else if (rng?.units === "touch") {
-          range = "Touch";
-        } else if (rng?.value) {
-          range = `${rng.value}${rng.units ? ` ${rng.units}` : ""}`;
-        } else if (rng?.units) {
-          range = rng.units;
+        if (rng) {
+          if (rng.units === "self") {
+            range = "Self";
+          } else if (rng.units === "touch") {
+            range = "Touch";
+          } else if (rng.units === "sight") {
+            range = "Sight";
+          } else if (rng.value) {
+            const unitMap = { ft: "ft", mi: "mi", m: "m", km: "km" };
+            const uLabel = unitMap[rng.units] || rng.units || "";
+            range = `${rng.value}${uLabel ? ` ${uLabel}` : ""}`;
+          } else if (rng.units) {
+            range = rng.units;
+          }
         }
 
+        // 3. Target
         let target = "—";
         const tgt = sys.target;
-        if (typeof tgt === "string") {
-          target = tgt;
-        } else if (tgt?.value || tgt?.type) {
-          const val = tgt.value ? `${tgt.value} ` : "";
-          const units = tgt.units ? `${tgt.units} ` : "";
-          const type = tgt.type ? `${tgt.type}` : "";
-          target = `${val}${units}${type}`.trim();
-          if (!target) target = "—";
+        if (tgt) {
+          // Check dnd5e modern affects sub-object structure if present
+          const affects = tgt.affects || tgt;
+          const count = affects.scalar?.value ?? affects.value ?? "";
+          const type = affects.type ?? "";
+          const special = affects.special ?? "";
+
+          if (special) {
+            target = special;
+          } else if (count || type) {
+            const countStr = count ? `${count} ` : "";
+            // Capitalize / clean up type
+            const typeStr = type ? type.replace(/_/g, " ") : "";
+            target = `${countStr}${typeStr}`.trim();
+          }
+          if (!target || target === "") target = "—";
         }
 
+        // 4. Components (derived from sys.properties array like ['vocal', 'somatic'])
         let components = "—";
-        const comps = sys.components;
-        if (comps) {
-          const parts = [];
-          if (comps.v) parts.push("V");
-          if (comps.s) parts.push("S");
-          if (comps.m) parts.push("M");
-          components = parts.join(", ") || "—";
+        const props = sys.properties || [];
+        const compParts = [];
+        if (props.includes("vocal") || props.includes("v")) compParts.push("V");
+        if (props.includes("somatic") || props.includes("s")) compParts.push("S");
+        if (props.includes("material") || props.includes("m") || (sys.materials?.value && sys.materials.value.length > 0)) {
+          compParts.push("M");
+        }
+        if (compParts.length > 0) {
+          components = compParts.join(", ");
         }
 
+        // 5. Duration
         let duration = "—";
         const dur = sys.duration;
-        if (typeof dur === "string") {
-          duration = dur;
-        } else if (dur?.units === "instantaneous") {
-          duration = "Instant";
-        } else if (dur?.units === "perm") {
-          duration = "Permanent";
-        } else if (dur?.units === "special") {
-          duration = "Special";
-        } else if (dur?.value) {
-          const unitMap = { turn: "Turn", round: "Round", minute: "Min", hour: "Hour", day: "Day" };
-          const uLabel = unitMap[dur.units] || dur.units;
-          duration = `${dur.value} ${uLabel}`;
-        } else if (dur?.units) {
-          duration = dur.units;
+        if (dur) {
+          if (dur.units === "instantaneous") {
+            duration = "Instant";
+          } else if (dur.units === "perm") {
+            duration = "Permanent";
+          } else if (dur.units === "special") {
+            duration = "Special";
+          } else if (dur.value || dur.units) {
+            const val = dur.value ? `${dur.value} ` : "";
+            const unitMap = { turn: "Turn", round: "Round", minute: "Min", hour: "Hour", day: "Day", inst: "Instant" };
+            const uLabel = unitMap[dur.units] || dur.units || "";
+            duration = `${val}${uLabel}`.trim();
+          }
+          if (dur.concentration) {
+            duration = `C. ${duration}`;
+          }
+          if (!duration) duration = "—";
         }
 
         levelGroups[level].spells.push({
