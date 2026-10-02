@@ -27,8 +27,9 @@ export class CompendiumSpellPicker extends HandlebarsApplicationMixin(Applicatio
       )
     );
 
-    const availablePacks = game.packs.filter((p) => p.metadata.type === "Item");
-    this.selectedPacks = new Set(availablePacks.map((p) => p.collection));
+    // Initialized as null; populated dynamically with packs that actually contain spells
+    this.selectedPacks = null;
+    this._spellPacksCache = null;
     this.searchQuery = "";
   }
 
@@ -57,6 +58,28 @@ export class CompendiumSpellPicker extends HandlebarsApplicationMixin(Applicatio
     }
   };
 
+  /**
+   * Helper to scan Item packs and cache only those that contain at least one spell.
+   */
+  async _getSpellPacks() {
+    if (this._spellPacksCache) return this._spellPacksCache;
+
+    const itemPacks = game.packs.filter((p) => p.metadata.type === "Item");
+    const spellPacks = [];
+
+    for (const pack of itemPacks) {
+      // Load index fields to check item types
+      const index = await pack.getIndex({ fields: ["type"] });
+      const hasSpells = index.some((e) => e.type === "spell");
+      if (hasSpells) {
+        spellPacks.push(pack);
+      }
+    }
+
+    this._spellPacksCache = spellPacks;
+    return spellPacks;
+  }
+
   _onRender(context, options) {
     super._onRender(context, options);
 
@@ -71,6 +94,14 @@ export class CompendiumSpellPicker extends HandlebarsApplicationMixin(Applicatio
 
   async _prepareContext(options) {
     const context = await super._prepareContext(options);
+
+    // Fetch only compendiums that contain spells
+    const spellPacks = await this._getSpellPacks();
+
+    // On first load, select all spell-bearing compendiums by default
+    if (!this.selectedPacks) {
+      this.selectedPacks = new Set(spellPacks.map((p) => p.collection));
+    }
 
     context.levels = Array.from({ length: 9 }, (_, i) => {
       const lvl = i + 1;
@@ -98,17 +129,16 @@ export class CompendiumSpellPicker extends HandlebarsApplicationMixin(Applicatio
       selected: this.selectedSchools.has(key)
     }));
 
-    const itemPacks = game.packs.filter((p) => p.metadata.type === "Item");
-    context.packs = itemPacks.map((p) => ({
+    // Render only spell-bearing compendiums in the left panel
+    context.packs = spellPacks.map((p) => ({
       id: p.collection,
       label: p.metadata.label,
       selected: this.selectedPacks.has(p.collection)
     }));
 
     const allMatchingSpells = [];
-    for (const packKey of this.selectedPacks) {
-      const pack = game.packs.get(packKey);
-      if (!pack) continue;
+    for (const pack of spellPacks) {
+      if (!this.selectedPacks.has(pack.collection)) continue;
 
       const index = await pack.getIndex({
         fields: ["system.level", "system.school", "system.activation", "system.range", "system.target"]
@@ -146,7 +176,7 @@ export class CompendiumSpellPicker extends HandlebarsApplicationMixin(Applicatio
         const schoolObj = schoolConfig[school];
         const schoolName = schoolObj ? (typeof schoolObj === "string" ? schoolObj : schoolObj.label) : school;
 
-        const uuid = entry.uuid || `Compendium.${packKey}.Item.${entry._id}`;
+        const uuid = entry.uuid || `Compendium.${pack.collection}.Item.${entry._id}`;
 
         const isPresent = this.initialUuids.has(uuid) || this.initialUuids.has(entry._id);
         const isAdded = this.addedSessionUuids.has(uuid);
@@ -221,7 +251,6 @@ export class CompendiumSpellPicker extends HandlebarsApplicationMixin(Applicatio
     const uuid = target.dataset.uuid;
     if (!uuid || !this.spellbook) return;
 
-    // Save current scroll position before re-render
     const scrollContainer = this.element?.querySelector(".spell-picker-scroll-container");
     const scrollTop = scrollContainer ? scrollContainer.scrollTop : 0;
 
@@ -229,10 +258,8 @@ export class CompendiumSpellPicker extends HandlebarsApplicationMixin(Applicatio
 
     this.addedSessionUuids.add(uuid);
 
-    // Re-render UI
     await this.render();
 
-    // Restore scroll position
     const restoredContainer = this.element?.querySelector(".spell-picker-scroll-container");
     if (restoredContainer) {
       restoredContainer.scrollTop = scrollTop;
