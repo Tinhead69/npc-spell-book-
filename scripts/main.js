@@ -1,5 +1,5 @@
 import { MODULE_ID } from "./data.js";
-import { SpellbookSheet, NpcSpellbookSheet } from "./spellbook-sheet.js";
+import { SpellbookSheet } from "./spellbook-sheet.js";
 
 const DocumentSheetConfig = foundry.applications.config.DocumentSheetConfig || globalThis.DocumentSheetConfig;
 
@@ -17,44 +17,65 @@ function addSpellbookToCreateDialog(app, html) {
   const root = html instanceof HTMLElement ? html : (html[0] || html);
   if (!root || !(root instanceof HTMLElement)) return;
 
-  const typeInput = root.querySelector('[name="type"]');
-  if (!typeInput) return;
+  const radios = Array.from(root.querySelectorAll('input[name="type"]'));
+  const select = root.querySelector('select[name="type"]');
 
-  if (root.querySelector('[value="spellbook"]')) return;
+  if (!radios.length && !select) return;
+  if (root.querySelector('[value="spellbook"]')) return; // Prevent duplicates
 
-  // Handle <select name="type"> dropdowns
-  if (typeInput.tagName === "SELECT") {
+  // Option A: Handle <select name="type"> dropdowns
+  if (select) {
     const option = document.createElement("option");
     option.value = "spellbook";
     option.textContent = "Spellbook";
-    typeInput.appendChild(option);
+    select.appendChild(option);
   } 
-  // Handle radio / card grid inputs
-  else {
-    const radios = root.querySelectorAll('input[name="type"]');
-    if (!radios.length) return;
+  // Option B: Handle radio / card grid list
+  else if (radios.length) {
+    // Find a target radio row to clone (e.g. "spell" or "loot")
+    const targetRadio = radios.find(r => r.value === "spell") ||
+                        radios.find(r => r.value === "loot") ||
+                        radios[radios.length - 1];
 
-    let targetRadio = Array.from(radios).find(r => r.value.toLowerCase() === "spell") ||
-                      Array.from(radios).find(r => r.value.toLowerCase() === "loot") ||
-                      radios[radios.length - 1];
+    // Isolate the immediate row container wrapping ONLY this radio
+    let row = targetRadio.parentElement;
+    while (row && row !== root && row.querySelectorAll('input[name="type"]').length === 1) {
+      if (["LI", "LABEL", "DIV", "TR"].includes(row.tagName)) break;
+      row = row.parentElement;
+    }
 
-    const targetRow = targetRadio.closest("li, label, .form-group, .type-option, div");
-    if (targetRow && targetRow.parentNode) {
-      const spellbookRow = targetRow.cloneNode(true);
+    if (row && row.parentNode) {
+      const clone = row.cloneNode(true);
 
-      const radio = spellbookRow.querySelector('input[name="type"]');
+      // Update cloned radio value
+      const radio = clone.querySelector('input[name="type"]');
       if (radio) {
         radio.value = "spellbook";
         radio.checked = false;
-        if (radio.id) radio.id = `type-spellbook-${Math.random().toString(36).substring(2, 7)}`;
+        radio.id = `type-spellbook-${Math.random().toString(36).substring(2, 7)}`;
       }
 
-      const labelSpan = Array.from(spellbookRow.querySelectorAll("*")).find(
-        el => el.children.length === 0 && el.textContent.trim().length > 0
-      );
-      if (labelSpan) labelSpan.textContent = "Spellbook";
+      // Update text label
+      const textElements = Array.from(clone.querySelectorAll("span, label, p, div, strong, b"));
+      let updatedLabel = false;
+      for (const el of textElements) {
+        if (el.children.length === 0 && el.textContent.trim().length > 0) {
+          el.textContent = "Spellbook";
+          updatedLabel = true;
+          break;
+        }
+      }
+      if (!updatedLabel) {
+        for (const child of clone.childNodes) {
+          if (child.nodeType === Node.TEXT_NODE && child.textContent.trim().length > 0) {
+            child.textContent = "Spellbook";
+            break;
+          }
+        }
+      }
 
-      const icon = spellbookRow.querySelector("i, img, svg");
+      // Update icon to book
+      const icon = clone.querySelector("i, img, svg");
       if (icon) {
         if (icon.tagName.toLowerCase() === "i") {
           icon.className = "fas fa-book";
@@ -64,7 +85,8 @@ function addSpellbookToCreateDialog(app, html) {
         }
       }
 
-      targetRow.parentNode.insertBefore(spellbookRow, targetRow.nextSibling);
+      // Insert directly after target row
+      row.parentNode.insertBefore(clone, row.nextSibling);
     }
   }
 
@@ -74,7 +96,8 @@ function addSpellbookToCreateDialog(app, html) {
     form.dataset.spellbookHooked = "true";
 
     form.addEventListener("submit", async (event) => {
-      const selectedType = new FormData(form).get("type") || form.querySelector('[name="type"]:checked, select[name="type"]')?.value;
+      const formData = new FormData(form);
+      const selectedType = formData.get("type") || form.querySelector('[name="type"]:checked, select[name="type"]')?.value;
 
       if (selectedType === "spellbook") {
         event.preventDefault();
