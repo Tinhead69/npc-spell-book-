@@ -1,9 +1,9 @@
 import { MODULE_ID } from "./data.js";
 import { NpcSpellbookSheet } from "./spellbook-sheet.js";
 
-// 1. Register the custom item sheet
+// 1. Register the custom item sheet using DocumentSheetConfig (Foundry V12 / V13)
 Hooks.once("init", () => {
-  Items.registerSheet(MODULE_ID, NpcSpellbookSheet, {
+  DocumentSheetConfig.registerSheet(Item, MODULE_ID, NpcSpellbookSheet, {
     types: ["loot", "container", "consumable"],
     makeDefault: false,
     label: "NPC Spellbook Sheet"
@@ -17,8 +17,8 @@ function addSpellbookToCreateDialog(app, html) {
 
   // Verify this is an Item creation dialog
   const isItemDialog = app?.documentName === "Item" || 
-                       app?.options?.title?.toLowerCase().includes("item") || 
-                       root.querySelector('input[name="type"]');
+                        app?.options?.title?.toLowerCase().includes("item") || 
+                        root.querySelector('input[name="type"]');
   if (!isItemDialog) return;
 
   // Prevent duplicate injection
