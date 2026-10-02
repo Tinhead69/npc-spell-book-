@@ -100,8 +100,7 @@ function addSpellbookToCreateDialog(app, html) {
         });
 
         if (createdItem) {
-          const sheet = createdItem.sheet ?? new NpcSpellbookSheet({ document: createdItem });
-          sheet.render(true);
+          createdItem.sheet?.render(true);
         }
 
         app.close();
