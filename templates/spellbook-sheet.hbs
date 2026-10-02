@@ -1,58 +1,58 @@
-<form class="{{cssClass}} flexcol" autocomplete="off" style="padding: 8px; background: #1c1815; color: #e6dfd5; border: 2px solid #3d332a; border-radius: 6px; box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.8);">
+<form class="{{cssClass}} flexcol" autocomplete="off">
   <!-- Header / Action Buttons -->
-  <header class="sheet-header flexrow" style="padding: 6px; align-items: center; margin-bottom: 8px; border-bottom: 1px solid #3d332a; gap: 10px; background: #26211c; border-radius: 4px;">
-    <img src="{{#if img}}{{img}}{{else}}icons/svg/book.svg{{/if}}" data-edit="img" alt="{{name}}" width="48" height="48" style="flex: 0 0 48px; border: 1px solid #c5a059; border-radius: 4px; object-fit: contain; cursor: pointer; background: #14110e;" title="Click to change image" />
-    <div style="flex: 1; font-size: 1.25rem; font-weight: bold; color: #f4ecd8; font-family: 'Cinzel', serif, Georgia, serif; text-shadow: 1px 1px 2px rgba(0,0,0,0.8);">{{name}}</div>
-    <div style="display: flex; gap: 6px;">
-      <button type="button" class="add-spell-btn" style="padding: 5px 10px; font-size: 0.85rem; background: #332b22; color: #f4ecd8; border: 1px solid #c5a059; border-radius: 3px; cursor: pointer; font-family: Georgia, serif;">
+  <header class="sheet-header flexrow" style="align-items: center; margin-bottom: 8px; gap: 8px;">
+    <img src="{{#if img}}{{img}}{{else}}icons/svg/book.svg{{/if}}" data-edit="img" alt="{{name}}" width="40" height="40" style="flex: 0 0 40px; border-radius: 4px; object-fit: contain; cursor: pointer;" title="Click to change image" />
+    <div style="flex: 1; font-size: 1.1rem; font-weight: bold;">{{name}}</div>
+    <div style="display: flex; gap: 4px;">
+      <button type="button" class="add-spell-btn" style="padding: 2px 8px; font-size: 0.8rem;">
         <i class="fas fa-plus"></i> Add Spell
       </button>
-      <button type="button" class="clear-book-btn" style="padding: 5px 8px; font-size: 0.85rem; background: #332b22; color: #d46a6a; border: 1px solid #5c3232; border-radius: 3px; cursor: pointer;" title="Clear Spellbook">
+      <button type="button" class="clear-book-btn" style="padding: 2px 6px; font-size: 0.8rem; color: var(--color-level-error, #aa0000);" title="Clear Spellbook">
         <i class="fas fa-trash"></i>
       </button>
     </div>
   </header>
 
   <!-- Spell List Body Grouped by Level -->
-  <section class="sheet-body" style="flex: 1; overflow-y: auto; max-height: 520px; border: none; background: #1c1815;">
-    <ol class="items-list inventory-list directory-list" style="list-style: none; padding: 0; margin: 0; background: #1c1815;">
+  <section class="sheet-body" style="flex: 1; overflow-y: auto; max-height: 520px;">
+    <ol class="items-list inventory-list directory-list">
       {{#if hasSpells}}
         {{#each activeLevels}}
-          <!-- Antique Gold/Bronze Header Bar -->
-          <li class="item-header flexrow" style="background-color: #c5a059 !important; background: #c5a059 !important; color: #1c1815 !important; padding: 5px 8px; font-weight: bold; font-family: Georgia, serif; margin-top: 10px; border-radius: 3px; align-items: center; border: 1px solid #9e7f3e; box-shadow: 0 2px 4px rgba(0,0,0,0.4);">
-            <div class="item-name" style="flex: 1; color: #1c1815; text-shadow: 0 1px 0 rgba(255,255,255,0.3);">{{label}}</div>
-            <div class="item-detail" style="width: 75px; text-align: center; color: #1c1815;">ACTIVATION</div>
-            <div class="item-detail" style="width: 65px; text-align: center; color: #1c1815;">RANGE</div>
-            <div class="item-detail" style="width: 80px; text-align: center; color: #1c1815;">TARGET</div>
-            <div class="item-detail" style="width: 55px; text-align: center; color: #1c1815;">COMP</div>
-            <div class="item-detail" style="width: 75px; text-align: center; color: #1c1815;">DURATION</div>
+          <!-- Standard dnd5e Item Header Bar -->
+          <li class="item-header flexrow">
+            <div class="item-name" style="flex: 1;">{{label}}</div>
+            <div class="item-detail" style="width: 75px; text-align: center;">ACTIVATION</div>
+            <div class="item-detail" style="width: 65px; text-align: center;">RANGE</div>
+            <div class="item-detail" style="width: 80px; text-align: center;">TARGET</div>
+            <div class="item-detail" style="width: 55px; text-align: center;">COMP</div>
+            <div class="item-detail" style="width: 75px; text-align: center;">DURATION</div>
             <div class="item-controls" style="width: 40px; text-align: right;"></div>
           </li>
 
-          <ol class="item-list" style="list-style: none; padding: 0; margin: 3px 0 8px 0; background: #1c1815;">
+          <ol class="item-list" style="list-style: none; padding: 0; margin: 0 0 8px 0;">
             {{#each spells}}
-              <li class="spell-row flexrow item" style="align-items: center; padding: 6px; border-bottom: 1px solid #2d2620; background: #231f1a; border-radius: 2px; margin-bottom: 2px;">
-                <div class="item-name flexrow" style="flex: 1; align-items: center; gap: 8px;">
-                  <img src="{{img}}" alt="{{name}}" width="28" height="28" style="width: 28px; height: 28px; flex: 0 0 28px; border: 1px solid #4a3d31; border-radius: 3px; object-fit: contain; background: #14110e;" />
-                  <span class="spell-name" style="font-weight: 600; color: #f0e6d2; font-family: Georgia, serif;">{{name}}</span>
+              <li class="item flexrow" style="align-items: center; padding: 3px 4px;">
+                <div class="item-name flexrow" style="flex: 1; align-items: center; gap: 6px;">
+                  <img src="{{img}}" alt="{{name}}" width="24" height="24" style="width: 24px; height: 24px; flex: 0 0 24px; border-radius: 3px; object-fit: contain;" />
+                  <span class="spell-name" style="font-weight: 500;">{{name}}</span>
                 </div>
-                <div class="item-detail" style="width: 75px; text-align: center; font-size: 0.85rem; color: #b8ad9e;" title="{{castTime}}">
+                <div class="item-detail" style="width: 75px; text-align: center; font-size: 0.85rem;" title="{{castTime}}">
                   {{castTime}}
                 </div>
-                <div class="item-detail" style="width: 65px; text-align: center; font-size: 0.85rem; color: #b8ad9e;" title="{{range}}">
+                <div class="item-detail" style="width: 65px; text-align: center; font-size: 0.85rem;" title="{{range}}">
                   {{range}}
                 </div>
-                <div class="item-detail" style="width: 80px; text-align: center; font-size: 0.85rem; color: #b8ad9e;" title="{{target}}">
+                <div class="item-detail" style="width: 80px; text-align: center; font-size: 0.85rem;" title="{{target}}">
                   {{target}}
                 </div>
-                <div class="item-detail" style="width: 55px; text-align: center; font-size: 0.85rem; color: #b8ad9e;" title="{{components}}">
+                <div class="item-detail" style="width: 55px; text-align: center; font-size: 0.85rem;" title="{{components}}">
                   {{components}}
                 </div>
-                <div class="item-detail" style="width: 75px; text-align: center; font-size: 0.85rem; color: #b8ad9e;" title="{{duration}}">
+                <div class="item-detail" style="width: 75px; text-align: center; font-size: 0.85rem;" title="{{duration}}">
                   {{duration}}
                 </div>
                 <div class="item-controls" style="width: 40px; text-align: right;">
-                  <button type="button" class="remove-spell-btn" data-uuid="{{uuid}}" style="background: none; border: none; color: #b85c5c; cursor: pointer;" title="Remove Spell">
+                  <button type="button" class="remove-spell-btn" data-uuid="{{uuid}}" style="background: none; border: none; cursor: pointer; color: var(--color-level-error, #aa0000);" title="Remove Spell">
                     <i class="fas fa-trash"></i>
                   </button>
                 </div>
@@ -61,7 +61,7 @@
           </ol>
         {{/each}}
       {{else}}
-        <p class="notes" style="text-align: center; padding: 2rem; color: #9e9182; font-style: italic; font-family: Georgia, serif;">This tome's pages are blank. Click "Add Spell" to record your spells.</p>
+        <p class="notes" style="text-align: center; padding: 2rem;">This spellbook is empty. Click "Add Spell" to add spells.</p>
       {{/if}}
     </ol>
   </section>
