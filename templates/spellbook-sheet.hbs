@@ -1,3 +1,14 @@
+<style>
+  form.npc-spellbook {
+    height: 100% !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+</style>
+
 <div class="spellbook-sheet-container" style="display: flex; flex-direction: column; height: 100%; font-family: sans-serif; overflow: hidden;">
   <!-- Header Controls -->
   <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px; background: #1a1a1a; border-bottom: 1px solid #333; flex-shrink: 0;">
@@ -41,16 +52,18 @@
             <tbody>
               {{#each spells}}
                 <tr style="border-bottom: 1px solid #2a2a2a;">
-                  <td style="padding: 4px; display: flex; align-items: center; gap: 6px; text-align: left;">
-                    <img src="{{img}}" width="20" height="20" style="border: none; border-radius: 2px;" />
-                    <span style="font-weight: 500;">{{name}}</span>
+                  <td style="padding: 4px; text-align: left; vertical-align: middle;">
+                    <div style="display: flex; align-items: center; gap: 6px;">
+                      <img src="{{img}}" width="20" height="20" style="border: none; border-radius: 2px;" />
+                      <span style="font-weight: 500;">{{name}}</span>
+                    </div>
                   </td>
-                  <td style="padding: 4px; color: #ccc; text-align: center;">{{castTime}}</td>
-                  <td style="padding: 4px; color: #ccc; text-align: center;">{{range}}</td>
-                  <td style="padding: 4px; color: #ccc; text-align: center;">{{target}}</td>
-                  <td style="padding: 4px; color: #ccc; text-align: center;">{{components}}</td>
-                  <td style="padding: 4px; color: #ccc; text-align: center;">{{duration}}</td>
-                  <td style="padding: 4px; text-align: center;">
+                  <td style="padding: 4px; color: #ccc; text-align: center; vertical-align: middle;">{{castTime}}</td>
+                  <td style="padding: 4px; color: #ccc; text-align: center; vertical-align: middle;">{{range}}</td>
+                  <td style="padding: 4px; color: #ccc; text-align: center; vertical-align: middle;">{{target}}</td>
+                  <td style="padding: 4px; color: #ccc; text-align: center; vertical-align: middle;">{{components}}</td>
+                  <td style="padding: 4px; color: #ccc; text-align: center; vertical-align: middle;">{{duration}}</td>
+                  <td style="padding: 4px; text-align: center; vertical-align: middle;">
                     <a data-action="removeSpell" data-uuid="{{uuid}}" title="Remove Spell" style="color: #a33535; cursor: pointer;">
                       <i class="fas fa-trash"></i>
                     </a>
