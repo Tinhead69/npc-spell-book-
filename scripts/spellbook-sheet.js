@@ -1,5 +1,6 @@
 import { MODULE_ID, getSpellbookSpells, removeSpellFromSpellbook } from "./data.js";
 import { CompendiumSpellPicker } from "./spellbook-compendium.js";
+import { openTranscribeDialog } from "./mechanics.js";
 
 const { HandlebarsApplicationMixin, DocumentSheetV2 } = foundry.applications.api;
 
@@ -72,18 +73,11 @@ export class NpcSpellbookSheet extends HandlebarsApplicationMixin(DocumentSheetV
   }
 
   /**
-   * Action handler: Transcribe Spells
+   * Action handler: Open Transcribe Dialog
    */
   static async _onTranscribeSpells(event, target) {
     event.preventDefault();
-    const spells = getSpellbookSpells(this.document);
-
-    if (!spells.length) {
-      ui.notifications?.warn("There are no spells in this spellbook to transcribe.");
-      return;
-    }
-
-    ui.notifications?.info(`Transcribing ${spells.length} spell(s) from spellbook...`);
+    openTranscribeDialog(this.document);
   }
 
   /**
