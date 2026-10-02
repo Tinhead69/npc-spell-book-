@@ -1,14 +1,9 @@
 import { MODULE_ID, getSpellbookSpells, removeSpellFromSpellbook } from "./data.js";
 import { CompendiumSpellPicker } from "./spellbook-compendium.js";
 
-const { HandlebarsApplicationMixin, ApplicationV2 } = foundry.applications.api;
+const { HandlebarsApplicationMixin, DocumentSheetV2 } = foundry.applications.api;
 
-export class NpcSpellbookSheet extends HandlebarsApplicationMixin(ApplicationV2) {
-  constructor(options = {}) {
-    super(options);
-    this.item = options.document || options.item;
-  }
-
+export class NpcSpellbookSheet extends HandlebarsApplicationMixin(DocumentSheetV2) {
   static DEFAULT_OPTIONS = {
     id: "npc-spellbook-sheet",
     classes: ["npc-spellbook-sheet"],
@@ -37,7 +32,7 @@ export class NpcSpellbookSheet extends HandlebarsApplicationMixin(ApplicationV2)
   /** @override */
   async _prepareContext(options) {
     const context = await super._prepareContext(options);
-    const item = this.item || this.document;
+    const item = this.document;
     const rawSpells = getSpellbookSpells(item);
 
     const levelMap = {};
@@ -73,8 +68,7 @@ export class NpcSpellbookSheet extends HandlebarsApplicationMixin(ApplicationV2)
    */
   static async _onOpenPicker(event, target) {
     event.preventDefault();
-    const item = this.item || this.document;
-    new CompendiumSpellPicker({ spellbook: item }).render(true);
+    new CompendiumSpellPicker({ spellbook: this.document }).render(true);
   }
 
   /**
@@ -82,8 +76,7 @@ export class NpcSpellbookSheet extends HandlebarsApplicationMixin(ApplicationV2)
    */
   static async _onTranscribeSpells(event, target) {
     event.preventDefault();
-    const item = this.item || this.document;
-    const spells = getSpellbookSpells(item);
+    const spells = getSpellbookSpells(this.document);
 
     if (!spells.length) {
       ui.notifications?.warn("There are no spells in this spellbook to transcribe.");
@@ -98,7 +91,6 @@ export class NpcSpellbookSheet extends HandlebarsApplicationMixin(ApplicationV2)
    */
   static async _onClearSpellbook(event, target) {
     event.preventDefault();
-    const item = this.item || this.document;
     
     const confirm = await Dialog.confirm({
       title: "Clear Spellbook",
@@ -107,7 +99,7 @@ export class NpcSpellbookSheet extends HandlebarsApplicationMixin(ApplicationV2)
     });
 
     if (confirm) {
-      await item.unsetFlag(MODULE_ID, "spells");
+      await this.document.unsetFlag(MODULE_ID, "spells");
       this.render();
     }
   }
@@ -118,10 +110,9 @@ export class NpcSpellbookSheet extends HandlebarsApplicationMixin(ApplicationV2)
   static async _onRemoveSpell(event, target) {
     event.preventDefault();
     const uuid = target.dataset.uuid;
-    const item = this.item || this.document;
 
-    if (uuid && item) {
-      await removeSpellFromSpellbook(item, uuid);
+    if (uuid) {
+      await removeSpellFromSpellbook(this.document, uuid);
       this.render();
     }
   }
