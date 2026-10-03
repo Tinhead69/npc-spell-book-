@@ -1,4 +1,10 @@
-import { MODULE_ID, getSpellbookSpells, removeSpellFromSpellbook } from "./data.js";
+import {
+  MODULE_ID,
+  getSpellbookSpells,
+  removeSpellFromSpellbook,
+  formatSpellEntry,
+  buildStoredSpellData
+} from "./data.js";
 import { openTranscribeDialog } from "./mechanics.js";
 
 let SpellbookSheetClass = null;
@@ -10,6 +16,32 @@ function getBaseDocumentSheet() {
   return foundry.applications.api?.DocumentSheetV2
     || foundry.applications.sheets?.DocumentSheetV2
     || foundry.applications.api?.ApplicationV2;
+}
+
+/**
+ * Enrich slim stored spells (uuid/name/img only) by resolving the source document.
+ */
+async function enrichSpellForDisplay(spell) {
+  const hasSystem = Boolean(spell?.system?.activation || spell?.system?.range || spell?.system?.activities);
+  if (hasSystem) return formatSpellEntry(spell);
+
+  if (spell?.uuid) {
+    try {
+      const doc = await fromUuid(spell.uuid);
+      if (doc) {
+        return formatSpellEntry({
+          ...buildStoredSpellData(doc),
+          uuid: spell.uuid,
+          name: spell.name || doc.name,
+          img: spell.img || doc.img
+        });
+      }
+    } catch (err) {
+      console.warn("NPC Spellbook | Could not enrich spell", spell.uuid, err);
+    }
+  }
+
+  return formatSpellEntry(spell);
 }
 
 /**
@@ -29,7 +61,7 @@ export function getSpellbookSheetClass() {
   SpellbookSheetClass = class SpellbookSheet extends HandlebarsApplicationMixin(BaseSheet) {
     static DEFAULT_OPTIONS = {
       classes: ["dnd5e", "sheet", "item", "spellbook-sheet"],
-      position: { width: 480, height: 560 },
+      position: { width: 720, height: 600 },
       window: {
         resizable: true,
         icon: "fas fa-book"
@@ -63,10 +95,11 @@ export function getSpellbookSheetClass() {
       context.item = item;
 
       const spells = getSpellbookSpells(item);
+      const displaySpells = await Promise.all(spells.map((s) => enrichSpellForDisplay(s)));
 
       const groups = {};
-      for (const spell of spells) {
-        const lvl = Number(spell.level ?? spell.system?.level ?? 0);
+      for (const spell of displaySpells) {
+        const lvl = Number(spell.level ?? 0);
         const label = lvl === 0 ? "CANTRIPS" : `LEVEL ${lvl}`;
         if (!groups[lvl]) {
           groups[lvl] = { level: lvl, label, spells: [] };
@@ -129,12 +162,7 @@ export function getSpellbookSheetClass() {
         if (spellDoc) {
           const spells = Array.from(getSpellbookSpells(this.document));
           if (!spells.some((s) => s.uuid === spellDoc.uuid)) {
-            spells.push({
-              uuid: spellDoc.uuid,
-              name: spellDoc.name,
-              level: spellDoc.system?.level ?? 0,
-              img: spellDoc.img
-            });
+            spells.push(buildStoredSpellData(spellDoc));
             await this.document.setFlag(MODULE_ID, "spells", spells);
             this.render(true);
           } else {

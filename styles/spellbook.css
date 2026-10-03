@@ -1,81 +1,130 @@
-/* Container & Base Styles - Pure Black Background */
-.npc-spellbook-sheet {
+/* Force dark sheet chrome for ApplicationV2 + dnd5e theme overrides */
+.spellbook-sheet,
+.spellbook-sheet .window-content,
+.application.spellbook-sheet,
+.application.spellbook-sheet .window-content {
   background: #000000 !important;
   color: #d3d3d3;
-  font-family: var(--font-primary, "Signika", sans-serif);
 }
 
-.npc-spellbook-sheet .window-content {
-  background: #000000 !important;
-  padding: 8px;
+.spellbook-sheet .window-content {
+  padding: 0 !important;
+  overflow: hidden;
 }
 
-.npc-spellbook-sheet .sheet-header {
+.npc-spellbook-sheet-body {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
+  height: 100%;
+  min-height: 0;
+  background: #000000;
+  color: #d3d3d3;
+  font-family: var(--font-primary, "Signika", sans-serif);
+  padding: 8px;
+  box-sizing: border-box;
+}
+
+.npc-spellbook-sheet-body .sheet-header {
+  display: flex;
+  flex-direction: column;
   padding: 4px 4px 10px 4px;
   border-bottom: 1px solid #2a2d37;
   margin-bottom: 8px;
   background: transparent;
+  flex-shrink: 0;
 }
 
-.npc-spellbook-sheet .header-top-row {
+.npc-spellbook-sheet-body .header-top-row {
   width: 100%;
-  margin-bottom: 6px;
-}
-
-.npc-spellbook-sheet .item-name {
-  color: #ffffff;
-  font-size: 1.35em;
-  font-weight: bold;
-  margin: 0;
-  border: none;
-  background: transparent;
-}
-
-/* Compact Buttons Layout underneath Title */
-.npc-spellbook-sheet .header-actions {
   display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.npc-spellbook-sheet-body .profile-img {
+  width: 48px !important;
+  height: 48px !important;
+  max-width: 48px !important;
+  max-height: 48px !important;
+  border: 1px solid #3a3f50;
+  border-radius: 4px;
+  object-fit: cover;
+  object-position: center;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+.npc-spellbook-sheet-body .header-fields {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
   gap: 6px;
 }
 
-.npc-spellbook-sheet .btn {
+.npc-spellbook-sheet-body .item-name {
+  color: #ffffff;
+  font-size: 1.2em;
+  font-weight: bold;
+  margin: 0;
+  border: 1px solid transparent;
+  background: transparent;
+  width: 100%;
+  padding: 2px 4px;
+}
+
+.npc-spellbook-sheet-body .item-name:hover,
+.npc-spellbook-sheet-body .item-name:focus {
+  border-color: #3a3f50;
+  outline: none;
+}
+
+.npc-spellbook-sheet-body .header-actions {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.npc-spellbook-sheet-body .btn {
   background: #1f222d;
   color: #fff;
   border: 1px solid #3a3f50;
   border-radius: 3px;
-  padding: 3px 8px;
-  font-size: 0.75em;
+  padding: 4px 10px;
+  font-size: 0.8em;
   cursor: pointer;
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 5px;
 }
 
-.npc-spellbook-sheet .btn:hover {
+.npc-spellbook-sheet-body .btn:hover {
   background: #2a2e3d;
 }
 
-.npc-spellbook-sheet .clear-spellbook-btn:hover {
+.npc-spellbook-sheet-body .clear-spellbook-btn {
+  padding: 4px 8px;
+}
+
+.npc-spellbook-sheet-body .clear-spellbook-btn:hover {
   background: #4a151b;
   border-color: #ff5555;
+  color: #ffaaaa;
 }
 
-/* Scrollable Window Body */
-.npc-spellbook-sheet .spellbook-body {
+.npc-spellbook-sheet-body .spellbook-body {
   overflow-y: auto;
-  max-height: calc(100% - 70px);
+  flex: 1;
+  min-height: 0;
   padding-right: 2px;
-  background: #000000 !important;
+  background: #000000;
 }
 
-/* Level Group & Dark Red Header */
-.npc-spellbook-sheet .level-group {
+.npc-spellbook-sheet-body .level-group {
   margin-bottom: 10px;
 }
 
-.npc-spellbook-sheet .level-header {
+.npc-spellbook-sheet-body .level-header {
   display: flex;
   align-items: center;
   background: #4a151b;
@@ -83,136 +132,137 @@
   padding: 5px 8px;
   font-weight: bold;
   border-radius: 3px 3px 0 0;
+  gap: 4px;
 }
 
-.npc-spellbook-sheet .level-title {
-  flex: 2.2;
-  font-size: 0.95em;
+.npc-spellbook-sheet-body .level-title {
+  flex: 2.4;
+  font-size: 0.9em;
   text-transform: uppercase;
   letter-spacing: 0.5px;
+  min-width: 0;
 }
 
-.npc-spellbook-sheet .header-columns {
-  flex: 3.8;
+.npc-spellbook-sheet-body .header-columns {
+  flex: 5.6;
   display: flex;
-  font-size: 0.7em;
+  align-items: center;
+  font-size: 0.68em;
   text-transform: uppercase;
   color: #cccccc;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.4px;
 }
 
-/* Row Formatting & Grid Columns */
-.npc-spellbook-sheet .spell-list {
+.npc-spellbook-sheet-body .spell-list {
   display: flex;
   flex-direction: column;
 }
 
-.npc-spellbook-sheet .spell-row {
+.npc-spellbook-sheet-body .spell-row {
   display: flex;
   align-items: center;
-  padding: 6px 8px;
+  padding: 5px 8px;
   background: #111216;
   border-bottom: 1px solid #1a1c23;
+  gap: 4px;
 }
 
-.npc-spellbook-sheet .spell-row:nth-child(even) {
+.npc-spellbook-sheet-body .spell-row:nth-child(even) {
   background: #0b0c0f;
 }
 
-.npc-spellbook-sheet .spell-row:hover {
+.npc-spellbook-sheet-body .spell-row:hover {
   background: #181a22;
 }
 
-/* Column Alignment & Flex adjustments to fit longer text */
-.npc-spellbook-sheet .col-name {
-  flex: 2.2;
+.npc-spellbook-sheet-body .col-name {
+  flex: 2.4;
   display: flex;
   align-items: center;
   gap: 8px;
   overflow: hidden;
+  min-width: 0;
 }
 
-.npc-spellbook-sheet .col-time,
-.npc-spellbook-sheet .header-columns .col-time {
-  flex: 1.2;
+.npc-spellbook-sheet-body .col-time,
+.npc-spellbook-sheet-body .col-range,
+.npc-spellbook-sheet-body .col-duration,
+.npc-spellbook-sheet-body .col-target,
+.npc-spellbook-sheet-body .col-components {
   text-align: center;
-  font-size: 0.75em;
+  font-size: 0.72em;
   color: #bbb;
   padding: 0 2px;
   word-break: break-word;
+  line-height: 1.2;
 }
 
-.npc-spellbook-sheet .col-range,
-.npc-spellbook-sheet .header-columns .col-range {
-  flex: 1.2;
-  text-align: center;
-  font-size: 0.75em;
-  color: #bbb;
-  padding: 0 2px;
-  word-break: break-word;
+.npc-spellbook-sheet-body .header-columns .col-time,
+.npc-spellbook-sheet-body .header-columns .col-range,
+.npc-spellbook-sheet-body .header-columns .col-duration,
+.npc-spellbook-sheet-body .header-columns .col-target,
+.npc-spellbook-sheet-body .header-columns .col-components {
+  color: #cccccc;
+  font-size: inherit;
 }
 
-.npc-spellbook-sheet .col-target,
-.npc-spellbook-sheet .header-columns .col-target {
-  flex: 1.4;
-  text-align: center;
-  font-size: 0.75em;
-  color: #bbb;
-  padding: 0 2px;
-  word-break: break-word;
-}
+.npc-spellbook-sheet-body .col-time { flex: 1.15; }
+.npc-spellbook-sheet-body .col-range { flex: 0.95; }
+.npc-spellbook-sheet-body .col-duration { flex: 1.15; }
+.npc-spellbook-sheet-body .col-target { flex: 1.1; }
+.npc-spellbook-sheet-body .col-components { flex: 1.0; }
 
-.npc-spellbook-sheet .col-actions,
-.npc-spellbook-sheet .header-columns .col-actions {
-  width: 25px;
+.npc-spellbook-sheet-body .col-actions {
+  width: 24px;
   text-align: right;
   flex-shrink: 0;
 }
 
-/* Icons & Labels */
-.npc-spellbook-sheet .spell-icon {
-  width: 30px;
-  height: 30px;
-  border: 1px solid #3a3f50;
+/* Square spell icons — override dnd5e sheet img rules that stretch them */
+.npc-spellbook-sheet-body .spell-icon,
+.spellbook-sheet .spell-icon {
+  width: 28px !important;
+  height: 28px !important;
+  max-width: 28px !important;
+  max-height: 28px !important;
+  min-width: 28px !important;
+  min-height: 28px !important;
+  border: 1px solid #3a3f50 !important;
   border-radius: 3px;
-  object-fit: cover;
+  object-fit: cover !important;
+  object-position: center;
   flex-shrink: 0;
+  display: block;
 }
 
-.npc-spellbook-sheet .spell-details {
+.npc-spellbook-sheet-body .spell-details {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  min-width: 0;
 }
 
-.npc-spellbook-sheet .spell-title {
+.npc-spellbook-sheet-body .spell-title {
   color: #ffffff;
   font-weight: bold;
-  font-size: 0.9em;
+  font-size: 0.88em;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.npc-spellbook-sheet .spell-components {
-  color: #888888;
-  font-size: 0.65em;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.npc-spellbook-sheet .spell-delete {
-  color: #555555;
+.npc-spellbook-sheet-body .spell-delete {
+  color: #aa4444;
   cursor: pointer;
 }
 
-.npc-spellbook-sheet .spell-delete:hover {
+.npc-spellbook-sheet-body .spell-delete:hover {
   color: #ff5555;
 }
 
-.npc-spellbook-sheet .empty-notice {
+.npc-spellbook-sheet-body .empty-notice {
   text-align: center;
-  padding: 20px;
+  padding: 28px 12px;
   color: #777;
+  font-style: italic;
 }

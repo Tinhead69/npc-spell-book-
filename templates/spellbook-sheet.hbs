@@ -1,39 +1,66 @@
-<div class="spellbook-content flexcol">
-  <header class="sheet-header flexrow" style="align-items: center; gap: 10px; margin-bottom: 12px;">
-    <img class="profile-img" src="{{item.img}}" data-edit="img" title="{{item.name}}" width="48" height="48" style="border: 1px solid #444; border-radius: 4px;"/>
-    <div class="header-fields flex1">
-      <h1 class="charname" style="margin: 0;">
-        <input name="name" type="text" value="{{item.name}}" placeholder="Spellbook Name" style="width: 100%; font-size: 1.2rem; padding: 4px;"/>
-      </h1>
+<div class="npc-spellbook-sheet-body">
+  <header class="sheet-header">
+    <div class="header-top-row">
+      <img class="profile-img" src="{{item.img}}" data-edit="img" title="{{item.name}}" alt="{{item.name}}" />
+      <div class="header-fields">
+        <input class="item-name" name="name" type="text" value="{{item.name}}" placeholder="Spellbook Name" />
+        <div class="header-actions">
+          <button type="button" class="btn" data-action="addSpells">
+            <i class="fas fa-plus"></i> Add Spell
+          </button>
+          <button type="button" class="btn" data-action="transcribeSpells">
+            <i class="fas fa-scroll"></i> Transcribe
+          </button>
+          <button type="button" class="btn clear-spellbook-btn" data-action="clearSpellbook" title="Clear All">
+            <i class="fas fa-trash"></i>
+          </button>
+        </div>
+      </div>
     </div>
   </header>
 
-  <div class="sheet-body flexcol" style="gap: 10px;">
-    <div class="spellbook-actions flexrow" style="gap: 6px;">
-      <button type="button" data-action="addSpells"><i class="fas fa-plus"></i> Add Spells</button>
-      <button type="button" data-action="transcribeSpells"><i class="fas fa-file-export"></i> Transcribe</button>
-      <button type="button" data-action="clearSpellbook"><i class="fas fa-trash"></i> Clear All</button>
-    </div>
-
-    <div class="spell-list flexcol" style="gap: 8px; max-height: 400px; overflow-y: auto;">
+  <div class="spellbook-body">
+    {{#if spellGroups.length}}
       {{#each spellGroups}}
-        <div class="spell-group" style="background: rgba(0,0,0,0.1); padding: 6px; border-radius: 4px;">
-          <h3 class="spell-group-header" style="margin: 0 0 6px 0; border-bottom: 1px solid #555; padding-bottom: 2px;">{{this.label}}</h3>
-          <ul class="items-list" style="list-style: none; margin: 0; padding: 0;">
+        <section class="level-group">
+          <div class="level-header">
+            <div class="level-title">{{this.label}}</div>
+            <div class="header-columns">
+              <div class="col-time">Casting Time</div>
+              <div class="col-range">Range</div>
+              <div class="col-duration">Duration</div>
+              <div class="col-target">Target</div>
+              <div class="col-components">Components</div>
+              <div class="col-actions"></div>
+            </div>
+          </div>
+
+          <div class="spell-list">
             {{#each this.spells}}
-              <li class="item flexrow" data-uuid="{{this.uuid}}" style="align-items: center; justify-content: space-between; padding: 3px 0;">
-                <div class="flexrow" style="align-items: center; gap: 8px;">
-                  <img src="{{this.img}}" width="24" height="24" style="border-radius: 2px;"/>
-                  <span class="item-name">{{this.name}}</span>
+              <div class="spell-row" data-uuid="{{this.uuid}}">
+                <div class="col-name">
+                  <img class="spell-icon" src="{{this.img}}" alt="" />
+                  <div class="spell-details">
+                    <span class="spell-title">{{this.name}}</span>
+                  </div>
                 </div>
-                <a data-action="deleteSpell" data-uuid="{{this.uuid}}" title="Delete Spell" style="color: #a33535; cursor: pointer;">
-                  <i class="fas fa-trash"></i>
-                </a>
-              </li>
+                <div class="col-time">{{this.castingTime}}</div>
+                <div class="col-range">{{this.range}}</div>
+                <div class="col-duration">{{this.duration}}</div>
+                <div class="col-target">{{this.target}}</div>
+                <div class="col-components">{{this.components}}</div>
+                <div class="col-actions">
+                  <a class="spell-delete" data-action="deleteSpell" data-uuid="{{this.uuid}}" title="Remove Spell">
+                    <i class="fas fa-trash"></i>
+                  </a>
+                </div>
+              </div>
             {{/each}}
-          </ul>
-        </div>
+          </div>
+        </section>
       {{/each}}
-    </div>
+    {{else}}
+      <div class="empty-notice">No spells recorded. Use Add Spell to populate this book.</div>
+    {{/if}}
   </div>
 </div>
