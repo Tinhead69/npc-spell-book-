@@ -1,6 +1,7 @@
 import { MODULE_ID, getSpellbookSpells, removeSpellFromSpellbook } from "./data.js";
 
-const { HandlebarsApplicationMixin, DocumentSheetV2 } = foundry.applications.api;
+const { HandlebarsApplicationMixin } = foundry.applications.api;
+const { DocumentSheetV2 } = foundry.applications.sheets;
 
 export class NpcSpellbookSheet extends HandlebarsApplicationMixin(DocumentSheetV2) {
   static DEFAULT_OPTIONS = {
@@ -137,8 +138,17 @@ export class NpcSpellbookSheet extends HandlebarsApplicationMixin(DocumentSheetV
   }
 
   static async _onClearAll(event, target) {
-    await this.document.unsetFlag(MODULE_ID, "spells");
-    this.render();
+    const confirmed = await foundry.applications.api.DialogV2.confirm({
+      window: { title: "Clear Spellbook" },
+      content: "<p>Are you sure you want to remove all spells from this spellbook?</p>",
+      yes: { label: "Clear", icon: "fas fa-trash" },
+      no: { label: "Cancel", icon: "fas fa-times" }
+    });
+
+    if (confirmed) {
+      await this.document.unsetFlag(MODULE_ID, "spells");
+      this.render();
+    }
   }
 
   static async _onRemoveSpell(event, target) {
@@ -147,8 +157,4 @@ export class NpcSpellbookSheet extends HandlebarsApplicationMixin(DocumentSheetV
     await removeSpellFromSpellbook(this.document, spellUuid);
     this.render();
   }
-}
-
-export function getSpellbookSheetClass() {
-  return NpcSpellbookSheet;
 }
