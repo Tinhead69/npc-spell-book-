@@ -124,33 +124,83 @@
   margin-bottom: 10px;
 }
 
-.npc-spellbook-sheet-body .level-header {
-  display: flex;
+/* Shared grid so header labels and spell values share the same columns */
+.npc-spellbook-sheet-body .spell-grid-row {
+  display: grid;
+  grid-template-columns:
+    minmax(160px, 2.4fr)
+    minmax(70px, 1.15fr)
+    minmax(55px, 0.95fr)
+    minmax(70px, 1.15fr)
+    minmax(70px, 1.1fr)
+    minmax(70px, 1fr)
+    24px;
+  column-gap: 4px;
   align-items: center;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 5px 8px;
+}
+
+.npc-spellbook-sheet-body .level-header {
+  appearance: none;
+  -webkit-appearance: none;
+  margin: 0;
+  border: none;
+  width: 100%;
   background: #4a151b;
   color: #ffffff;
-  padding: 5px 8px;
+  font: inherit;
   font-weight: bold;
   border-radius: 3px 3px 0 0;
-  gap: 4px;
+  cursor: pointer;
+  text-align: left;
+}
+
+.npc-spellbook-sheet-body .level-header:hover {
+  background: #5a1c24;
 }
 
 .npc-spellbook-sheet-body .level-title {
-  flex: 2.4;
+  display: flex;
+  align-items: center;
+  gap: 8px;
   font-size: 0.9em;
   text-transform: uppercase;
   letter-spacing: 0.5px;
   min-width: 0;
+  color: #ffffff;
 }
 
-.npc-spellbook-sheet-body .header-columns {
-  flex: 5.6;
-  display: flex;
-  align-items: center;
+.npc-spellbook-sheet-body .level-chevron {
+  width: 12px;
+  font-size: 0.75em;
+  transition: transform 0.15s ease;
+  flex-shrink: 0;
+}
+
+.npc-spellbook-sheet-body .level-group.collapsed .level-chevron {
+  transform: rotate(-90deg);
+}
+
+.npc-spellbook-sheet-body .level-group.collapsed .level-header {
+  border-radius: 3px;
+}
+
+.npc-spellbook-sheet-body .level-group.collapsed .spell-list {
+  display: none;
+}
+
+.npc-spellbook-sheet-body .level-header .col-time,
+.npc-spellbook-sheet-body .level-header .col-range,
+.npc-spellbook-sheet-body .level-header .col-duration,
+.npc-spellbook-sheet-body .level-header .col-target,
+.npc-spellbook-sheet-body .level-header .col-components {
   font-size: 0.68em;
   text-transform: uppercase;
   color: #cccccc;
   letter-spacing: 0.4px;
+  font-weight: bold;
 }
 
 .npc-spellbook-sheet-body .spell-list {
@@ -159,12 +209,8 @@
 }
 
 .npc-spellbook-sheet-body .spell-row {
-  display: flex;
-  align-items: center;
-  padding: 5px 8px;
   background: #111216;
   border-bottom: 1px solid #1a1c23;
-  gap: 4px;
 }
 
 .npc-spellbook-sheet-body .spell-row:nth-child(even) {
@@ -176,7 +222,6 @@
 }
 
 .npc-spellbook-sheet-body .col-name {
-  flex: 2.4;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -190,6 +235,7 @@
 .npc-spellbook-sheet-body .col-target,
 .npc-spellbook-sheet-body .col-components {
   text-align: center;
+  justify-self: stretch;
   font-size: 0.72em;
   color: #bbb;
   padding: 0 2px;
@@ -197,25 +243,9 @@
   line-height: 1.2;
 }
 
-.npc-spellbook-sheet-body .header-columns .col-time,
-.npc-spellbook-sheet-body .header-columns .col-range,
-.npc-spellbook-sheet-body .header-columns .col-duration,
-.npc-spellbook-sheet-body .header-columns .col-target,
-.npc-spellbook-sheet-body .header-columns .col-components {
-  color: #cccccc;
-  font-size: inherit;
-}
-
-.npc-spellbook-sheet-body .col-time { flex: 1.15; }
-.npc-spellbook-sheet-body .col-range { flex: 0.95; }
-.npc-spellbook-sheet-body .col-duration { flex: 1.15; }
-.npc-spellbook-sheet-body .col-target { flex: 1.1; }
-.npc-spellbook-sheet-body .col-components { flex: 1.0; }
-
 .npc-spellbook-sheet-body .col-actions {
-  width: 24px;
-  text-align: right;
-  flex-shrink: 0;
+  text-align: center;
+  justify-self: stretch;
 }
 
 /* Square spell icons — override dnd5e sheet img rules that stretch them */

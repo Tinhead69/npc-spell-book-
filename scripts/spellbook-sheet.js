@@ -74,7 +74,8 @@ export function getSpellbookSheetClass() {
         addSpells: SpellbookSheet._onAddSpells,
         transcribeSpells: SpellbookSheet._onTranscribeSpells,
         clearSpellbook: SpellbookSheet._onClearSpellbook,
-        deleteSpell: SpellbookSheet._onDeleteSpell
+        deleteSpell: SpellbookSheet._onDeleteSpell,
+        toggleLevel: SpellbookSheet._onToggleLevel
       }
     };
 
@@ -83,6 +84,11 @@ export function getSpellbookSheetClass() {
         template: `modules/${MODULE_ID}/templates/spellbook-sheet.hbs`
       }
     };
+
+    constructor(options = {}) {
+      super(options);
+      this.collapsedLevels = new Set();
+    }
 
     get item() {
       return this.document;
@@ -102,7 +108,12 @@ export function getSpellbookSheetClass() {
         const lvl = Number(spell.level ?? 0);
         const label = lvl === 0 ? "CANTRIPS" : `LEVEL ${lvl}`;
         if (!groups[lvl]) {
-          groups[lvl] = { level: lvl, label, spells: [] };
+          groups[lvl] = {
+            level: lvl,
+            label,
+            collapsed: this.collapsedLevels.has(lvl),
+            spells: []
+          };
         }
         groups[lvl].spells.push(spell);
       }
@@ -113,6 +124,18 @@ export function getSpellbookSheetClass() {
         .map((lvl) => groups[lvl]);
 
       return context;
+    }
+
+    /** Action: Collapse / expand a spell level group */
+    static _onToggleLevel(event, target) {
+      event.preventDefault();
+      const level = Number(target.dataset.level);
+      if (Number.isNaN(level)) return;
+
+      if (this.collapsedLevels.has(level)) this.collapsedLevels.delete(level);
+      else this.collapsedLevels.add(level);
+
+      this.render({ force: false });
     }
 
     /** Action: Open dialog to browse and add spells */
