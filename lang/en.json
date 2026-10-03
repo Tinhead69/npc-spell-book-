@@ -35,7 +35,7 @@
       "Time": "Time: {hours} hours",
       "Status": {
         "Learnable": "Can transcribe",
-        "TooHighLevel": "Level too high (max {max})",
+        "TooHighLevel": "Above your level",
         "AlreadyKnown": "Already transcribed",
         "NotWizard": "Not a wizard",
         "CannotAfford": "Insufficient gold ({have} / {need} gp)",

@@ -282,7 +282,7 @@ export function evaluateTranscription(wizard, spellEntry, options = {}) {
     return {
       canLearn: false,
       reasonKey: "levelTooHigh",
-      reasonText: "Your current level does not allow transcription of this spell."
+      reasonText: "Above your level"
     };
   }
 
