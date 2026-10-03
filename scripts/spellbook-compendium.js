@@ -23,6 +23,48 @@ const FALLBACK_SCHOOLS = {
   trs: "Transmutation"
 };
 
+/** Show a loading dialog only if work takes longer than delayMs. */
+function beginDelayedLoading(message, delayMs = 2000) {
+  let dialog = null;
+  let dismissed = false;
+
+  const timer = setTimeout(() => {
+    if (dismissed) return;
+
+    dialog = new Dialog({
+      title: "Loading Spells",
+      content: `
+        <div class="npc-spellbook-loading-content">
+          <i class="fas fa-spinner fa-spin" aria-hidden="true"></i>
+          <p>${foundry.utils.escapeHTML?.(message) || message}</p>
+        </div>
+      `,
+      buttons: {},
+      default: null
+    }, {
+      width: 320,
+      classes: ["dialog", "npc-spellbook-loading-dialog"],
+      minimizable: false,
+      resizable: false
+    });
+
+    dialog.render(true);
+  }, delayMs);
+
+  return {
+    async dismiss() {
+      dismissed = true;
+      clearTimeout(timer);
+      if (dialog?.rendered) {
+        try {
+          await dialog.close({ force: true });
+        } catch (_) { /* already closed */ }
+      }
+      dialog = null;
+    }
+  };
+}
+
 export class CompendiumSpellPicker extends HandlebarsApplicationMixin(ApplicationV2) {
   constructor(options = {}) {
     super(options);
@@ -54,6 +96,7 @@ export class CompendiumSpellPicker extends HandlebarsApplicationMixin(Applicatio
     this._tooltipTimer = null;
     this._tooltipRow = null;
     this._unbindSpellTooltips = null;
+    this._loadingHandle = null;
   }
 
   static DEFAULT_OPTIONS = {
@@ -134,6 +177,31 @@ export class CompendiumSpellPicker extends HandlebarsApplicationMixin(Applicatio
     await this.render({ force: false });
   }
 
+  /**
+   * Wrap render with a delayed loading dialog for slow compendium scans.
+   * @override
+   */
+  async render(options = {}, _options = {}) {
+    const opts = typeof options === "boolean" ? { force: options, ..._options } : { ...options, ..._options };
+    const firstOpen = !this.rendered;
+    const message = firstOpen
+      ? "Scanning spell compendiums… This can take a moment with large worlds."
+      : "Updating spell list…";
+
+    // Avoid stacking multiple loaders if render is re-entered.
+    if (!this._loadingHandle) {
+      this._loadingHandle = beginDelayedLoading(message, 2000);
+    }
+
+    try {
+      return await super.render(opts);
+    } finally {
+      const handle = this._loadingHandle;
+      this._loadingHandle = null;
+      await handle?.dismiss();
+    }
+  }
+
   /** @override */
   _onFirstRender(context, options) {
     super._onFirstRender?.(context, options);
@@ -156,6 +224,9 @@ export class CompendiumSpellPicker extends HandlebarsApplicationMixin(Applicatio
 
   /** @override */
   async close(options) {
+    const handle = this._loadingHandle;
+    this._loadingHandle = null;
+    await handle?.dismiss();
     this._unbindSpellTooltips?.();
     this._unbindSpellTooltips = null;
     clearSpellTooltip(this, true);

@@ -65,46 +65,26 @@ function isCreateTypeOption(el) {
 }
 
 /**
- * Type-list dividers are sibling nodes between options (not <hr>, which Foundry styles as solid gold).
+ * True separator siblings between type options (not <hr> near Folder, not invented rules).
+ * Most Create Item UIs use per-row borders instead — those need no separator nodes.
  */
 function isCreateTypeSeparator(el) {
   if (!el || !(el instanceof HTMLElement)) return false;
   if (isCreateTypeOption(el)) return false;
-  if (el.tagName === "HR") return false; // form rules near Folder — wrong style
+  if (el.tagName === "HR") return false;
   if (el.matches(".separator, .divider, .form-fields-separator, [data-spellbook-type-sep]")) return true;
-  // Empty/decorative sibling used as a dotted rule between type rows
-  if (!el.textContent.trim() && !el.querySelector("input, select, textarea, button")) return true;
   return false;
 }
 
-function createMatchingTypeSeparator(referenceOption) {
-  const sep = document.createElement("div");
-  sep.setAttribute("data-spellbook-type-sep", "true");
-  sep.setAttribute("aria-hidden", "true");
-
-  // Match the dotted border used between other Create Item type rows.
-  const style = referenceOption?.ownerDocument?.defaultView?.getComputedStyle?.(referenceOption);
-  const borderColor = style?.borderBottomColor || style?.borderTopColor || "rgba(180, 180, 180, 0.45)";
-  const borderStyle = (style?.borderBottomStyle && style.borderBottomStyle !== "none")
-    ? style.borderBottomStyle
-    : "dotted";
-  const borderWidth = (style?.borderBottomWidth && style.borderBottomWidth !== "0px")
-    ? style.borderBottomWidth
-    : "1px";
-
-  sep.style.cssText = [
-    "display: block",
-    "border: none",
-    `border-top: ${borderWidth} ${borderStyle} ${borderColor}`,
-    "margin: 0",
-    "padding: 0",
-    "height: 0",
-    "width: 100%",
-    "flex: 0 0 auto",
-    "pointer-events: none"
-  ].join(";");
-
-  return sep;
+/** Find a native separator that sits between two type options in the same list. */
+function findNativeTypeSeparator(parent) {
+  if (!parent) return null;
+  const kids = Array.from(parent.children);
+  for (let i = 1; i < kids.length - 1; i++) {
+    if (!isCreateTypeSeparator(kids[i])) continue;
+    if (isCreateTypeOption(kids[i - 1]) && isCreateTypeOption(kids[i + 1])) return kids[i];
+  }
+  return null;
 }
 
 function addSpellbookToCreateDialog(app, html) {
@@ -152,26 +132,22 @@ function addSpellbookToCreateDialog(app, html) {
       }
     }
 
-    // List structure is usually: [Spell] [sep] [Subclass]
-    // Inserting only after Spell yields: [Spell] [Spellbook] [sep] [Subclass] — missing middle line.
-    // Desired: [Spell] [sep] [Spellbook] [sep] [Subclass]
+    // Prefer no custom rules: other rows already get solid borders from the system CSS.
+    // Only clone a real separator node when the list actually uses them.
     const afterSpellSep = isCreateTypeSeparator(wrapper.nextElementSibling)
       ? wrapper.nextElementSibling
       : null;
+    const sepSource = afterSpellSep || findNativeTypeSeparator(wrapper.parentElement);
 
-    const sepSource = afterSpellSep
-      || Array.from(wrapper.parentElement?.children ?? []).find((el) => isCreateTypeSeparator(el));
-
-    const sepBetween = sepSource
-      ? sepSource.cloneNode(true)
-      : createMatchingTypeSeparator(wrapper);
-
-    if (afterSpellSep) {
+    if (afterSpellSep && sepSource) {
+      // [Spell] [sep] [Subclass] → [Spell] [sep] [Spellbook] [sep] [Subclass]
       afterSpellSep.after(clone);
-      clone.before(sepBetween);
+      clone.before(sepSource.cloneNode(true));
+    } else if (sepSource) {
+      wrapper.after(sepSource.cloneNode(true));
+      wrapper.nextElementSibling.after(clone);
     } else {
-      wrapper.after(sepBetween);
-      sepBetween.after(clone);
+      wrapper.after(clone);
     }
   }
 
@@ -192,11 +168,16 @@ function addSpellbookToCreateDialog(app, html) {
         const folderSelect = form.querySelector('select[name="folder"]');
         const folder = folderSelect?.value || null;
 
-        const createdItem = await Item.create({
+        const itemData = {
           name: bookName,
           type: "loot",
           img: "icons/svg/book.svg",
           folder: folder,
+          system: {
+            // Keep as a plain array so modules that call .includes() on properties
+            // (e.g. Shared Container) do not crash on dnd5e's Set-based model.
+            properties: []
+          },
           flags: {
             core: {
               sheetClass: SHEET_CLASS_ID
@@ -206,7 +187,11 @@ function addSpellbookToCreateDialog(app, html) {
               spells: []
             }
           }
-        });
+        };
+
+        // Skip preCreate hooks: Shared Container calls properties.includes() and throws
+        // when dnd5e has already coerced properties into a Set.
+        const createdItem = await Item.create(itemData, { noHook: true });
 
         if (createdItem) {
           const SpellbookSheet = getSpellbookSheetClass();
