@@ -9,6 +9,7 @@ import {
   markSpellAsWizard
 } from "./data.js";
 import { openTranscribeDialog } from "./transcribe-dialog.js";
+import { isWizard } from "./mechanics.js";
 import { CompendiumSpellPicker } from "./spellbook-compendium.js";
 import { bindSpellDescriptionTooltips, clearSpellTooltip } from "./spell-tooltip.js";
 
@@ -240,6 +241,13 @@ export function getSpellbookSheetClass() {
       // (not after it has been placed in an actor inventory).
       context.canAddSpells = this._canEditSpellList();
 
+      // Inventory books: only the owning actor may transcribe, and only if a Wizard.
+      const owner = item?.actor
+        ? (game.actors?.get?.(item.actor.id) || item.actor)
+        : null;
+      context.canTranscribe = owner ? isWizard(owner) : true;
+      context.transcribeDisabledReason = "Only a Wizard May transcribe spells";
+
       const spells = getSpellbookSpells(item);
       const displaySpells = await Promise.all(spells.map((s) => enrichSpellForDisplay(s)));
 
@@ -322,7 +330,15 @@ export function getSpellbookSheetClass() {
 
     /** Action: Open transcribe dialog */
     static _onTranscribeSpells(event, target) {
-      openTranscribeDialog(this.document);
+      const item = this.document;
+      const owner = item?.actor
+        ? (game.actors?.get?.(item.actor.id) || item.actor)
+        : null;
+      if (owner && !isWizard(owner)) {
+        ui.notifications?.warn("Only a Wizard May transcribe spells");
+        return;
+      }
+      openTranscribeDialog(item);
     }
 
     /** Action: Clear all spells (GM + world item only) */

@@ -109,11 +109,16 @@
   gap: 5px;
 }
 
-.npc-spellbook-sheet-body .header-actions .btn:hover {
+.npc-spellbook-sheet-body .header-actions .btn:hover:not(:disabled) {
   background: #2a2e3d;
 }
 
-.npc-spellbook-sheet-body .header-actions .clear-spellbook-btn:hover {
+.npc-spellbook-sheet-body .header-actions .btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.npc-spellbook-sheet-body .header-actions .clear-spellbook-btn:hover:not(:disabled) {
   background: #4a151b;
   border-color: #ff5555;
   color: #ffaaaa;
@@ -1005,4 +1010,42 @@
 .npc-homebrew-tag-level {
   color: #9aa0b0;
   font-size: 0.85em;
+}
+
+/* Inventory expand: hide activities on NPC spellbooks; show our two actions */
+.npc-spellbook-inventory-item [data-activity-id],
+.npc-spellbook-inventory-item .activities,
+.npc-spellbook-inventory-item ol.activities,
+.npc-spellbook-inventory-item .item-activities {
+  display: none !important;
+}
+
+.npc-spellbook-inventory-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.npc-spellbook-inv-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border: 1px solid #4a4f60;
+  border-radius: 3px;
+  background: #1e222c;
+  color: #ddd;
+  cursor: pointer;
+  font-size: 0.85em;
+}
+
+.npc-spellbook-inv-btn:hover:not(:disabled) {
+  background: #2a2e3d;
+  border-color: #6a7085;
+}
+
+.npc-spellbook-inv-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }

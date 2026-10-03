@@ -1,5 +1,10 @@
 import { MODULE_ID } from "./data.js";
 import { getSpellbookSheetClass } from "./spellbook-sheet.js";
+import {
+  enhanceSpellbookInventoryRows,
+  registerTidyInventoryCommands,
+  registerDnd5eSpellbookContextOptions
+} from "./inventory-ui.js";
 
 const SHEET_CLASS_ID = `${MODULE_ID}.SpellbookSheet`;
 
@@ -11,25 +16,6 @@ function getDocumentSheetConfig() {
 
 function getItemDocumentClass() {
   return CONFIG.Item?.documentClass || globalThis.Item;
-}
-
-function isNpcSpellbook(item) {
-  return Boolean(item?.getFlag?.(MODULE_ID, "isSpellbook"));
-}
-
-/** Open the module spellbook sheet for a world or actor-owned spellbook item. */
-function openSpellbookSheet(item) {
-  if (!item || !isNpcSpellbook(item)) return;
-  try {
-    if (item.sheet) {
-      item.sheet.render(true);
-      return;
-    }
-  } catch (err) {
-    console.warn("NPC Spellbook | item.sheet.render failed, falling back", err);
-  }
-  const SpellbookSheet = getSpellbookSheetClass();
-  new SpellbookSheet({ document: item }).render({ force: true });
 }
 
 /**
@@ -50,41 +36,11 @@ function patchItemSheetClass() {
   proto._npcSpellbookSheetPatched = true;
 }
 
-let _tidyViewSpellbookRegistered = false;
+let _tidyInventoryRegistered = false;
 
-/**
- * Tidy 5e: "View Spellbook" on the expanded inventory item summary
- * (same row as Display in Chat / Attack / Damage).
- */
-function registerTidyItemSummaryCommand(api) {
-  if (_tidyViewSpellbookRegistered) return true;
-  const itemSummary = api?.config?.itemSummary || api?.itemSummary;
-  if (typeof itemSummary?.registerCommands !== "function") return false;
-
-  itemSummary.registerCommands([{
-    label: "NPC_SPELLBOOK.Actions.ViewSpellbook",
-    iconClass: "fas fa-book-open",
-    tooltip: "NPC_SPELLBOOK.Actions.ViewSpellbook",
-    enabled: (params) => isNpcSpellbook(params?.item),
-    execute: (params) => openSpellbookSheet(params?.item)
-  }]);
-  _tidyViewSpellbookRegistered = true;
-  return true;
-}
-
-/** Stock dnd5e: context-menu entry on inventory items. */
-function registerDnd5eContextOption(item, options) {
-  if (!isNpcSpellbook(item) || !Array.isArray(options)) return;
-  if (options.some((o) => o?.name === "NPC_SPELLBOOK.Actions.ViewSpellbook"
-    || o?.name === game.i18n.localize("NPC_SPELLBOOK.Actions.ViewSpellbook"))) {
-    return;
-  }
-  options.unshift({
-    name: "NPC_SPELLBOOK.Actions.ViewSpellbook",
-    icon: '<i class="fas fa-book-open"></i>',
-    group: "npc-spell-book",
-    callback: () => openSpellbookSheet(item)
-  });
+function tryRegisterTidy(api) {
+  if (_tidyInventoryRegistered) return;
+  if (registerTidyInventoryCommands(api)) _tidyInventoryRegistered = true;
 }
 
 Hooks.once("init", () => {
@@ -117,16 +73,26 @@ Hooks.once("init", () => {
 });
 
 Hooks.once("ready", () => {
-  // Tidy may already be ready, or fire tidy5e-sheet.ready shortly after.
   const tidyApi = game.modules.get("tidy5e-sheet")?.api;
-  if (tidyApi) registerTidyItemSummaryCommand(tidyApi);
+  if (tidyApi) tryRegisterTidy(tidyApi);
 });
 
 Hooks.once("tidy5e-sheet.ready", (api) => {
-  registerTidyItemSummaryCommand(api);
+  tryRegisterTidy(api);
 });
 
-Hooks.on("dnd5e.getItemContextOptions", registerDnd5eContextOption);
+Hooks.on("dnd5e.getItemContextOptions", registerDnd5eSpellbookContextOptions);
+
+/** Default + Tidy actor sheets: keep only View Spellbook / Transcribe under spellbooks. */
+function onActorSheetRender(app, element) {
+  enhanceSpellbookInventoryRows(app, element);
+}
+
+Hooks.on("renderActorSheetV2", onActorSheetRender);
+Hooks.on("renderActorSheet5e", onActorSheetRender);
+Hooks.on("renderActorSheet", onActorSheetRender);
+Hooks.on("renderActorSheet5eCharacter2", onActorSheetRender);
+Hooks.on("renderActorSheet5eNPC2", onActorSheetRender);
 
 function isCreateTypeOption(el) {
   return Boolean(el?.querySelector?.('input[name="type"]'));
@@ -217,7 +183,9 @@ function addSpellbookToCreateDialog(app, html) {
           system: {
             // Keep as a plain array so modules that call .includes() on properties
             // (e.g. Shared Container) do not crash on dnd5e's Set-based model.
-            properties: []
+            properties: [],
+            // No Attack/Damage activities on loot spellbooks.
+            activities: {}
           },
           flags: {
             core: {

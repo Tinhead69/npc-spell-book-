@@ -16,6 +16,36 @@ import {
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
 
 /**
+ * Resolve the world/base actor that owns an inventory spellbook, if any.
+ * @param {Item} spellbook
+ * @returns {Actor|null}
+ */
+function getSpellbookOwnerActor(spellbook) {
+  const owner = spellbook?.actor;
+  if (!owner) return null;
+  // Prefer the base world actor over a synthetic token actor.
+  if (owner.id && game.actors?.get) {
+    return game.actors.get(owner.id) || owner;
+  }
+  return owner;
+}
+
+/**
+ * Wizards allowed in the transcribe dropdown.
+ * Owned inventory books: only the owning actor (if a wizard).
+ * World books: all wizard actors.
+ * @param {Item} spellbook
+ * @returns {Actor[]}
+ */
+function getEligibleWizardActors(spellbook) {
+  const owner = getSpellbookOwnerActor(spellbook);
+  if (owner) {
+    return isWizard(owner) ? [owner] : [];
+  }
+  return game.actors.filter((actor) => isWizard(actor));
+}
+
+/**
  * Transcribe sheet — same visual language as the spellbook / picker sheets.
  */
 export class TranscribeSpellsApp extends HandlebarsApplicationMixin(ApplicationV2) {
@@ -92,14 +122,15 @@ export class TranscribeSpellsApp extends HandlebarsApplicationMixin(ApplicationV
       this.spellbook = game.items.get(this.spellbook.id) || this.spellbook;
     }
 
-    this.wizardActors = game.actors.filter((actor) => isWizard(actor));
+    this.wizardActors = getEligibleWizardActors(this.spellbook);
 
     const selectedId = this.selectedWizard?.id;
     const selectedUuid = this.selectedWizard?.uuid;
-    this.selectedWizard = (selectedId && game.actors.get(selectedId))
-      || (selectedUuid && fromUuidSync?.(selectedUuid))
-      || this.wizardActors[0]
-      || null;
+    const stillEligible = this.wizardActors.find((actor) =>
+      (selectedId && actor.id === selectedId)
+      || (selectedUuid && actor.uuid === selectedUuid)
+    );
+    this.selectedWizard = stillEligible || this.wizardActors[0] || null;
   }
 
   /**
@@ -203,6 +234,8 @@ export class TranscribeSpellsApp extends HandlebarsApplicationMixin(ApplicationV
     if (!uuid) return;
     const actor = await fromUuid(uuid);
     if (!actor || !isWizard(actor)) return;
+    // Inventory books only allow the owner; ignore anything outside the eligible list.
+    if (!this.wizardActors.some((a) => a.id === actor.id || a.uuid === actor.uuid)) return;
     this.selectedWizard = actor;
     clearSpellTooltip(this, true);
     this.render({ force: false });
@@ -275,19 +308,26 @@ export async function openTranscribeDialog(sourceSpellbook) {
     return;
   }
 
-  const wizardActors = game.actors.filter((actor) => isWizard(actor));
+  const wizardActors = getEligibleWizardActors(spellbook);
+  const owner = getSpellbookOwnerActor(spellbook);
+
   if (!wizardActors.length) {
-    ui.notifications?.warn("No Wizard actors found in this world.");
+    ui.notifications?.warn("Only a Wizard May transcribe spells");
     return;
   }
 
-  // Prefer controlled token's base actor, then assigned character, then first wizard.
-  const controlled = canvas.tokens?.controlled?.[0]?.actor;
-  const controlledBase = controlled?.id ? game.actors.get(controlled.id) : controlled;
-  const assigned = game.user?.character;
-  const selectedWizard = (controlledBase && isWizard(controlledBase))
-    ? controlledBase
-    : (assigned && isWizard(assigned) ? assigned : wizardActors[0]);
+  // Inventory books: always the owner. World books: controlled → assigned → first.
+  let selectedWizard = wizardActors[0];
+  if (!owner) {
+    const controlled = canvas.tokens?.controlled?.[0]?.actor;
+    const controlledBase = controlled?.id ? game.actors.get(controlled.id) : controlled;
+    const assigned = game.user?.character;
+    if (controlledBase && isWizard(controlledBase) && wizardActors.some((a) => a.id === controlledBase.id)) {
+      selectedWizard = controlledBase;
+    } else if (assigned && isWizard(assigned) && wizardActors.some((a) => a.id === assigned.id)) {
+      selectedWizard = assigned;
+    }
+  }
 
   new TranscribeSpellsApp({
     spellbook,

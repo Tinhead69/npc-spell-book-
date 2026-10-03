@@ -10,7 +10,8 @@
               <i class="fas fa-plus"></i> Add Spell
             </button>
           {{/if}}
-          <button type="button" class="btn" data-action="transcribeSpells">
+          <button type="button" class="btn" data-action="transcribeSpells"
+            {{#unless canTranscribe}}disabled title="{{transcribeDisabledReason}}"{{/unless}}>
             <i class="fas fa-scroll"></i> Transcribe
           </button>
           {{#if canAddSpells}}

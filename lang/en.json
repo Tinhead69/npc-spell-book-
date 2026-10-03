@@ -15,6 +15,8 @@
       "RemoveSpellbookFlag": "Remove Spellbook Flag",
       "StudySpellbook": "Study Spellbook",
       "TranscribeSpell": "Transcribe Spell",
+      "Transcribe": "Transcribe",
+      "OnlyWizardMayTranscribe": "Only a Wizard May transcribe spells",
       "AddSpell": "Add Spell",
       "RemoveSpell": "Remove",
       "ViewTranscribed": "Transcribed Spells",
