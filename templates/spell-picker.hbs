@@ -133,7 +133,13 @@
           </section>
         {{/each}}
       {{else}}
-        <div class="empty-notice">Select levels, schools, and compendiums to find spells.</div>
+        <div class="empty-notice">
+          {{#if filtersActive}}
+            No wizard spells found matching selected filters.
+          {{else}}
+            Select levels, schools, and compendiums to find spells.
+          {{/if}}
+        </div>
       {{/if}}
     </div>
   </main>
