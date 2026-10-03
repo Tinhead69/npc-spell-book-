@@ -60,27 +60,6 @@ Hooks.once("init", () => {
   }
 });
 
-function isTypeListSeparator(el) {
-  if (!el || !(el instanceof HTMLElement)) return false;
-  if (el.matches("hr, .separator, .divider, .form-fields-separator, .border")) return true;
-  if (el.querySelector?.('input[name="type"]')) return false;
-  // Thin decorative siblings used as dotted rules between type options
-  const style = el.ownerDocument?.defaultView?.getComputedStyle?.(el);
-  if (style && (style.borderBottomStyle === "dotted" || style.borderTopStyle === "dotted")) return true;
-  if (el.tagName === "DIV" && !el.textContent.trim() && el.children.length === 0) return true;
-  return false;
-}
-
-function findTypeListSeparator(root, nearEl) {
-  const next = nearEl?.nextElementSibling;
-  if (isTypeListSeparator(next)) return next;
-
-  const prev = nearEl?.previousElementSibling;
-  if (isTypeListSeparator(prev)) return prev;
-
-  return root.querySelector("hr, .separator, .divider, .form-fields-separator");
-}
-
 function addSpellbookToCreateDialog(app, html) {
   const root = html instanceof HTMLElement ? html : (html[0] || html);
   if (!root || !(root instanceof HTMLElement)) return;
@@ -126,29 +105,9 @@ function addSpellbookToCreateDialog(app, html) {
       }
     }
 
-    // Dialog structure is usually: [Spell] [separator] [Subclass]
-    // Inserting only after Spell puts Spellbook before that separator, so Spell/Spellbook look joined.
-    const existingSep = findTypeListSeparator(root, wrapper);
-    const sepClone = existingSep ? existingSep.cloneNode(true) : (() => {
-      const hr = document.createElement("hr");
-      hr.className = "spellbook-type-separator";
-      hr.style.cssText = "border: none; border-top: 1px dotted #666; margin: 2px 0;";
-      return hr;
-    })();
-
-    const afterSpellSep = isTypeListSeparator(wrapper.nextElementSibling)
-      ? wrapper.nextElementSibling
-      : null;
-
-    if (afterSpellSep) {
-      // Spell | sep | Spellbook | sep | Subclass
-      afterSpellSep.after(clone);
-      clone.after(sepClone);
-    } else {
-      // Spell | sep | Spellbook | ...
-      wrapper.after(sepClone);
-      sepClone.after(clone);
-    }
+    // Insert as a normal type row after Spell. Do NOT inject <hr> — Foundry styles those as
+    // solid gold rules (used near Folder), while type-list dividers come from each option's border.
+    wrapper.after(clone);
   }
 
   const form = root.tagName === "FORM" ? root : root.querySelector("form") || root.closest("form");

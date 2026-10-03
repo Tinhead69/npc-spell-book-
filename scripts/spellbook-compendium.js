@@ -2,7 +2,8 @@ import {
   MODULE_ID,
   addSpellToSpellbook,
   getSpellbookSpells,
-  formatSpellEntry
+  formatSpellEntry,
+  isWizardSpell
 } from "./data.js";
 
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
@@ -29,9 +30,13 @@ export class CompendiumSpellPicker extends HandlebarsApplicationMixin(Applicatio
 
     const existing = getSpellbookSpells(this.spellbook);
     this.initialUuids = new Set(existing.map((s) => s.uuid || s._id).filter(Boolean));
+    this.initialNames = new Set(
+      existing.map((s) => (s.name || "").toLowerCase().trim()).filter(Boolean)
+    );
     this.addedSessionUuids = new Set();
+    this.addedSessionNames = new Set();
 
-    this.selectedLevels = new Set([0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
+    this.selectedLevels = new Set([1, 2, 3, 4, 5, 6, 7, 8, 9]);
     this.selectedSchools = new Set(Object.keys(CONFIG.DND5E?.spellSchools || FALLBACK_SCHOOLS));
     this.selectedPacks = null;
     this._spellPacksCache = null;
@@ -106,11 +111,15 @@ export class CompendiumSpellPicker extends HandlebarsApplicationMixin(Applicatio
       this.selectedPacks = new Set(spellPacks.map((p) => p.collection));
     }
 
-    context.levels = Array.from({ length: 10 }, (_, i) => ({
-      level: i,
-      label: i === 0 ? "Cantrip" : `Level ${i}`,
-      selected: this.selectedLevels.has(i)
-    }));
+    // Cantrips cannot be transcribed into a spellbook (PHB 2014) — levels 1–9 only.
+    context.levels = Array.from({ length: 9 }, (_, i) => {
+      const level = i + 1;
+      return {
+        level,
+        label: `Level ${level}`,
+        selected: this.selectedLevels.has(level)
+      };
+    });
 
     const schoolConfig = this._getSchoolConfig();
     context.schools = Object.entries(schoolConfig).map(([key, val]) => ({
@@ -125,29 +134,34 @@ export class CompendiumSpellPicker extends HandlebarsApplicationMixin(Applicatio
       selected: this.selectedPacks.has(p.collection)
     }));
 
-    const bookUuids = new Set(
-      getSpellbookSpells(this.spellbook).map((s) => s.uuid || s._id).filter(Boolean)
+    const bookSpells = getSpellbookSpells(this.spellbook);
+    const bookUuids = new Set(bookSpells.map((s) => s.uuid || s._id).filter(Boolean));
+    const bookNames = new Set(
+      bookSpells.map((s) => (s.name || "").toLowerCase().trim()).filter(Boolean)
     );
 
+    // Deduplicate across packs by level + name (case-insensitive). First match wins.
+    const seenKeys = new Set();
     const allMatchingSpells = [];
+    const indexFields = [
+      "type",
+      "img",
+      "system.level",
+      "system.school",
+      "system.identifier",
+      "system.activation",
+      "system.range",
+      "system.target",
+      "system.duration",
+      "system.components",
+      "system.properties",
+      "system.activities"
+    ];
+
     for (const pack of spellPacks) {
       if (!this.selectedPacks.has(pack.collection)) continue;
 
-      const index = await pack.getIndex({
-        fields: [
-          "type",
-          "img",
-          "system.level",
-          "system.school",
-          "system.activation",
-          "system.range",
-          "system.target",
-          "system.duration",
-          "system.components",
-          "system.properties",
-          "system.activities"
-        ]
-      });
+      const index = await pack.getIndex({ fields: indexFields });
 
       for (const entry of index) {
         if (entry.type !== "spell") continue;
@@ -155,11 +169,16 @@ export class CompendiumSpellPicker extends HandlebarsApplicationMixin(Applicatio
         const level = Number(entry.system?.level ?? 0);
         const school = entry.system?.school || "";
         const name = entry.name || "";
+        const nameKey = name.toLowerCase().trim();
         const uuid = entry.uuid || `Compendium.${pack.collection}.Item.${entry._id}`;
+        const dedupeKey = `${level}|${nameKey}`;
 
-        if (!this.selectedLevels.has(level)) continue;
+        if (level < 1 || !this.selectedLevels.has(level)) continue;
         if (school && !this.selectedSchools.has(school)) continue;
-        if (this.searchQuery && !name.toLowerCase().includes(this.searchQuery)) continue;
+        if (this.searchQuery && !nameKey.includes(this.searchQuery)) continue;
+        if (!isWizardSpell({ uuid, name, level, system: entry.system })) continue;
+        if (!nameKey || seenKeys.has(dedupeKey)) continue;
+        seenKeys.add(dedupeKey);
 
         const formatted = formatSpellEntry({
           uuid,
@@ -169,8 +188,11 @@ export class CompendiumSpellPicker extends HandlebarsApplicationMixin(Applicatio
           system: entry.system
         });
 
-        const justAdded = this.addedSessionUuids.has(uuid);
-        const inBook = bookUuids.has(uuid) || this.initialUuids.has(uuid);
+        const justAdded = this.addedSessionUuids.has(uuid) || this.addedSessionNames.has(nameKey);
+        const inBook = bookUuids.has(uuid)
+          || this.initialUuids.has(uuid)
+          || bookNames.has(nameKey)
+          || this.initialNames.has(nameKey);
 
         allMatchingSpells.push({
           ...formatted,
@@ -267,6 +289,9 @@ export class CompendiumSpellPicker extends HandlebarsApplicationMixin(Applicatio
 
     await addSpellToSpellbook(this.spellbook, uuid);
     this.addedSessionUuids.add(uuid);
+
+    const spellName = (target.dataset.name || "").toLowerCase().trim();
+    if (spellName) this.addedSessionNames.add(spellName);
 
     await this.render({ force: false });
 

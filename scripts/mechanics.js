@@ -1,4 +1,4 @@
-import { MODULE_ID, getSpellbookSpells } from "./data.js";
+import { MODULE_ID, getSpellbookSpells, isWizardSpell } from "./data.js";
 
 const GP_PER_LEVEL = 50;
 const HOURS_PER_LEVEL = 2;
@@ -91,14 +91,7 @@ export async function deductGold(actor, amount) {
   }
 }
 
-/**
- * @param {object} spellEntry
- * @returns {boolean}
- */
-export function isWizardSpell(spellEntry) {
-  const level = Number(spellEntry.level ?? 0);
-  return level >= 0 && level <= 9;
-}
+export { isWizardSpell };
 
 /**
  * Does this actor already have this spell in their dnd5e spell list?
@@ -192,7 +185,7 @@ export function evaluateTranscription(wizard, spellEntry, options = {}) {
   }
 
   if (!isWizardSpell(spellEntry)) {
-    return { canLearn: false, reasonKey: "Not a Wizard Spell" };
+    return { canLearn: false, reasonKey: "Not on the Wizard spell list" };
   }
 
   if (spellLevel < 1) {

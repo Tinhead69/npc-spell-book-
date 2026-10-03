@@ -5,6 +5,56 @@ export function getSpellbookSpells(spellbook) {
 }
 
 /**
+ * Resolve the unified Wizard class spell list from the dnd5e registry.
+ * @returns {object|null}
+ */
+export function getWizardSpellList() {
+  return globalThis.dnd5e?.registry?.spellLists?.forType?.("class", "wizard") ?? null;
+}
+
+/**
+ * Is this spell on the Wizard spell list?
+ * Uses dnd5e spell list registry (uuid and/or spell identifier).
+ * @param {Item|object|string} spell Item document, index entry, stored entry, or UUID
+ * @returns {boolean}
+ */
+export function isWizardSpell(spell) {
+  if (!spell) return false;
+
+  if (typeof spell === "object") {
+    const rawLevel = spell.level ?? spell.system?.level;
+    if (rawLevel !== undefined && rawLevel !== null && rawLevel !== "") {
+      const level = Number(rawLevel);
+      if (!Number.isFinite(level) || level < 1 || level > 9) return false;
+    }
+  }
+
+  const list = getWizardSpellList();
+  if (!list) {
+    // Registry not available (older dnd5e / not ready) — cannot verify; allow with warning once.
+    if (!globalThis.__npcSpellbookWizardListWarned) {
+      console.warn("NPC Spellbook | Wizard spell list registry unavailable; class filtering disabled.");
+      globalThis.__npcSpellbookWizardListWarned = true;
+    }
+    return true;
+  }
+
+  const uuid = typeof spell === "string"
+    ? spell
+    : (spell.uuid || spell._stats?.compendiumSource || "");
+
+  if (uuid && typeof list.has === "function" && list.has(uuid)) return true;
+  if (typeof spell === "object" && typeof list.has === "function" && list.has(spell)) return true;
+
+  const identifier = typeof spell === "object"
+    ? (spell.system?.identifier || spell.identifier || "")
+    : "";
+  if (identifier && list.identifiers?.has?.(identifier)) return true;
+
+  return false;
+}
+
+/**
  * Build a compact, display-ready spell entry for the spellbook sheet.
  * Accepts either a full Item document / toObject() payload or a slim stored entry.
  */
@@ -170,6 +220,11 @@ export async function addSpellToSpellbook(spellbook, spellUuid) {
     const spellDoc = await fromUuid(spellUuid);
     if (!spellDoc) {
       ui.notifications?.warn(`Could not find spell document for UUID: ${spellUuid}`);
+      return;
+    }
+
+    if (!isWizardSpell(spellDoc)) {
+      ui.notifications?.warn(`"${spellDoc.name}" is not on the Wizard spell list.`);
       return;
     }
 
