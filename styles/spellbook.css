@@ -1012,11 +1012,10 @@
   font-size: 0.85em;
 }
 
-/* Inventory expand: hide activities on NPC spellbooks; show our two actions */
-.npc-spellbook-inventory-item [data-activity-id],
-.npc-spellbook-inventory-item .activities,
-.npc-spellbook-inventory-item ol.activities,
-.npc-spellbook-inventory-item .item-activities {
+/* Only hide activities inside the expanded item summary — never the inventory row itself */
+.npc-spellbook-item-summary [data-activity-id],
+.npc-spellbook-item-summary > .activities,
+.npc-spellbook-item-summary ol.activities {
   display: none !important;
 }
 

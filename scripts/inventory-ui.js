@@ -50,27 +50,36 @@ function localize(key, fallback) {
   return value && value !== key ? value : fallback;
 }
 
-/**
- * Hide non-module controls under an expanded inventory spellbook row.
- * Covers dnd5e activity rows and Tidy/default summary command buttons.
- */
-function hideForeignInventoryControls(row) {
-  row.classList.add("npc-spellbook-inventory-item");
+function isTidySheet(root) {
+  return Boolean(root?.closest?.(".tidy5e-sheet, .tidy5e") || root?.classList?.contains?.("tidy5e-sheet"));
+}
 
-  // dnd5e activity rows (Attack / Damage / etc.)
-  for (const el of row.querySelectorAll("[data-activity-id], .activities, ol.activities, .item-activities")) {
+/**
+ * Find the expanded summary panel for a row (only present when expanded).
+ * Never treat the whole row as the summary — that broke titles/expand on Tidy.
+ */
+function getExpandedSummary(row) {
+  return row.querySelector(":scope > .item-summary")
+    || row.querySelector(":scope > .item-detail")
+    || row.querySelector(":scope .item-summary")
+    || null;
+}
+
+/**
+ * Inside an expanded summary only: hide activity rows and foreign action buttons.
+ */
+function sanitizeExpandedSummary(summary) {
+  if (!summary || summary.dataset.npcSpellbookSanitized === "1") return;
+  summary.dataset.npcSpellbookSanitized = "1";
+  summary.classList.add("npc-spellbook-item-summary");
+
+  for (const el of summary.querySelectorAll("[data-activity-id], ol.activities, .activities")) {
     el.hidden = true;
-    el.style.setProperty("display", "none", "important");
   }
 
-  // Any labeled action control under the expanded block that isn't ours.
-  for (const el of row.querySelectorAll("button, a.button, [role='button']")) {
+  for (const el of summary.querySelectorAll("button, a.button")) {
     if (el.closest("[data-npc-spellbook-actions]")) continue;
     if (el.matches("[data-npc-spellbook-action]")) continue;
-    // Leave the main row chrome (expand chevron, context menu, qty) alone.
-    if (!el.closest(".item-summary, [class*='summary'], [class*='expanded'], .activities, [data-activity-id]")) {
-      continue;
-    }
 
     const label = `${el.textContent || ""} ${el.getAttribute("aria-label") || ""} ${el.title || ""}`
       .toLowerCase()
@@ -80,27 +89,18 @@ function hideForeignInventoryControls(row) {
     if (!label) continue;
     if (label.includes("view spellbook") || /(^|\s)transcribe(\s|$)/.test(label)) continue;
 
-    el.hidden = true;
-    el.style.setProperty("display", "none", "important");
+    // Only hide known clutter actions — never generic unlabeled chrome.
+    if (/display in chat|show chat information|show chat|attack|damage/.test(label)) {
+      el.hidden = true;
+    }
   }
 }
 
 /**
- * Inject View Spellbook + Transcribe for sheets that do not use Tidy commands
- * (stock dnd5e inventory expand).
+ * Default dnd5e sheet: inject our two actions into the expanded `.item-summary`.
  */
-function injectDefaultSheetActions(row, item) {
-  if (row.querySelector("[data-npc-spellbook-actions]")) return;
-
-  // Tidy already renders our registered commands — avoid duplicates.
-  if (row.closest(".tidy5e-sheet, .tidy5e")) {
-    // Still ensure foreign controls are hidden.
-    return;
-  }
-
-  const host = row.querySelector(".item-summary")
-    || row.querySelector(".item-details")
-    || row;
+function injectDefaultSheetActions(summary, item) {
+  if (!summary || summary.querySelector("[data-npc-spellbook-actions]")) return;
 
   const wrap = document.createElement("div");
   wrap.className = "npc-spellbook-inventory-actions";
@@ -119,7 +119,7 @@ function injectDefaultSheetActions(row, item) {
       <i class="fas fa-book-open"></i> ${viewLabel}
     </button>
     <button type="button" class="npc-spellbook-inv-btn" data-npc-spellbook-action="transcribe"
-      ${canTranscribe ? "" : `disabled title="${onlyWizard}"`}>
+      ${canTranscribe ? "" : `disabled title="${onlyWizard.replace(/"/g, "&quot;")}"`}>
       <i class="fas fa-scroll"></i> ${transcribeLabel}
     </button>
   `;
@@ -134,12 +134,23 @@ function injectDefaultSheetActions(row, item) {
     else if (action === "transcribe") tryTranscribe(item);
   });
 
-  host.appendChild(wrap);
+  summary.appendChild(wrap);
 }
 
 /**
- * After any actor sheet render, tidy spellbook inventory rows.
- * Also watches for expand/collapse (summary injected after the initial render).
+ * Process one inventory row only if it is currently expanded.
+ */
+function enhanceExpandedSpellbookRow(row, item, { isTidy }) {
+  const summary = getExpandedSummary(row);
+  if (!summary) return;
+
+  sanitizeExpandedSummary(summary);
+  if (!isTidy) injectDefaultSheetActions(summary, item);
+}
+
+/**
+ * After actor sheet render: only touch expanded spellbook summaries.
+ * No MutationObserver / no collapsed-row edits (those blanked titles on Tidy).
  */
 export function enhanceSpellbookInventoryRows(app, element) {
   const root = element instanceof HTMLElement
@@ -148,32 +159,32 @@ export function enhanceSpellbookInventoryRows(app, element) {
   const actor = app?.actor ?? app?.document;
   if (!root || !actor?.items) return;
 
+  const tidy = isTidySheet(root);
+
   const apply = () => {
     for (const row of root.querySelectorAll("[data-item-id]")) {
-      const itemId = row.dataset.itemId;
-      if (!itemId) continue;
-      const item = actor.items.get(itemId);
+      const item = actor.items.get(row.dataset.itemId);
       if (!isNpcSpellbook(item)) continue;
-
-      hideForeignInventoryControls(row);
-      injectDefaultSheetActions(row, item);
+      enhanceExpandedSpellbookRow(row, item, { isTidy: tidy });
     }
   };
 
   apply();
 
+  // When a row expands, dnd5e/Tidy inject summary HTML — re-run only for that.
   if (root.dataset.npcSpellbookInvBound === "true") return;
   root.dataset.npcSpellbookInvBound = "true";
 
   let timer = null;
   const schedule = () => {
     clearTimeout(timer);
-    timer = setTimeout(apply, 40);
+    timer = setTimeout(apply, 75);
   };
 
-  root.addEventListener("click", schedule);
-  const observer = new MutationObserver(schedule);
-  observer.observe(root, { childList: true, subtree: true });
+  // Expand toggles often go through click on the row header — safe, no DOM writes on collapse.
+  root.addEventListener("click", (event) => {
+    if (event.target.closest?.("[data-item-id]")) schedule();
+  }, true);
 }
 
 /**
@@ -207,18 +218,24 @@ export function registerTidyInventoryCommands(api) {
     }
   ]);
 
-  // Disable built-in / other-module summary commands on NPC spellbooks.
+  // Soft-disable other registered summary commands on NPC spellbooks only.
   const commands = itemSummary.commands;
   if (Array.isArray(commands)) {
     for (const cmd of commands) {
       const label = typeof cmd.label === "function" ? "" : String(cmd.label ?? "");
       if (ourLabels.has(label) || label.startsWith("NPC_SPELLBOOK.")) continue;
+      if (cmd._npcSpellbookWrapped) continue;
 
       const previous = cmd.enabled;
       cmd.enabled = (params) => {
-        if (isNpcSpellbook(params?.item)) return false;
-        return typeof previous === "function" ? previous(params) : true;
+        try {
+          if (isNpcSpellbook(params?.item)) return false;
+          return typeof previous === "function" ? previous(params) : true;
+        } catch (_) {
+          return typeof previous === "function" ? previous(params) : true;
+        }
       };
+      cmd._npcSpellbookWrapped = true;
     }
   }
 
