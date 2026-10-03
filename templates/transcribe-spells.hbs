@@ -1,0 +1,71 @@
+<div class="npc-spellbook-sheet-body npc-transcribe-body">
+  <header class="sheet-header">
+    <div class="header-top-row">
+      <img class="profile-img" src="{{spellbook.img}}" alt="" />
+      <div class="header-fields">
+        <div class="item-name transcribe-title">{{spellbook.name}}</div>
+        <div class="header-actions transcribe-wizard-bar">
+          <label class="transcribe-wizard-label" for="transcribe-wizard-select">Wizard</label>
+          <select id="transcribe-wizard-select" name="wizardSelect" class="transcribe-wizard-select" data-action="changeWizard">
+            {{#each wizards}}
+              <option value="{{this.uuid}}" {{#if this.selected}}selected{{/if}}>{{this.name}}</option>
+            {{/each}}
+          </select>
+          <span class="transcribe-meta">Lvl {{wizardLevel}}</span>
+          <span class="transcribe-meta">Max spell lvl {{maxSpellLevel}}</span>
+          <span class="transcribe-meta gold">{{gold}} GP</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <div class="spellbook-body">
+    {{#if spellGroups.length}}
+      {{#each spellGroups}}
+        <section class="level-group{{#if this.collapsed}} collapsed{{/if}}" data-level="{{this.level}}">
+          <button type="button" class="level-header spell-grid-row transcribe-grid-row" data-action="toggleLevel" data-level="{{this.level}}" aria-expanded="{{#unless this.collapsed}}true{{else}}false{{/unless}}">
+            <div class="col-name level-title">
+              <i class="fas fa-chevron-down level-chevron" aria-hidden="true"></i>
+              <span>{{this.label}}</span>
+            </div>
+            <div class="col-cost">Cost</div>
+            <div class="col-time">Time</div>
+            <div class="col-actions">Status</div>
+          </button>
+
+          <div class="spell-list">
+            {{#each this.spells}}
+              <div class="spell-row spell-grid-row transcribe-grid-row" data-uuid="{{this.uuid}}" data-spell-tooltip="1">
+                <div class="col-name">
+                  <img class="spell-icon" src="{{this.img}}" alt="" />
+                  <div class="spell-details">
+                    <span class="spell-title">{{this.name}}</span>
+                  </div>
+                </div>
+                <div class="col-cost">{{this.costLabel}}</div>
+                <div class="col-time">{{this.timeLabel}}</div>
+                <div class="col-actions">
+                  {{#if this.isPresent}}
+                    <span class="spell-status already">
+                      <i class="fas fa-book"></i> In Spellbook
+                    </span>
+                  {{else if this.canTranscribe}}
+                    <button type="button" class="btn-transcribe" data-action="transcribeSpell" data-uuid="{{this.uuid}}" data-name="{{this.name}}">
+                      <i class="fas fa-scroll"></i> Transcribe
+                    </button>
+                  {{else}}
+                    <span class="spell-status blocked" title="{{this.statusText}}">
+                      <i class="fas fa-ban"></i> {{this.statusText}}
+                    </span>
+                  {{/if}}
+                </div>
+              </div>
+            {{/each}}
+          </div>
+        </section>
+      {{/each}}
+    {{else}}
+      <div class="empty-notice">No spells in this spellbook to transcribe.</div>
+    {{/if}}
+  </div>
+</div>

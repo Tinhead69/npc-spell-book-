@@ -5,7 +5,7 @@ import {
   formatSpellEntry,
   buildStoredSpellData
 } from "./data.js";
-import { openTranscribeDialog } from "./mechanics.js";
+import { openTranscribeDialog } from "./transcribe-dialog.js";
 import { CompendiumSpellPicker } from "./spellbook-compendium.js";
 import { bindSpellDescriptionTooltips, clearSpellTooltip } from "./spell-tooltip.js";
 

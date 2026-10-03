@@ -809,3 +809,149 @@
   flex: 0 0 auto;
   pointer-events: none;
 }
+
+/* ── Transcribe sheet (matches spellbook / picker chrome) ── */
+.application.npc-spellbook-transcribe,
+.application.npc-spellbook-transcribe .window-content {
+  background: #0a0a0c;
+  color: #eee;
+}
+
+.application.npc-spellbook-transcribe .window-content {
+  padding: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.npc-transcribe-body {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  background: #0a0a0c;
+}
+
+.npc-transcribe-body .transcribe-title {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #fff;
+  padding: 2px 0;
+  border: none;
+  background: transparent;
+}
+
+.npc-transcribe-body .transcribe-wizard-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.npc-transcribe-body .transcribe-wizard-label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: #aaa;
+  margin: 0;
+}
+
+.npc-transcribe-body .transcribe-wizard-select {
+  flex: 1 1 180px;
+  min-width: 140px;
+  max-width: 280px;
+  background: #1f222d;
+  color: #fff;
+  border: 1px solid #3a3f50;
+  border-radius: 3px;
+  padding: 4px 8px;
+  font-size: 0.85rem;
+}
+
+.npc-transcribe-body .transcribe-meta {
+  font-size: 0.78rem;
+  color: #bbb;
+  white-space: nowrap;
+  padding: 3px 8px;
+  background: #1f222d;
+  border: 1px solid #3a3f50;
+  border-radius: 3px;
+}
+
+.npc-transcribe-body .transcribe-meta.gold {
+  color: #d1b87a;
+  border-color: #5a4a2a;
+}
+
+.npc-transcribe-body .transcribe-grid-row {
+  grid-template-columns:
+    minmax(180px, 2.6fr)
+    minmax(70px, 0.9fr)
+    minmax(70px, 0.9fr)
+    minmax(180px, 2fr);
+}
+
+.npc-transcribe-body .level-header .col-cost,
+.npc-transcribe-body .level-header .col-time,
+.npc-transcribe-body .level-header .col-actions {
+  font-size: 0.68em;
+  text-transform: uppercase;
+  color: #cccccc;
+  letter-spacing: 0.4px;
+  font-weight: bold;
+}
+
+.npc-transcribe-body .col-cost,
+.npc-transcribe-body .col-time {
+  font-size: 0.8em;
+  color: #ccc;
+}
+
+.npc-transcribe-body .col-actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  min-width: 0;
+}
+
+.npc-transcribe-body .btn-transcribe {
+  background: #1f222d;
+  color: #fff;
+  border: 1px solid #3a3f50;
+  border-radius: 3px;
+  padding: 4px 10px;
+  font-size: 0.78em;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+}
+
+.npc-transcribe-body .btn-transcribe:hover {
+  background: #2a2e3d;
+  border-color: #d1b87a;
+}
+
+.npc-transcribe-body .btn-transcribe:disabled {
+  opacity: 0.65;
+  cursor: wait;
+}
+
+.npc-transcribe-body .spell-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.75em;
+  line-height: 1.25;
+  text-align: right;
+}
+
+.npc-transcribe-body .spell-status.already {
+  color: #8fbc8f;
+  font-style: italic;
+}
+
+.npc-transcribe-body .spell-status.blocked {
+  color: #c08080;
+}
