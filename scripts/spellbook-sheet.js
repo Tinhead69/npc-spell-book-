@@ -6,6 +6,7 @@ import {
   buildStoredSpellData
 } from "./data.js";
 import { openTranscribeDialog } from "./mechanics.js";
+import { CompendiumSpellPicker } from "./spellbook-compendium.js";
 
 let SpellbookSheetClass = null;
 
@@ -138,61 +139,9 @@ export function getSpellbookSheetClass() {
       this.render({ force: false });
     }
 
-    /** Action: Open dialog to browse and add spells */
+    /** Action: Open the three-pane spell picker */
     static async _onAddSpells(event, target) {
-      const packs = game.packs.filter((p) => p.metadata.type === "Item");
-      let allSpells = [];
-
-      for (const pack of packs) {
-        const index = await pack.getIndex({ fields: ["system.level", "img", "type"] });
-        const spells = index.filter((i) => i.type === "spell");
-        allSpells.push(...spells);
-      }
-
-      if (!allSpells.length) {
-        ui.notifications.warn("No spell compendiums found in world.");
-        return;
-      }
-
-      allSpells.sort((a, b) => a.name.localeCompare(b.name));
-
-      const optionsHtml = allSpells
-        .map((s) => `<option value="${s.uuid}">${s.name} (Lvl ${s.system?.level ?? 0})</option>`)
-        .join("");
-
-      const content = `
-        <div style="padding: 6px;">
-          <label style="font-weight: bold; font-size: 0.85rem;">Select Spell to Add:</label>
-          <select id="spell-select" style="width: 100%; margin-top: 6px; padding: 4px; background: #111; color: #fff; border: 1px solid #444;">
-            ${optionsHtml}
-          </select>
-        </div>
-      `;
-
-      const selectedUuid = await DialogV2.prompt({
-        window: { title: "Add Spell to Spellbook" },
-        content: content,
-        ok: {
-          label: "Add",
-          icon: "fas fa-plus",
-          callback: (event, button) => button.form.querySelector("#spell-select")?.value
-        },
-        rejectClose: false
-      });
-
-      if (selectedUuid) {
-        const spellDoc = await fromUuid(selectedUuid);
-        if (spellDoc) {
-          const spells = Array.from(getSpellbookSpells(this.document));
-          if (!spells.some((s) => s.uuid === spellDoc.uuid)) {
-            spells.push(buildStoredSpellData(spellDoc));
-            await this.document.setFlag(MODULE_ID, "spells", spells);
-            this.render(true);
-          } else {
-            ui.notifications.info(`"${spellDoc.name}" is already in this spellbook.`);
-          }
-        }
-      }
+      new CompendiumSpellPicker({ spellbook: this.document }).render({ force: true });
     }
 
     /** Action: Open transcribe dialog */

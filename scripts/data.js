@@ -32,16 +32,16 @@ function formatCastingTime(system) {
   const type = String(act.type).toLowerCase();
   const value = Number(act.value ?? act.cost ?? 0);
   const labels = {
-    action: "action",
-    bonus: "bonus",
-    reaction: "reaction",
+    action: "Action",
+    bonus: "Bonus Action",
+    reaction: "Reaction",
     minute: "minute",
     hour: "hour",
     day: "day",
-    special: "special",
-    legendary: "legendary",
-    mythic: "mythic",
-    lair: "lair"
+    special: "Special",
+    legendary: "Legendary",
+    mythic: "Mythic",
+    lair: "Lair"
   };
   const label = labels[type] || type;
   if (value > 1 && ["minute", "hour", "day"].includes(type)) return `${value} ${label}s`;
