@@ -13,6 +13,25 @@ function getItemDocumentClass() {
   return CONFIG.Item?.documentClass || globalThis.Item;
 }
 
+function isNpcSpellbook(item) {
+  return Boolean(item?.getFlag?.(MODULE_ID, "isSpellbook"));
+}
+
+/** Open the module spellbook sheet for a world or actor-owned spellbook item. */
+function openSpellbookSheet(item) {
+  if (!item || !isNpcSpellbook(item)) return;
+  try {
+    if (item.sheet) {
+      item.sheet.render(true);
+      return;
+    }
+  } catch (err) {
+    console.warn("NPC Spellbook | item.sheet.render failed, falling back", err);
+  }
+  const SpellbookSheet = getSpellbookSheetClass();
+  new SpellbookSheet({ document: item }).render({ force: true });
+}
+
 /**
  * Spellbook items must use SpellbookSheet even when the default loot sheet is selected.
  */
@@ -29,6 +48,43 @@ function patchItemSheetClass() {
     return original.call(this);
   };
   proto._npcSpellbookSheetPatched = true;
+}
+
+let _tidyViewSpellbookRegistered = false;
+
+/**
+ * Tidy 5e: "View Spellbook" on the expanded inventory item summary
+ * (same row as Display in Chat / Attack / Damage).
+ */
+function registerTidyItemSummaryCommand(api) {
+  if (_tidyViewSpellbookRegistered) return true;
+  const itemSummary = api?.config?.itemSummary || api?.itemSummary;
+  if (typeof itemSummary?.registerCommands !== "function") return false;
+
+  itemSummary.registerCommands([{
+    label: "NPC_SPELLBOOK.Actions.ViewSpellbook",
+    iconClass: "fas fa-book-open",
+    tooltip: "NPC_SPELLBOOK.Actions.ViewSpellbook",
+    enabled: (params) => isNpcSpellbook(params?.item),
+    execute: (params) => openSpellbookSheet(params?.item)
+  }]);
+  _tidyViewSpellbookRegistered = true;
+  return true;
+}
+
+/** Stock dnd5e: context-menu entry on inventory items. */
+function registerDnd5eContextOption(item, options) {
+  if (!isNpcSpellbook(item) || !Array.isArray(options)) return;
+  if (options.some((o) => o?.name === "NPC_SPELLBOOK.Actions.ViewSpellbook"
+    || o?.name === game.i18n.localize("NPC_SPELLBOOK.Actions.ViewSpellbook"))) {
+    return;
+  }
+  options.unshift({
+    name: "NPC_SPELLBOOK.Actions.ViewSpellbook",
+    icon: '<i class="fas fa-book-open"></i>',
+    group: "npc-spell-book",
+    callback: () => openSpellbookSheet(item)
+  });
 }
 
 Hooks.once("init", () => {
@@ -59,6 +115,18 @@ Hooks.once("init", () => {
     console.error("NPC Spellbook | Failed to initialize", err);
   }
 });
+
+Hooks.once("ready", () => {
+  // Tidy may already be ready, or fire tidy5e-sheet.ready shortly after.
+  const tidyApi = game.modules.get("tidy5e-sheet")?.api;
+  if (tidyApi) registerTidyItemSummaryCommand(tidyApi);
+});
+
+Hooks.once("tidy5e-sheet.ready", (api) => {
+  registerTidyItemSummaryCommand(api);
+});
+
+Hooks.on("dnd5e.getItemContextOptions", registerDnd5eContextOption);
 
 function isCreateTypeOption(el) {
   return Boolean(el?.querySelector?.('input[name="type"]'));

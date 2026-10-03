@@ -17,7 +17,8 @@
       "TranscribeSpell": "Transcribe Spell",
       "AddSpell": "Add Spell",
       "RemoveSpell": "Remove",
-      "ViewTranscribed": "Transcribed Spells"
+      "ViewTranscribed": "Transcribed Spells",
+      "ViewSpellbook": "View Spellbook"
     },
     "Sheet": {
       "Title": "NPC Spellbook",
