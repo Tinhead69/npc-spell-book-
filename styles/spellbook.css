@@ -617,15 +617,28 @@
   overflow: hidden;
 }
 
+.spell-picker-root .btn-add-spell,
+.spell-picker-root .spell-status {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  border-radius: 3px;
+  padding: 3px 8px;
+  font-size: 0.72em;
+  font-weight: normal;
+  font-style: normal;
+  white-space: nowrap;
+  line-height: 1.2;
+  box-sizing: border-box;
+  min-width: 118px;
+}
+
 .spell-picker-root .btn-add-spell {
   background: #1f3a24;
   color: #fff;
   border: 1px solid #3a6a42;
-  border-radius: 3px;
-  padding: 3px 8px;
-  font-size: 0.72em;
   cursor: pointer;
-  white-space: nowrap;
 }
 
 .spell-picker-root .btn-add-spell:hover {
@@ -633,20 +646,22 @@
 }
 
 .spell-picker-root .spell-status {
-  display: inline-block;
-  font-size: 0.7em;
-  white-space: nowrap;
+  color: #fff;
   user-select: none;
+  pointer-events: none;
+  cursor: default;
 }
 
 .spell-picker-root .spell-status.already {
-  color: #888;
-  font-style: italic;
+  background: #2a2d37;
+  border: 1px solid #4a4f60;
+  color: #c8c8c8;
 }
 
 .spell-picker-root .spell-status.added {
-  color: #4caf50;
-  font-weight: bold;
+  background: #1f3a24;
+  border: 1px solid #3a6a42;
+  color: #d7f0d9;
 }
 
 .spell-picker-root .empty-notice {

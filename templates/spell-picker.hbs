@@ -85,9 +85,13 @@
                   <div class="col-components">{{this.components}}</div>
                   <div class="col-actions">
                     {{#if this.isPresent}}
-                      <span class="spell-status already">Already in Spell Book</span>
+                      <span class="spell-status already" aria-disabled="true">
+                        <i class="fas fa-book"></i> Already in Spell Book
+                      </span>
                     {{else if this.isAdded}}
-                      <span class="spell-status added">Spell Added</span>
+                      <span class="spell-status added" aria-disabled="true">
+                        <i class="fas fa-check"></i> Spell Added
+                      </span>
                     {{else}}
                       <button type="button" class="btn-add-spell" data-action="addSpell" data-uuid="{{this.uuid}}" data-name="{{this.name}}">
                         <i class="fas fa-plus"></i> Add Spell

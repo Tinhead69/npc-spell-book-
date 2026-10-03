@@ -3,7 +3,9 @@ import {
   addSpellToSpellbook,
   getSpellbookSpells,
   formatSpellEntry,
-  isWizardSpell
+  isWizardSpell,
+  getWizardSpellMembership,
+  clearWizardSpellMembershipCache
 } from "./data.js";
 
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
@@ -106,6 +108,17 @@ export class CompendiumSpellPicker extends HandlebarsApplicationMixin(Applicatio
   async _prepareContext(options) {
     const context = await super._prepareContext(options);
     const spellPacks = await this._getSpellPacks();
+
+    // Ensure wizard list cache is fresh enough for this open; rebuild if empty.
+    let membership = getWizardSpellMembership();
+    if (!membership) {
+      clearWizardSpellMembershipCache();
+      membership = getWizardSpellMembership();
+    }
+    if (!membership && !this._warnedMissingWizardList) {
+      ui.notifications?.warn("Wizard spell list not found. Only wizard spells can be shown — check that dnd5e spell lists are loaded.");
+      this._warnedMissingWizardList = true;
+    }
 
     if (!this.selectedPacks) {
       this.selectedPacks = new Set(spellPacks.map((p) => p.collection));

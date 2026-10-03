@@ -4,17 +4,63 @@ export function getSpellbookSpells(spellbook) {
   return foundry.utils.getProperty(spellbook, `flags.${MODULE_ID}.spells`) || [];
 }
 
+/** @type {{ uuids: Set<string>, identifiers: Set<string>, names: Set<string> }|null} */
+let _wizardMembershipCache = null;
+
 /**
  * Resolve the unified Wizard class spell list from the dnd5e registry.
  * @returns {object|null}
  */
 export function getWizardSpellList() {
-  return globalThis.dnd5e?.registry?.spellLists?.forType?.("class", "wizard") ?? null;
+  const registry = globalThis.dnd5e?.registry?.spellLists;
+  if (!registry?.forType) return null;
+  return registry.forType("class", "wizard") || registry.forType("class:wizard") || null;
+}
+
+/**
+ * Build (and cache) Wizard spell membership sets from the dnd5e registry.
+ * Matching is by UUID, spell identifier, or name so DDB/SRD copies of wizard spells still qualify.
+ * @returns {{ uuids: Set<string>, identifiers: Set<string>, names: Set<string> }|null}
+ */
+export function getWizardSpellMembership() {
+  if (_wizardMembershipCache) return _wizardMembershipCache;
+
+  const list = getWizardSpellList();
+  if (!list) return null;
+
+  const uuids = new Set(list.uuids ?? []);
+  const identifiers = new Set(list.identifiers ?? []);
+  const names = new Set();
+
+  for (const entry of list.indexes ?? []) {
+    if (entry?.name) names.add(String(entry.name).toLowerCase().trim());
+    const id = entry?.system?.identifier;
+    if (id) identifiers.add(id);
+  }
+
+  // If indexes did not resolve, derive names from UUIDs directly.
+  if (!names.size && uuids.size && typeof fromUuidSync === "function") {
+    for (const uuid of uuids) {
+      try {
+        const doc = fromUuidSync(uuid);
+        if (doc?.name) names.add(String(doc.name).toLowerCase().trim());
+      } catch (_) { /* ignore unresolved */ }
+    }
+  }
+
+  if (!uuids.size && !names.size && !identifiers.size) return null;
+
+  _wizardMembershipCache = { uuids, identifiers, names };
+  return _wizardMembershipCache;
+}
+
+/** Clear cached wizard list membership (e.g. after packs reload). */
+export function clearWizardSpellMembershipCache() {
+  _wizardMembershipCache = null;
 }
 
 /**
  * Is this spell on the Wizard spell list?
- * Uses dnd5e spell list registry (uuid and/or spell identifier).
  * @param {Item|object|string} spell Item document, index entry, stored entry, or UUID
  * @returns {boolean}
  */
@@ -29,27 +75,33 @@ export function isWizardSpell(spell) {
     }
   }
 
-  const list = getWizardSpellList();
-  if (!list) {
-    // Registry not available (older dnd5e / not ready) — cannot verify; allow with warning once.
+  const membership = getWizardSpellMembership();
+  if (!membership) {
     if (!globalThis.__npcSpellbookWizardListWarned) {
-      console.warn("NPC Spellbook | Wizard spell list registry unavailable; class filtering disabled.");
+      console.warn("NPC Spellbook | Wizard spell list unavailable; excluding spells until the dnd5e registry is ready.");
       globalThis.__npcSpellbookWizardListWarned = true;
     }
-    return true;
+    return false;
   }
 
   const uuid = typeof spell === "string"
     ? spell
     : (spell.uuid || spell._stats?.compendiumSource || "");
+  if (uuid && membership.uuids.has(uuid)) return true;
 
-  if (uuid && typeof list.has === "function" && list.has(uuid)) return true;
-  if (typeof spell === "object" && typeof list.has === "function" && list.has(spell)) return true;
+  if (typeof spell === "object") {
+    const list = getWizardSpellList();
+    if (list && typeof list.has === "function" && spell instanceof Item && list.has(spell)) return true;
+  }
 
   const identifier = typeof spell === "object"
     ? (spell.system?.identifier || spell.identifier || "")
     : "";
-  if (identifier && list.identifiers?.has?.(identifier)) return true;
+  if (identifier && membership.identifiers.has(identifier)) return true;
+
+  // Name match covers equivalent spells from DDB / other packs not listed by UUID.
+  const name = typeof spell === "object" ? String(spell.name || "").toLowerCase().trim() : "";
+  if (name && membership.names.has(name)) return true;
 
   return false;
 }
