@@ -147,7 +147,8 @@ export class TranscribeSpellsApp extends HandlebarsApplicationMixin(ApplicationV
 
     context.wizardLevel = wizardLevel;
     context.maxSpellLevel = maxSpellLevel;
-    context.gold = getGold(wizard);
+    // Total wealth across pp/gp/ep/sp/cp, shown as GP equivalent.
+    context.gold = Math.floor(getGold(wizard) * 100) / 100;
 
     const levelMap = {};
     for (const spell of spells) {

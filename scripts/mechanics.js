@@ -67,28 +67,93 @@ export function getTranscriptionHours(spellLevel) {
   return Math.max(0, spellLevel) * HOURS_PER_LEVEL;
 }
 
+/** Fallback dnd5e rates: conversion = coins needed for 1 gp. */
+const FALLBACK_CURRENCY_CONVERSION = {
+  pp: 0.1,
+  gp: 1,
+  ep: 2,
+  sp: 10,
+  cp: 100
+};
+
+function getActorCurrency(actor) {
+  return actor?.system?.currency ?? actor?.system?.details?.currency ?? {};
+}
+
+function getCurrencyConversion(denom) {
+  const fromConfig = CONFIG.DND5E?.currencies?.[denom]?.conversion;
+  if (Number.isFinite(Number(fromConfig)) && Number(fromConfig) > 0) return Number(fromConfig);
+  return FALLBACK_CURRENCY_CONVERSION[denom] ?? null;
+}
+
+/** Copper value of one coin of the given denomination. */
+function copperPerCoin(denom) {
+  const conversion = getCurrencyConversion(denom);
+  if (!conversion) return 0;
+  return Math.round(100 / conversion);
+}
+
 /**
+ * Total carried wealth in gold pieces (all coin types converted).
  * @param {Actor} actor
  * @returns {number}
  */
 export function getGold(actor) {
-  return Number(actor.system?.currency?.gp ?? actor.system?.details?.currency?.gp ?? 0);
+  const currency = getActorCurrency(actor);
+  let totalGp = 0;
+  for (const [denom, amount] of Object.entries(currency)) {
+    const conversion = getCurrencyConversion(denom);
+    if (!conversion) continue;
+    totalGp += Number(amount || 0) / conversion;
+  }
+  return totalGp;
 }
 
 /**
+ * Deduct a gold-piece cost using all denominations, then re-normalize the purse.
  * @param {Actor} actor
- * @param {number} amount
+ * @param {number} amount Cost in GP
  * @returns {Promise<void>}
  */
 export async function deductGold(actor, amount) {
   if (amount <= 0) return;
-  const current = getGold(actor);
-  const gp = Math.max(0, current - amount);
-  if ("currency" in (actor.system ?? {})) {
-    await actor.update({ "system.currency.gp": gp });
-  } else if (actor.system?.details?.currency) {
-    await actor.update({ "system.details.currency.gp": gp });
+
+  const costCP = Math.round(Number(amount) * 100);
+  const currency = getActorCurrency(actor);
+  const denoms = Object.keys(CONFIG.DND5E?.currencies ?? FALLBACK_CURRENCY_CONVERSION);
+
+  let totalCP = 0;
+  for (const denom of denoms) {
+    totalCP += Math.round(Number(currency[denom] || 0) * copperPerCoin(denom));
   }
+
+  if (totalCP < costCP) {
+    throw new Error(`Insufficient funds: need ${amount} GP, have ${getGold(actor)} GP equivalent.`);
+  }
+
+  // Convert remaining copper back into coins, highest value first (pp → cp).
+  let remaining = totalCP - costCP;
+  const ordered = [...denoms].sort(
+    (a, b) => (getCurrencyConversion(a) ?? 999) - (getCurrencyConversion(b) ?? 999)
+  );
+
+  const update = {};
+  const pathPrefix = "currency" in (actor.system ?? {})
+    ? "system.currency"
+    : "system.details.currency";
+
+  for (const denom of ordered) {
+    const per = copperPerCoin(denom);
+    if (per <= 0) {
+      update[`${pathPrefix}.${denom}`] = 0;
+      continue;
+    }
+    const coins = Math.floor(remaining / per);
+    update[`${pathPrefix}.${denom}`] = coins;
+    remaining -= coins * per;
+  }
+
+  await actor.update(update);
 }
 
 export { isWizardSpell };
@@ -228,12 +293,12 @@ export function evaluateTranscription(wizard, spellEntry, options = {}) {
   }
 
   if (requireGold && checkAfford && cost > 0) {
-    const gold = getGold(wizard);
-    if (gold < cost) {
+    const wealth = getGold(wizard);
+    if (wealth + 1e-9 < cost) {
       return {
         canLearn: false,
         reasonKey: "cannotAfford",
-        reasonText: `Cannot afford (${cost} GP needed)`
+        reasonText: `Cannot afford (${cost} GP; have ${Math.floor(wealth * 100) / 100} GP in coin)`
       };
     }
   }
