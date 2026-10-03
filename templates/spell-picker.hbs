@@ -74,73 +74,11 @@
   <main class="spell-picker-main">
     <div class="spell-picker-toolbar">
       <i class="fas fa-search"></i>
-      <input type="text" name="searchQuery" value="{{searchQuery}}" placeholder="Search spell name..." data-search-input />
-      <span class="spell-picker-count">{{spellCount}} Spells Found</span>
+      {{!-- value is set in JS so search re-filters do not recreate this input --}}
+      <input type="text" name="searchQuery" placeholder="Search spell name..." data-search-input autocomplete="off" />
+      <span class="spell-picker-count" data-spell-count>{{spellCount}} Spells Found</span>
     </div>
 
-    <div class="spell-picker-scroll-container">
-      {{#if hasSpells}}
-        {{#each activeLevels}}
-          <section class="level-group{{#if this.collapsed}} collapsed{{/if}}" data-level="{{this.level}}">
-            <button type="button" class="level-header spell-grid-row picker-grid-row" data-action="toggleLevelGroup" data-level="{{this.level}}" aria-expanded="{{#unless this.collapsed}}true{{else}}false{{/unless}}">
-              <div class="col-name level-title">
-                <i class="fas fa-chevron-down level-chevron" aria-hidden="true"></i>
-                <span>{{this.label}}</span>
-              </div>
-              <div class="col-time">Casting Time</div>
-              <div class="col-range">Range</div>
-              <div class="col-duration">Duration</div>
-              <div class="col-target">Target</div>
-              <div class="col-components">Components</div>
-              <div class="col-actions"></div>
-            </button>
-
-            <div class="spell-list">
-              {{#each this.spells}}
-                <div class="spell-row spell-grid-row picker-grid-row" data-uuid="{{this.uuid}}" data-spell-tooltip="1">
-                  <div class="col-name">
-                    <img class="spell-icon" src="{{this.img}}" alt="" />
-                    <div class="spell-details">
-                      <span class="spell-title">{{this.name}}</span>
-                      {{#if this.rulesLabel}}
-                        <span class="spell-rules-tag">{{this.rulesLabel}}</span>
-                      {{/if}}
-                    </div>
-                  </div>
-                  <div class="col-time">{{this.castingTime}}</div>
-                  <div class="col-range">{{this.range}}</div>
-                  <div class="col-duration">{{this.duration}}</div>
-                  <div class="col-target">{{this.target}}</div>
-                  <div class="col-components">{{this.components}}</div>
-                  <div class="col-actions">
-                    {{#if this.isPresent}}
-                      <span class="spell-status already" aria-disabled="true">
-                        <i class="fas fa-book"></i> Already in Spell Book
-                      </span>
-                    {{else if this.isAdded}}
-                      <span class="spell-status added" aria-disabled="true">
-                        <i class="fas fa-check"></i> Spell Added
-                      </span>
-                    {{else}}
-                      <button type="button" class="btn-add-spell" data-action="addSpell" data-uuid="{{this.uuid}}" data-name="{{this.name}}">
-                        <i class="fas fa-plus"></i> Add Spell
-                      </button>
-                    {{/if}}
-                  </div>
-                </div>
-              {{/each}}
-            </div>
-          </section>
-        {{/each}}
-      {{else}}
-        <div class="empty-notice">
-          {{#if filtersActive}}
-            No wizard spells found matching selected filters.
-          {{else}}
-            Select levels, schools, and compendiums to find spells.
-          {{/if}}
-        </div>
-      {{/if}}
-    </div>
+    <div class="spell-picker-scroll-container" data-spell-results></div>
   </main>
 </div>

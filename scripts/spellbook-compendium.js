@@ -447,42 +447,14 @@ export class CompendiumSpellPicker extends HandlebarsApplicationMixin(Applicatio
       if (el) positions[sel] = el.scrollTop;
     }
     this._savedScroll = positions;
-
-    // Search input is destroyed on re-render — save caret so typing stays forward.
-    const input = this.element?.querySelector?.("[data-search-input]");
-    if (input) {
-      this.searchQuery = input.value;
-      this._savedSearchFocus = {
-        hadFocus: document.activeElement === input,
-        start: input.selectionStart ?? input.value.length,
-        end: input.selectionEnd ?? input.value.length
-      };
-    } else {
-      this._savedSearchFocus = null;
-    }
   }
 
   _restoreScroll() {
-    if (!this.element) return;
-    if (this._savedScroll) {
-      for (const [sel, top] of Object.entries(this._savedScroll)) {
-        const el = this.element.querySelector(sel);
-        if (el) el.scrollTop = top;
-      }
+    if (!this._savedScroll || !this.element) return;
+    for (const [sel, top] of Object.entries(this._savedScroll)) {
+      const el = this.element.querySelector(sel);
+      if (el) el.scrollTop = top;
     }
-
-    const focus = this._savedSearchFocus;
-    this._savedSearchFocus = null;
-    if (!focus?.hadFocus) return;
-    const input = this.element.querySelector("[data-search-input]");
-    if (!input) return;
-    input.focus({ preventScroll: true });
-    const len = input.value.length;
-    const start = Math.min(focus.start ?? len, len);
-    const end = Math.min(focus.end ?? len, len);
-    try {
-      input.setSelectionRange(start, end);
-    } catch (_) { /* ignore */ }
   }
 
   async _rerenderPreservingScroll() {
@@ -493,6 +465,72 @@ export class CompendiumSpellPicker extends HandlebarsApplicationMixin(Applicatio
   /** Lowercased query used only for filtering — display value stays as typed. */
   _getSearchNeedle() {
     return String(this.searchQuery || "").toLowerCase().trim();
+  }
+
+  _filtersAreActive() {
+    return this.selectedLevels.size > 0
+      && this.selectedSchools.size > 0
+      && this.selectedPacks.size > 0;
+  }
+
+  /**
+   * Apply the current search needle to the cached spell pool and group by level.
+   * Does not touch the search input DOM.
+   */
+  _buildResultsContextFromPool() {
+    const pool = Array.isArray(this._spellPool) ? this._spellPool : [];
+    const needle = this._getSearchNeedle();
+    const displayed = needle
+      ? pool.filter((spell) => String(spell.name || "").toLowerCase().includes(needle))
+      : pool;
+
+    const levelMap = {};
+    for (const spell of displayed) {
+      const lvl = spell.level;
+      if (!levelMap[lvl]) {
+        levelMap[lvl] = {
+          label: `LEVEL ${lvl}`,
+          level: lvl,
+          collapsed: this.collapsedLevels.has(lvl),
+          spells: []
+        };
+      }
+      levelMap[lvl].spells.push(spell);
+    }
+
+    return {
+      spellCount: displayed.length,
+      activeLevels: Object.values(levelMap).sort((a, b) => a.level - b.level),
+      hasSpells: displayed.length > 0,
+      filtersActive: this._filtersAreActive()
+    };
+  }
+
+  /**
+   * Paint only the results list + count. Used by search so the text input is never recreated.
+   */
+  async _paintResultsFromPool() {
+    if (!this.element) return;
+    const context = this._buildResultsContextFromPool();
+    const templatePath = `modules/${MODULE_ID}/templates/spell-picker-results.hbs`;
+    const renderer = foundry.applications?.handlebars?.renderTemplate
+      || globalThis.renderTemplate;
+    if (typeof renderer !== "function") return;
+
+    const html = await renderer(templatePath, context);
+    const scroller = this.element.querySelector("[data-spell-results]");
+    if (scroller) scroller.innerHTML = html;
+
+    const counter = this.element.querySelector("[data-spell-count]");
+    if (counter) counter.textContent = `${context.spellCount} Spells Found`;
+  }
+
+  _syncSearchInputValue() {
+    const input = this.element?.querySelector?.("[data-search-input]");
+    if (!input) return;
+    // Never clobber the field while the user is typing in it.
+    if (document.activeElement === input) return;
+    if (input.value !== (this.searchQuery || "")) input.value = this.searchQuery || "";
   }
 
   /**
@@ -528,18 +566,20 @@ export class CompendiumSpellPicker extends HandlebarsApplicationMixin(Applicatio
 
     this.element.addEventListener("input", (event) => {
       if (!event.target?.matches?.("[data-search-input]")) return;
-      // Keep the raw typed value — lowercasing/trimming here + re-render resets the caret.
       this.searchQuery = event.target.value;
       clearTimeout(this._searchTimer);
-      this._searchTimer = setTimeout(() => this._rerenderPreservingScroll(), 150);
+      // Only repaint the list — never re-render the whole app (that reversed typing).
+      this._searchTimer = setTimeout(() => this._paintResultsFromPool(), 150);
     });
 
     this._unbindSpellTooltips = bindSpellDescriptionTooltips(this.element, this);
   }
 
   /** @override */
-  _onRender(context, options) {
+  async _onRender(context, options) {
     super._onRender?.(context, options);
+    this._syncSearchInputValue();
+    await this._paintResultsFromPool();
     this._restoreScroll();
   }
 
@@ -659,8 +699,6 @@ export class CompendiumSpellPicker extends HandlebarsApplicationMixin(Applicatio
 
       if (level < 1 || !this.selectedLevels.has(level)) return;
       if (school && !this.selectedSchools.has(school)) return;
-      const needle = this._getSearchNeedle();
-      if (needle && !nameKey.includes(needle)) return;
       if (this.rulesVersion !== "both") {
         if (rules === "unknown") {
           if (this.rulesVersion === "2024") return;
@@ -722,27 +760,15 @@ export class CompendiumSpellPicker extends HandlebarsApplicationMixin(Applicatio
 
     allMatchingSpells.sort((a, b) => a.name.localeCompare(b.name));
 
-    const levelMap = {};
-    for (const spell of allMatchingSpells) {
-      const lvl = spell.level;
-      if (!levelMap[lvl]) {
-        levelMap[lvl] = {
-          label: `LEVEL ${lvl}`,
-          level: lvl,
-          collapsed: this.collapsedLevels.has(lvl),
-          spells: []
-        };
-      }
-      levelMap[lvl].spells.push(spell);
-    }
+    // Cache pre-search matches; search filters this pool without recreating the text input.
+    this._spellPool = allMatchingSpells;
+    const results = this._buildResultsContextFromPool();
 
     context.searchQuery = this.searchQuery;
-    context.spellCount = allMatchingSpells.length;
-    context.activeLevels = Object.values(levelMap).sort((a, b) => a.level - b.level);
-    context.hasSpells = context.activeLevels.length > 0;
-    context.filtersActive = this.selectedLevels.size > 0
-      && this.selectedSchools.size > 0
-      && this.selectedPacks.size > 0;
+    context.spellCount = results.spellCount;
+    context.activeLevels = results.activeLevels;
+    context.hasSpells = results.hasSpells;
+    context.filtersActive = results.filtersActive;
 
     return context;
   }
@@ -862,7 +888,7 @@ export class CompendiumSpellPicker extends HandlebarsApplicationMixin(Applicatio
     if (this.collapsedLevels.has(level)) this.collapsedLevels.delete(level);
     else this.collapsedLevels.add(level);
 
-    this._rerenderPreservingScroll();
+    this._paintResultsFromPool();
   }
 
   static async _onAddSpell(event, target) {
