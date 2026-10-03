@@ -5,7 +5,7 @@ const { HandlebarsApplicationMixin, DocumentSheetV2 } = foundry.applications.api
 export class NpcSpellbookSheet extends HandlebarsApplicationMixin(DocumentSheetV2) {
   static DEFAULT_OPTIONS = {
     id: "npc-spellbook-sheet",
-    classes: ["dnd5e2", "sheet", "item", "spellbook-sheet"],
+    classes: ["npc-spellbook-sheet", "dnd5e2", "sheet", "item"],
     tag: "form",
     window: {
       resizable: true,
@@ -36,7 +36,6 @@ export class NpcSpellbookSheet extends HandlebarsApplicationMixin(DocumentSheetV
     context.item = item;
     context.isEditable = this.isEditable;
 
-    // Utilize existing helper from data.js instead of re-parsing flags
     const storedSpells = getSpellbookSpells(item);
     const spellGroups = {};
 
@@ -66,7 +65,6 @@ export class NpcSpellbookSheet extends HandlebarsApplicationMixin(DocumentSheetV
   _prepareSpellData(spell) {
     const sys = spell.system || {};
 
-    // 1. Activation / Casting Time
     let castTime = "—";
     if (sys.activation?.type) {
       const val = sys.activation.value ? `${sys.activation.value} ` : "";
@@ -82,7 +80,6 @@ export class NpcSpellbookSheet extends HandlebarsApplicationMixin(DocumentSheetV
       castTime = typeMap[sys.activation.type] || `${val}${sys.activation.type}`;
     }
 
-    // 2. Range
     let rangeStr = "—";
     if (sys.range) {
       if (sys.range.units === "self") rangeStr = "Self";
@@ -91,7 +88,6 @@ export class NpcSpellbookSheet extends HandlebarsApplicationMixin(DocumentSheetV
       else if (sys.range.value) rangeStr = `${sys.range.value} ${sys.range.units || ""}`.trim();
     }
 
-    // 3. Target
     let targetStr = "—";
     if (sys.target?.affects?.count || sys.target?.affects?.type) {
       targetStr = `${sys.target.affects.count || ""} ${sys.target.affects.type || ""}`.trim();
@@ -101,7 +97,6 @@ export class NpcSpellbookSheet extends HandlebarsApplicationMixin(DocumentSheetV
       targetStr = sys.target.type;
     }
 
-    // 4. Components
     const props = Array.isArray(sys.properties)
       ? sys.properties
       : (sys.properties instanceof Set ? Array.from(sys.properties) : []);
@@ -112,7 +107,6 @@ export class NpcSpellbookSheet extends HandlebarsApplicationMixin(DocumentSheetV
     if (props.includes("material") || sys.components?.material) compList.push("M");
     const componentsStr = compList.join(", ") || "—";
 
-    // 5. Duration
     let durationStr = "—";
     if (sys.duration) {
       if (sys.duration.units === "inst") durationStr = "Inst";
@@ -143,15 +137,13 @@ export class NpcSpellbookSheet extends HandlebarsApplicationMixin(DocumentSheetV
   }
 
   static async _onClearAll(event, target) {
-    await this.document.setFlag(MODULE_ID, "spells", []);
+    await this.document.unsetFlag(MODULE_ID, "spells");
     this.render();
   }
 
   static async _onRemoveSpell(event, target) {
     const spellUuid = target.dataset.uuid;
     if (!spellUuid) return;
-    
-    // Use existing module function from data.js
     await removeSpellFromSpellbook(this.document, spellUuid);
     this.render();
   }
