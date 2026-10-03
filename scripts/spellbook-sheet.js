@@ -1,160 +1,185 @@
 import { MODULE_ID, getSpellbookSpells, removeSpellFromSpellbook } from "./data.js";
+import { openTranscribeDialog } from "./mechanics.js";
 
-const { HandlebarsApplicationMixin } = foundry.applications.api;
-const { DocumentSheetV2 } = foundry.applications.sheets;
+let SpellbookSheetClass = null;
 
-export class NpcSpellbookSheet extends HandlebarsApplicationMixin(DocumentSheetV2) {
-  static DEFAULT_OPTIONS = {
-    id: "npc-spellbook-sheet",
-    classes: ["npc-spellbook-sheet", "dnd5e2", "sheet", "item"],
-    tag: "form",
-    window: {
-      resizable: true,
-      contentClasses: ["standard-form"]
-    },
-    position: {
-      width: 680,
-      height: 600
-    },
-    actions: {
-      openPicker: NpcSpellbookSheet._onAddSpells,
-      transcribeSpells: NpcSpellbookSheet._onTranscribe,
-      clearSpellbook: NpcSpellbookSheet._onClearAll,
-      removeSpell: NpcSpellbookSheet._onRemoveSpell
-    }
-  };
+/**
+ * Safely resolves DocumentSheetV2 across V13 ApplicationV2 namespaces
+ */
+function getBaseDocumentSheet() {
+  return foundry.applications.api?.DocumentSheetV2
+    || foundry.applications.sheets?.DocumentSheetV2
+    || foundry.applications.api?.ApplicationV2;
+}
 
-  static PARTS = {
-    form: {
-      template: "modules/npc-spell-book/templates/spellbook-sheet.hbs"
-    }
-  };
+/**
+ * Constructs and caches the SpellbookSheet class during the init lifecycle
+ */
+export function getSpellbookSheetClass() {
+  if (SpellbookSheetClass) return SpellbookSheetClass;
 
-  async _prepareContext(options) {
-    const context = await super._prepareContext(options);
-    const item = this.document;
+  const BaseSheet = getBaseDocumentSheet();
+  const HandlebarsApplicationMixin = foundry.applications.api?.HandlebarsApplicationMixin;
+  const DialogV2 = foundry.applications.api?.DialogV2;
 
-    context.item = item;
-    context.isEditable = this.isEditable;
+  if (!BaseSheet || !HandlebarsApplicationMixin) {
+    throw new Error("NPC Spellbook | Foundry ApplicationV2 sheet APIs are not available.");
+  }
 
-    const storedSpells = getSpellbookSpells(item);
-    const spellGroups = {};
-
-    for (const rawSpell of storedSpells) {
-      const prepared = this._prepareSpellData(rawSpell);
-      const lvl = prepared.level;
-
-      if (!spellGroups[lvl]) {
-        spellGroups[lvl] = {
-          level: lvl,
-          label: lvl === 0 ? "CANTRIPS" : `LEVEL ${lvl}`,
-          spells: []
-        };
+  SpellbookSheetClass = class SpellbookSheet extends HandlebarsApplicationMixin(BaseSheet) {
+    static DEFAULT_OPTIONS = {
+      classes: ["dnd5e", "sheet", "item", "spellbook-sheet"],
+      position: { width: 480, height: 560 },
+      window: {
+        resizable: true,
+        icon: "fas fa-book"
+      },
+      form: {
+        submitOnChange: true,
+        closeOnSubmit: false
+      },
+      actions: {
+        addSpells: SpellbookSheet._onAddSpells,
+        transcribeSpells: SpellbookSheet._onTranscribeSpells,
+        clearSpellbook: SpellbookSheet._onClearSpellbook,
+        deleteSpell: SpellbookSheet._onDeleteSpell
       }
-      spellGroups[lvl].spells.push(prepared);
-    }
-
-    context.activeLevels = Object.keys(spellGroups)
-      .map(Number)
-      .sort((a, b) => a - b)
-      .map(lvl => spellGroups[lvl]);
-
-    context.hasSpells = context.activeLevels.length > 0;
-    return context;
-  }
-
-  _prepareSpellData(spell) {
-    const sys = spell.system || {};
-
-    let castTime = "—";
-    if (sys.activation?.type) {
-      const val = sys.activation.value ? `${sys.activation.value} ` : "";
-      const typeMap = {
-        action: "1 Act",
-        bonus: "1 B.Act",
-        reaction: "1 React",
-        minute: "Min",
-        hour: "Hr",
-        day: "Day",
-        special: "Spec"
-      };
-      castTime = typeMap[sys.activation.type] || `${val}${sys.activation.type}`;
-    }
-
-    let rangeStr = "—";
-    if (sys.range) {
-      if (sys.range.units === "self") rangeStr = "Self";
-      else if (sys.range.units === "touch") rangeStr = "Touch";
-      else if (sys.range.units === "spec") rangeStr = "Spec";
-      else if (sys.range.value) rangeStr = `${sys.range.value} ${sys.range.units || ""}`.trim();
-    }
-
-    let targetStr = "—";
-    if (sys.target?.affects?.count || sys.target?.affects?.type) {
-      targetStr = `${sys.target.affects.count || ""} ${sys.target.affects.type || ""}`.trim();
-    } else if (sys.target?.template?.size) {
-      targetStr = `${sys.target.template.size}ft ${sys.target.template.type || ""}`.trim();
-    } else if (sys.target?.type) {
-      targetStr = sys.target.type;
-    }
-
-    const props = Array.isArray(sys.properties)
-      ? sys.properties
-      : (sys.properties instanceof Set ? Array.from(sys.properties) : []);
-
-    const compList = [];
-    if (props.includes("vocal") || sys.components?.vocal) compList.push("V");
-    if (props.includes("somatic") || sys.components?.somatic) compList.push("S");
-    if (props.includes("material") || sys.components?.material) compList.push("M");
-    const componentsStr = compList.join(", ") || "—";
-
-    let durationStr = "—";
-    if (sys.duration) {
-      if (sys.duration.units === "inst") durationStr = "Inst";
-      else if (sys.duration.units === "perm") durationStr = "Perm";
-      else if (sys.duration.value) durationStr = `${sys.duration.value} ${sys.duration.units || ""}`.trim();
-      else if (sys.duration.units) durationStr = sys.duration.units;
-    }
-
-    return {
-      uuid: spell.uuid || spell._id || spell.id,
-      name: spell.name,
-      img: spell.img || "icons/svg/book.svg",
-      level: sys.level ?? 0,
-      time: castTime,
-      range: rangeStr,
-      target: targetStr,
-      components: componentsStr,
-      duration: durationStr
     };
-  }
 
-  static async _onAddSpells(event, target) {
-    // Compendium picker logic
-  }
+    static PARTS = {
+      sheet: {
+        template: `modules/${MODULE_ID}/templates/spellbook-sheet.hbs`
+      }
+    };
 
-  static async _onTranscribe(event, target) {
-    // Transcription logic
-  }
-
-  static async _onClearAll(event, target) {
-    const confirmed = await foundry.applications.api.DialogV2.confirm({
-      window: { title: "Clear Spellbook" },
-      content: "<p>Are you sure you want to remove all spells from this spellbook?</p>",
-      yes: { label: "Clear", icon: "fas fa-trash" },
-      no: { label: "Cancel", icon: "fas fa-times" }
-    });
-
-    if (confirmed) {
-      await this.document.unsetFlag(MODULE_ID, "spells");
-      this.render();
+    get item() {
+      return this.document;
     }
-  }
 
-  static async _onRemoveSpell(event, target) {
-    const spellUuid = target.dataset.uuid;
-    if (!spellUuid) return;
-    await removeSpellFromSpellbook(this.document, spellUuid);
-    this.render();
-  }
+    /** @override */
+    async _prepareContext(options) {
+      const context = await super._prepareContext(options);
+      const item = this.document;
+      context.item = item;
+
+      const spells = getSpellbookSpells(item);
+
+      const groups = {};
+      for (const spell of spells) {
+        const lvl = Number(spell.level ?? spell.system?.level ?? 0);
+        const label = lvl === 0 ? "CANTRIPS" : `LEVEL ${lvl}`;
+        if (!groups[lvl]) {
+          groups[lvl] = { level: lvl, label, spells: [] };
+        }
+        groups[lvl].spells.push(spell);
+      }
+
+      context.spellGroups = Object.keys(groups)
+        .map(Number)
+        .sort((a, b) => a - b)
+        .map((lvl) => groups[lvl]);
+
+      return context;
+    }
+
+    /** Action: Open dialog to browse and add spells */
+    static async _onAddSpells(event, target) {
+      const packs = game.packs.filter((p) => p.metadata.type === "Item");
+      let allSpells = [];
+
+      for (const pack of packs) {
+        const index = await pack.getIndex({ fields: ["system.level", "img", "type"] });
+        const spells = index.filter((i) => i.type === "spell");
+        allSpells.push(...spells);
+      }
+
+      if (!allSpells.length) {
+        ui.notifications.warn("No spell compendiums found in world.");
+        return;
+      }
+
+      allSpells.sort((a, b) => a.name.localeCompare(b.name));
+
+      const optionsHtml = allSpells
+        .map((s) => `<option value="${s.uuid}">${s.name} (Lvl ${s.system?.level ?? 0})</option>`)
+        .join("");
+
+      const content = `
+        <div style="padding: 6px;">
+          <label style="font-weight: bold; font-size: 0.85rem;">Select Spell to Add:</label>
+          <select id="spell-select" style="width: 100%; margin-top: 6px; padding: 4px; background: #111; color: #fff; border: 1px solid #444;">
+            ${optionsHtml}
+          </select>
+        </div>
+      `;
+
+      const selectedUuid = await DialogV2.prompt({
+        window: { title: "Add Spell to Spellbook" },
+        content: content,
+        ok: {
+          label: "Add",
+          icon: "fas fa-plus",
+          callback: (event, button) => button.form.querySelector("#spell-select")?.value
+        },
+        rejectClose: false
+      });
+
+      if (selectedUuid) {
+        const spellDoc = await fromUuid(selectedUuid);
+        if (spellDoc) {
+          const spells = Array.from(getSpellbookSpells(this.document));
+          if (!spells.some((s) => s.uuid === spellDoc.uuid)) {
+            spells.push({
+              uuid: spellDoc.uuid,
+              name: spellDoc.name,
+              level: spellDoc.system?.level ?? 0,
+              img: spellDoc.img
+            });
+            await this.document.setFlag(MODULE_ID, "spells", spells);
+            this.render(true);
+          } else {
+            ui.notifications.info(`"${spellDoc.name}" is already in this spellbook.`);
+          }
+        }
+      }
+    }
+
+    /** Action: Open transcribe dialog */
+    static _onTranscribeSpells(event, target) {
+      openTranscribeDialog(this.document);
+    }
+
+    /** Action: Clear all spells */
+    static async _onClearSpellbook(event, target) {
+      const confirmed = await DialogV2.confirm({
+        window: { title: "Clear Spellbook" },
+        content: "<p>Are you sure you want to remove all spells from this spellbook?</p>",
+        rejectClose: false
+      });
+
+      if (confirmed) {
+        await this.document.unsetFlag(MODULE_ID, "spells");
+        this.render(true);
+      }
+    }
+
+    /** Action: Delete individual spell */
+    static async _onDeleteSpell(event, target) {
+      const uuid = target.dataset.uuid;
+      if (uuid) {
+        await removeSpellFromSpellbook(this.document, uuid);
+        this.render(true);
+      }
+    }
+
+    /** Persist name edits from the sheet header. */
+    async _processSubmitData(event, form, submitData, options) {
+      if (typeof super._processSubmitData === "function") {
+        return super._processSubmitData(event, form, submitData, options);
+      }
+      await this.document.update(submitData, options);
+    }
+  };
+
+  return SpellbookSheetClass;
 }

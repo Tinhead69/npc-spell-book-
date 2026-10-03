@@ -1,106 +1,113 @@
-import {
-  MODULE_ID,
-  SPELLBOOK_ICON,
-  getEntryId,
-  isSpellbook,
-  markAsSpellbook
-} from "./data.js";
-import { NpcSpellbookSheet } from "./spellbook-sheet.js";
+import { MODULE_ID } from "./data.js";
+import { getSpellbookSheetClass } from "./spellbook-sheet.js";
 
-// Register Item Sheet via V13 namespace
-Hooks.once("init", async () => {
-  console.log("NPC Spellbook | Initialising V13 Module");
+const SHEET_CLASS_ID = `${MODULE_ID}.SpellbookSheet`;
 
-  foundry.applications.apps.DocumentSheetConfig.registerSheet(Item, MODULE_ID, NpcSpellbookSheet, {
-    types: ["loot"],
-    label: "NPC Spellbook Sheet",
-    makeDefault: false
-  });
+function getDocumentSheetConfig() {
+  return foundry.applications.apps?.DocumentSheetConfig
+    || foundry.applications.api?.DocumentSheetConfig
+    || globalThis.DocumentSheetConfig;
+}
 
-  patchItemDirectoryContextMenu();
-});
+function getItemDocumentClass() {
+  return CONFIG.Item?.documentClass || globalThis.Item;
+}
 
-Hooks.once("setup", () => {
-  ui.notifications?.info("NPC Spellbook | Sheet registered successfully!");
-});
+/**
+ * Spellbook items must use SpellbookSheet even when the default loot sheet is selected.
+ */
+function patchItemSheetClass() {
+  const ItemClass = getItemDocumentClass();
+  const proto = ItemClass?.prototype;
+  if (!proto || proto._npcSpellbookSheetPatched) return;
 
-// Intercept item sheet requests for spellbooks
-Hooks.on("getItemSheetClass", (item) => {
-  if (isSpellbook(item)) {
-    return NpcSpellbookSheet;
+  const original = proto._getSheetClass;
+  proto._getSheetClass = function _npcSpellbookGetSheetClass() {
+    if (this.getFlag(MODULE_ID, "isSpellbook")) {
+      return getSpellbookSheetClass();
+    }
+    return original.call(this);
+  };
+  proto._npcSpellbookSheetPatched = true;
+}
+
+Hooks.once("init", () => {
+  try {
+    const SpellbookSheet = getSpellbookSheetClass();
+    const DocumentSheetConfig = getDocumentSheetConfig();
+    const ItemClass = getItemDocumentClass();
+
+    if (!SpellbookSheet) {
+      console.error("NPC Spellbook | SpellbookSheet class could not be created.");
+      return;
+    }
+
+    if (!DocumentSheetConfig?.registerSheet) {
+      console.error("NPC Spellbook | DocumentSheetConfig.registerSheet is unavailable.");
+      return;
+    }
+
+    DocumentSheetConfig.registerSheet(ItemClass, MODULE_ID, SpellbookSheet, {
+      types: ["loot", "container", "consumable"],
+      makeDefault: false,
+      label: "NPC Spellbook Sheet"
+    });
+
+    patchItemSheetClass();
+    console.log("NPC Spellbook | Initialized");
+  } catch (err) {
+    console.error("NPC Spellbook | Failed to initialize", err);
   }
 });
 
-/**
- * Inject "Spellbook" option into Create Item dialogs
- */
 function addSpellbookToCreateDialog(app, html) {
   const root = html instanceof HTMLElement ? html : (html[0] || html);
   if (!root || !(root instanceof HTMLElement)) return;
 
-  if (root.querySelector('[value="spellbook"]')) return;
+  if (root.querySelector('input[value="spellbook"]')) return;
 
-  // Case A: Select Dropdown (<select name="type">)
-  const selectElem = root.querySelector('select[name="type"]');
-  if (selectElem) {
-    const option = document.createElement("option");
-    option.value = "spellbook";
-    option.textContent = "Spellbook";
+  const radios = Array.from(root.querySelectorAll('input[name="type"]'));
+  if (!radios.length) return;
 
-    const targetOpt = selectElem.querySelector('option[value="spell"]') ||
-                      selectElem.querySelector('option[value="loot"]');
-    if (targetOpt) {
-      targetOpt.after(option);
-    } else {
-      selectElem.appendChild(option);
+  const targetRadio = radios.find(r => r.value === "spell") ||
+                      radios.find(r => r.value === "loot") ||
+                      radios[radios.length - 1];
+
+  if (!targetRadio) return;
+
+  const wrapper = targetRadio.closest("li, .form-group, label.checkbox, label.radio, div.type-option, label") || targetRadio.parentElement;
+
+  if (wrapper) {
+    const clone = wrapper.cloneNode(true);
+
+    const radio = clone.querySelector('input[name="type"]');
+    if (radio) {
+      radio.value = "spellbook";
+      radio.checked = false;
+      radio.id = `type-spellbook-${Math.random().toString(36).substring(2, 7)}`;
     }
-  } 
-  // Case B: Radio input / grid layout (<input name="type">)
-  else {
-    const radios = Array.from(root.querySelectorAll('input[name="type"]'));
-    if (!radios.length) return;
 
-    const targetRadio = radios.find(r => r.value === "spell") ||
-                        radios.find(r => r.value === "loot") ||
-                        radios[radios.length - 1];
-
-    if (!targetRadio) return;
-
-    const wrapper = targetRadio.closest("li, .form-group, label.checkbox, label.radio, div.type-option, label") || targetRadio.parentElement;
-
-    if (wrapper) {
-      const clone = wrapper.cloneNode(true);
-
-      const radio = clone.querySelector('input[name="type"]');
-      if (radio) {
-        radio.value = "spellbook";
-        radio.checked = false;
-        radio.id = `type-spellbook-${Math.random().toString(36).substring(2, 7)}`;
+    const textTargets = Array.from(clone.querySelectorAll("span, label, p, strong, b")).concat([clone]);
+    for (const el of textTargets) {
+      if (el.children.length === 0 && el.textContent.trim().length > 0) {
+        el.textContent = "Spellbook";
+        break;
       }
-
-      const textTargets = Array.from(clone.querySelectorAll("span, label, p, strong, b")).concat([clone]);
-      for (const el of textTargets) {
-        if (el.children.length === 0 && el.textContent.trim().length > 0) {
-          el.textContent = "Spellbook";
-          break;
-        }
-      }
-
-      const icon = clone.querySelector("i, img, svg");
-      if (icon) {
-        if (icon.tagName.toLowerCase() === "i") {
-          icon.className = "fas fa-book";
-          icon.style.color = "#a33535";
-        } else if (icon.tagName.toLowerCase() === "img") {
-          icon.src = SPELLBOOK_ICON || "icons/svg/book.svg";
-        }
-      }
-
-      wrapper.after(clone);
     }
+
+    const icon = clone.querySelector("i, img, svg");
+    if (icon) {
+      if (icon.tagName.toLowerCase() === "i") {
+        icon.className = "fas fa-book";
+        icon.style.color = "#a33535";
+      } else if (icon.tagName.toLowerCase() === "img") {
+        icon.src = "icons/svg/book.svg";
+      }
+    }
+
+    wrapper.after(clone);
   }
 
-  // Intercept form submission when "Spellbook" is chosen
   const form = root.tagName === "FORM" ? root : root.querySelector("form") || root.closest("form");
   if (form && !form.dataset.spellbookHooked) {
     form.dataset.spellbookHooked = "true";
@@ -121,9 +128,12 @@ function addSpellbookToCreateDialog(app, html) {
         const createdItem = await Item.create({
           name: bookName,
           type: "loot",
-          img: SPELLBOOK_ICON || "icons/svg/book.svg",
+          img: "icons/svg/book.svg",
           folder: folder,
           flags: {
+            core: {
+              sheetClass: SHEET_CLASS_ID
+            },
             [MODULE_ID]: {
               isSpellbook: true,
               spells: []
@@ -132,14 +142,11 @@ function addSpellbookToCreateDialog(app, html) {
         });
 
         if (createdItem) {
-          new NpcSpellbookSheet({ document: createdItem }).render(true);
+          const SpellbookSheet = getSpellbookSheetClass();
+          new SpellbookSheet({ document: createdItem }).render({ force: true });
         }
 
-        if (typeof app.close === "function") {
-          app.close();
-        } else if (typeof app.destroy === "function") {
-          app.destroy();
-        }
+        if (typeof app.close === "function") app.close();
       }
     }, { capture: true });
   }
@@ -149,69 +156,3 @@ Hooks.on("renderDocumentCreateDialog", addSpellbookToCreateDialog);
 Hooks.on("renderCreateDocumentDialog", addSpellbookToCreateDialog);
 Hooks.on("renderDialog", addSpellbookToCreateDialog);
 Hooks.on("renderApplication", addSpellbookToCreateDialog);
-
-/**
- * Item directory context options using V13 ItemDirectory namespace
- */
-function patchItemDirectoryContextMenu() {
-  const ItemDirectoryClass = foundry.applications.sidebar.tabs.ItemDirectory;
-
-  if (!ItemDirectoryClass?.prototype?._getEntryContextOptions) return;
-
-  const original = ItemDirectoryClass.prototype._getEntryContextOptions;
-
-  ItemDirectoryClass.prototype._getEntryContextOptions = function () {
-    const options = original.call(this) ?? [];
-
-    options.push({
-      name: "Mark as Spellbook",
-      icon: '<i class="fas fa-book"></i>',
-      condition: (li) => {
-        const id = getEntryId(li);
-        const item = game.items.get(id);
-        return item?.type === "loot" && !isSpellbook(item);
-      },
-      callback: async (li) => {
-        const id = getEntryId(li);
-        const item = game.items.get(id);
-        if (!item) return;
-        await markAsSpellbook(item);
-        ui.notifications?.info(`Marked ${item.name} as a spellbook.`);
-        new NpcSpellbookSheet({ document: item }).render(true);
-      }
-    });
-
-    options.push({
-      name: "Unmark as Spellbook",
-      icon: '<i class="fas fa-book-dead"></i>',
-      condition: (li) => {
-        const id = getEntryId(li);
-        return isSpellbook(game.items.get(id));
-      },
-      callback: async (li) => {
-        const id = getEntryId(li);
-        const item = game.items.get(id);
-        if (!item) return;
-        await item.unsetFlag(MODULE_ID, "isSpellbook");
-        await item.unsetFlag(MODULE_ID, "spells");
-        ui.notifications?.info(`Unmarked ${item.name} as a spellbook.`);
-      }
-    });
-
-    options.push({
-      name: "Open Spellbook",
-      icon: '<i class="fas fa-book-open"></i>',
-      condition: (li) => {
-        const id = getEntryId(li);
-        return isSpellbook(game.items.get(id));
-      },
-      callback: (li) => {
-        const id = getEntryId(li);
-        const item = game.items.get(id);
-        if (item) new NpcSpellbookSheet({ document: item }).render(true);
-      }
-    });
-
-    return options;
-  };
-}

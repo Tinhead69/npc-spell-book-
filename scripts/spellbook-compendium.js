@@ -1,7 +1,10 @@
 import { MODULE_ID, addSpellToSpellbook, getSpellbookSpells } from "./data.js";
 
-const { HandlebarsApplicationMixin } = foundry.applications.api;
-const { ItemSheetV2 } = foundry.applications.sheets;
+
+const { HandlebarsApplicationMixin, ApplicationV2 } = foundry.applications.api;
+const ItemSheetV2 = foundry.applications.sheets?.ItemSheetV2
+  || foundry.applications.api?.DocumentSheetV2
+  || ApplicationV2;
 
 export class CompendiumSpellPicker extends HandlebarsApplicationMixin(ItemSheetV2) {
   constructor(options = {}) {
@@ -28,6 +31,7 @@ export class CompendiumSpellPicker extends HandlebarsApplicationMixin(ItemSheetV
       )
     );
 
+    // Initialized as null; populated dynamically with packs that actually contain spells
     this.selectedPacks = null;
     this._spellPacksCache = null;
     this.searchQuery = "";
@@ -58,6 +62,9 @@ export class CompendiumSpellPicker extends HandlebarsApplicationMixin(ItemSheetV
     }
   };
 
+  /**
+   * Helper to scan Item packs and cache only those that contain at least one spell.
+   */
   async _getSpellPacks() {
     if (this._spellPacksCache) return this._spellPacksCache;
 
@@ -65,8 +72,10 @@ export class CompendiumSpellPicker extends HandlebarsApplicationMixin(ItemSheetV
     const spellPacks = [];
 
     for (const pack of itemPacks) {
+      // Load index fields to check item types
       const index = await pack.getIndex({ fields: ["type"] });
-      if (index.some((e) => e.type === "spell")) {
+      const hasSpells = index.some((e) => e.type === "spell");
+      if (hasSpells) {
         spellPacks.push(pack);
       }
     }
@@ -89,8 +98,11 @@ export class CompendiumSpellPicker extends HandlebarsApplicationMixin(ItemSheetV
 
   async _prepareContext(options) {
     const context = await super._prepareContext(options);
+
+    // Fetch only compendiums that contain spells
     const spellPacks = await this._getSpellPacks();
 
+    // On first load, select all spell-bearing compendiums by default
     if (!this.selectedPacks) {
       this.selectedPacks = new Set(spellPacks.map((p) => p.collection));
     }
@@ -121,6 +133,7 @@ export class CompendiumSpellPicker extends HandlebarsApplicationMixin(ItemSheetV
       selected: this.selectedSchools.has(key)
     }));
 
+    // Render only spell-bearing compendiums in the left panel
     context.packs = spellPacks.map((p) => ({
       id: p.collection,
       label: p.metadata.label,
@@ -166,6 +179,7 @@ export class CompendiumSpellPicker extends HandlebarsApplicationMixin(ItemSheetV
 
         const schoolObj = schoolConfig[school];
         const schoolName = schoolObj ? (typeof schoolObj === "string" ? schoolObj : schoolObj.label) : school;
+
         const uuid = entry.uuid || `Compendium.${pack.collection}.Item.${entry._id}`;
 
         const isPresent = this.initialUuids.has(uuid) || this.initialUuids.has(entry._id);
@@ -190,7 +204,11 @@ export class CompendiumSpellPicker extends HandlebarsApplicationMixin(ItemSheetV
     const levelMap = {};
     for (let i = 1; i <= 9; i++) {
       if (this.selectedLevels.has(i)) {
-        levelMap[i] = { label: `LEVEL ${i}`, level: i, spells: [] };
+        levelMap[i] = {
+          label: `LEVEL ${i}`,
+          level: i,
+          spells: []
+        };
       }
     }
 
@@ -205,6 +223,7 @@ export class CompendiumSpellPicker extends HandlebarsApplicationMixin(ItemSheetV
     context.activeLevels = Object.values(levelMap)
       .filter((g) => g.spells.length > 0)
       .sort((a, b) => a.level - b.level);
+
     context.hasSpells = context.activeLevels.length > 0;
 
     return context;
@@ -240,6 +259,7 @@ export class CompendiumSpellPicker extends HandlebarsApplicationMixin(ItemSheetV
     const scrollTop = scrollContainer ? scrollContainer.scrollTop : 0;
 
     await addSpellToSpellbook(this.spellbook, uuid);
+
     this.addedSessionUuids.add(uuid);
 
     await this.render();
