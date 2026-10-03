@@ -447,19 +447,52 @@ export class CompendiumSpellPicker extends HandlebarsApplicationMixin(Applicatio
       if (el) positions[sel] = el.scrollTop;
     }
     this._savedScroll = positions;
+
+    // Search input is destroyed on re-render — save caret so typing stays forward.
+    const input = this.element?.querySelector?.("[data-search-input]");
+    if (input) {
+      this.searchQuery = input.value;
+      this._savedSearchFocus = {
+        hadFocus: document.activeElement === input,
+        start: input.selectionStart ?? input.value.length,
+        end: input.selectionEnd ?? input.value.length
+      };
+    } else {
+      this._savedSearchFocus = null;
+    }
   }
 
   _restoreScroll() {
-    if (!this._savedScroll || !this.element) return;
-    for (const [sel, top] of Object.entries(this._savedScroll)) {
-      const el = this.element.querySelector(sel);
-      if (el) el.scrollTop = top;
+    if (!this.element) return;
+    if (this._savedScroll) {
+      for (const [sel, top] of Object.entries(this._savedScroll)) {
+        const el = this.element.querySelector(sel);
+        if (el) el.scrollTop = top;
+      }
     }
+
+    const focus = this._savedSearchFocus;
+    this._savedSearchFocus = null;
+    if (!focus?.hadFocus) return;
+    const input = this.element.querySelector("[data-search-input]");
+    if (!input) return;
+    input.focus({ preventScroll: true });
+    const len = input.value.length;
+    const start = Math.min(focus.start ?? len, len);
+    const end = Math.min(focus.end ?? len, len);
+    try {
+      input.setSelectionRange(start, end);
+    } catch (_) { /* ignore */ }
   }
 
   async _rerenderPreservingScroll() {
     this._captureScroll();
     await this.render({ force: false });
+  }
+
+  /** Lowercased query used only for filtering — display value stays as typed. */
+  _getSearchNeedle() {
+    return String(this.searchQuery || "").toLowerCase().trim();
   }
 
   /**
@@ -495,7 +528,8 @@ export class CompendiumSpellPicker extends HandlebarsApplicationMixin(Applicatio
 
     this.element.addEventListener("input", (event) => {
       if (!event.target?.matches?.("[data-search-input]")) return;
-      this.searchQuery = event.target.value.toLowerCase().trim();
+      // Keep the raw typed value — lowercasing/trimming here + re-render resets the caret.
+      this.searchQuery = event.target.value;
       clearTimeout(this._searchTimer);
       this._searchTimer = setTimeout(() => this._rerenderPreservingScroll(), 150);
     });
@@ -625,7 +659,8 @@ export class CompendiumSpellPicker extends HandlebarsApplicationMixin(Applicatio
 
       if (level < 1 || !this.selectedLevels.has(level)) return;
       if (school && !this.selectedSchools.has(school)) return;
-      if (this.searchQuery && !nameKey.includes(this.searchQuery)) return;
+      const needle = this._getSearchNeedle();
+      if (needle && !nameKey.includes(needle)) return;
       if (this.rulesVersion !== "both") {
         if (rules === "unknown") {
           if (this.rulesVersion === "2024") return;
