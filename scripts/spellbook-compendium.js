@@ -82,9 +82,9 @@ export class CompendiumSpellPicker extends HandlebarsApplicationMixin(Applicatio
     this.addedSessionUuids = new Set();
     this.addedSessionNames = new Set();
 
-    this.selectedLevels = new Set([1, 2, 3, 4, 5, 6, 7, 8, 9]);
-    this.selectedSchools = new Set(Object.keys(CONFIG.DND5E?.spellSchools || FALLBACK_SCHOOLS));
-    this.selectedPacks = null;
+    this.selectedLevels = new Set();
+    this.selectedSchools = new Set();
+    this.selectedPacks = new Set();
     this._spellPacksCache = null;
     this.searchQuery = "";
     this.collapsedLevels = new Set();
@@ -116,6 +116,9 @@ export class CompendiumSpellPicker extends HandlebarsApplicationMixin(Applicatio
       toggleLevel: CompendiumSpellPicker._onToggleLevel,
       toggleSchool: CompendiumSpellPicker._onToggleSchool,
       togglePack: CompendiumSpellPicker._onTogglePack,
+      toggleAllLevels: CompendiumSpellPicker._onToggleAllLevels,
+      toggleAllSchools: CompendiumSpellPicker._onToggleAllSchools,
+      toggleAllPacks: CompendiumSpellPicker._onToggleAllPacks,
       toggleLevelGroup: CompendiumSpellPicker._onToggleLevelGroup,
       setRulesVersion: CompendiumSpellPicker._onSetRulesVersion,
       addSpell: CompendiumSpellPicker._onAddSpell
@@ -274,15 +277,9 @@ export class CompendiumSpellPicker extends HandlebarsApplicationMixin(Applicatio
     }
 
     const validPackIds = new Set(spellPacks.map((p) => p.collection));
-    if (!this.selectedPacks) {
-      this.selectedPacks = new Set(validPackIds);
-    } else {
-      // Drop stale selections for packs that have no spells.
-      this.selectedPacks = new Set([...this.selectedPacks].filter((id) => validPackIds.has(id)));
-      if (!this.selectedPacks.size && validPackIds.size) {
-        this.selectedPacks = new Set(validPackIds);
-      }
-    }
+    if (!(this.selectedPacks instanceof Set)) this.selectedPacks = new Set();
+    // Drop stale selections for packs that have no spells (do not auto-select).
+    this.selectedPacks = new Set([...this.selectedPacks].filter((id) => validPackIds.has(id)));
 
     context.rulesOptions = [
       { id: "2014", label: "2014 (Legacy)", selected: this.rulesVersion === "2014" },
@@ -290,27 +287,34 @@ export class CompendiumSpellPicker extends HandlebarsApplicationMixin(Applicatio
       { id: "both", label: "Both", selected: this.rulesVersion === "both" }
     ];
 
-    context.levels = Array.from({ length: 9 }, (_, i) => {
-      const level = i + 1;
-      return {
-        level,
-        label: `Level ${level}`,
-        selected: this.selectedLevels.has(level)
-      };
-    });
+    const allLevels = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+    context.levels = allLevels.map((level) => ({
+      level,
+      label: `Level ${level}`,
+      selected: this.selectedLevels.has(level)
+    }));
+    context.levelsAllSelected = allLevels.every((level) => this.selectedLevels.has(level));
 
     const schoolConfig = this._getSchoolConfig();
-    context.schools = Object.entries(schoolConfig).map(([key, val]) => ({
-      id: key,
-      label: typeof val === "string" ? val : (val.label || key),
-      selected: this.selectedSchools.has(key)
-    }));
+    const schoolIds = Object.keys(schoolConfig);
+    context.schools = schoolIds.map((key) => {
+      const val = schoolConfig[key];
+      return {
+        id: key,
+        label: typeof val === "string" ? val : (val.label || key),
+        selected: this.selectedSchools.has(key)
+      };
+    });
+    context.schoolsAllSelected = schoolIds.length > 0
+      && schoolIds.every((id) => this.selectedSchools.has(id));
 
     context.packs = spellPacks.map((p) => ({
       id: p.collection,
       label: p.metadata.label,
       selected: this.selectedPacks.has(p.collection)
     }));
+    context.packsAllSelected = validPackIds.size > 0
+      && [...validPackIds].every((id) => this.selectedPacks.has(id));
 
     const bookSpells = getSpellbookSpells(this.spellbook);
     const bookUuids = new Set(bookSpells.map((s) => s.uuid || s._id).filter(Boolean));
@@ -456,7 +460,8 @@ export class CompendiumSpellPicker extends HandlebarsApplicationMixin(Applicatio
   static _onTogglePack(event, target) {
     const input = target.matches?.("input") ? target : target.querySelector?.("input");
     const pack = input?.dataset.pack ?? target.dataset.pack;
-    if (!pack || !this.selectedPacks) return;
+    if (!pack) return;
+    if (!(this.selectedPacks instanceof Set)) this.selectedPacks = new Set();
 
     if (input?.type === "checkbox") {
       if (input.checked) this.selectedPacks.add(pack);
@@ -464,6 +469,29 @@ export class CompendiumSpellPicker extends HandlebarsApplicationMixin(Applicatio
     } else if (this.selectedPacks.has(pack)) this.selectedPacks.delete(pack);
     else this.selectedPacks.add(pack);
 
+    this._rerenderPreservingScroll();
+  }
+
+  static _onToggleAllLevels(_event, _target) {
+    const all = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+    if (all.every((level) => this.selectedLevels.has(level))) this.selectedLevels.clear();
+    else this.selectedLevels = new Set(all);
+    this._rerenderPreservingScroll();
+  }
+
+  static _onToggleAllSchools(_event, _target) {
+    const all = Object.keys(this._getSchoolConfig());
+    if (all.length && all.every((id) => this.selectedSchools.has(id))) this.selectedSchools.clear();
+    else this.selectedSchools = new Set(all);
+    this._rerenderPreservingScroll();
+  }
+
+  static async _onToggleAllPacks(_event, _target) {
+    const packs = await this._getSpellPacks();
+    const all = packs.map((p) => p.collection);
+    if (!(this.selectedPacks instanceof Set)) this.selectedPacks = new Set();
+    if (all.length && all.every((id) => this.selectedPacks.has(id))) this.selectedPacks.clear();
+    else this.selectedPacks = new Set(all);
     this._rerenderPreservingScroll();
   }
 

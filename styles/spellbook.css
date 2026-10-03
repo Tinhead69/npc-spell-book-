@@ -354,6 +354,10 @@
 }
 
 .spell-picker-section-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
   font-weight: bold;
   font-size: 0.85rem;
   color: #d1b87a;
@@ -394,11 +398,35 @@
 }
 
 .spell-picker-col-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
   font-weight: bold;
   font-size: 0.75rem;
   color: #aaa;
   margin-bottom: 6px;
   text-transform: uppercase;
+}
+
+.spell-picker-select-all {
+  background: #1f222d;
+  color: #ccc;
+  border: 1px solid #3a3f50;
+  border-radius: 3px;
+  padding: 1px 6px;
+  font-size: 0.65rem;
+  line-height: 1.3;
+  text-transform: none;
+  font-weight: 600;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.spell-picker-select-all:hover {
+  background: #2a2e3d;
+  color: #fff;
+  border-color: #d1b87a;
 }
 
 .spell-picker-check {
@@ -766,4 +794,17 @@
 
 .npc-spellbook-tooltip-body p:last-child {
   margin-bottom: 0;
+}
+
+/* Create Item dialog — dotted rule between Spell and Spellbook */
+.npc-spellbook-type-sep {
+  display: block;
+  width: 100%;
+  height: 0;
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-top: 1px dotted rgba(255, 255, 255, 0.28);
+  flex: 0 0 auto;
+  pointer-events: none;
 }

@@ -64,31 +64,13 @@ function isCreateTypeOption(el) {
   return Boolean(el?.querySelector?.('input[name="type"]'));
 }
 
-/**
- * Separator siblings between type options (not <hr> near Folder).
- * Foundry often uses empty decorative nodes for the dotted rules.
- */
-function isCreateTypeSeparator(el) {
-  if (!el || !(el instanceof HTMLElement)) return false;
-  if (isCreateTypeOption(el)) return false;
-  if (el.tagName === "HR") return false;
-  if (el.matches(".separator, .divider, .form-fields-separator, [data-spellbook-type-sep]")) return true;
-  const empty = !el.textContent.trim()
-    && !el.querySelector("input, select, textarea, button, img, svg, i, label");
-  if (!empty) return false;
-  return isCreateTypeOption(el.previousElementSibling)
-    || isCreateTypeOption(el.nextElementSibling);
-}
-
-/** Find a native separator that sits between two type options in the same list. */
-function findNativeTypeSeparator(parent) {
-  if (!parent) return null;
-  const kids = Array.from(parent.children);
-  for (let i = 1; i < kids.length - 1; i++) {
-    if (!isCreateTypeSeparator(kids[i])) continue;
-    if (isCreateTypeOption(kids[i - 1]) && isCreateTypeOption(kids[i + 1])) return kids[i];
-  }
-  return null;
+/** Custom dotted rule matching Create Item type rows (do not rely on Foundry sep nodes). */
+function createSpellbookTypeSeparator() {
+  const sep = document.createElement("div");
+  sep.className = "npc-spellbook-type-sep";
+  sep.setAttribute("data-spellbook-type-sep", "true");
+  sep.setAttribute("aria-hidden", "true");
+  return sep;
 }
 
 function addSpellbookToCreateDialog(app, html) {
@@ -136,26 +118,10 @@ function addSpellbookToCreateDialog(app, html) {
       }
     }
 
-    // List is usually: [Spell] [sep] [Subclass]
-    // Want:           [Spell] [sep] [Spellbook] [sep] [Subclass]
-    // Clone the native sep node so style matches other rows (no invented dotted rules).
-    const afterSpellSep = isCreateTypeSeparator(wrapper.nextElementSibling)
-      ? wrapper.nextElementSibling
-      : null;
-    const sepSource = afterSpellSep || findNativeTypeSeparator(wrapper.parentElement);
-
-    if (afterSpellSep) {
-      afterSpellSep.after(clone);
-      clone.after(afterSpellSep.cloneNode(true));
-    } else if (sepSource) {
-      wrapper.after(sepSource.cloneNode(true));
-      wrapper.nextElementSibling.after(clone);
-      if (isCreateTypeOption(clone.nextElementSibling)) {
-        clone.after(sepSource.cloneNode(true));
-      }
-    } else {
-      wrapper.after(clone);
-    }
+    // [Spell] … → [Spell] [our dotted sep] [Spellbook] …
+    const sep = createSpellbookTypeSeparator();
+    wrapper.after(sep);
+    sep.after(clone);
   }
 
   const form = root.tagName === "FORM" ? root : root.querySelector("form") || root.closest("form");

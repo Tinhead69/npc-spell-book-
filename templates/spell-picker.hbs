@@ -19,7 +19,12 @@
 
       <div class="spell-picker-filter-columns">
         <div class="spell-picker-filter-col">
-          <div class="spell-picker-col-title">Level</div>
+          <div class="spell-picker-col-title">
+            <span>Level</span>
+            <button type="button" class="spell-picker-select-all" data-action="toggleAllLevels">
+              {{#if levelsAllSelected}}Deselect All{{else}}Select All{{/if}}
+            </button>
+          </div>
           {{#each levels}}
             <label class="spell-picker-check">
               <input type="checkbox" data-action="toggleLevel" data-level="{{this.level}}" {{#if this.selected}}checked{{/if}} />
@@ -28,7 +33,12 @@
           {{/each}}
         </div>
         <div class="spell-picker-filter-col">
-          <div class="spell-picker-col-title">School</div>
+          <div class="spell-picker-col-title">
+            <span>School</span>
+            <button type="button" class="spell-picker-select-all" data-action="toggleAllSchools">
+              {{#if schoolsAllSelected}}Deselect All{{else}}Select All{{/if}}
+            </button>
+          </div>
           {{#each schools}}
             <label class="spell-picker-check" title="{{this.label}}">
               <input type="checkbox" data-action="toggleSchool" data-school="{{this.id}}" {{#if this.selected}}checked{{/if}} />
@@ -41,7 +51,10 @@
 
     <section class="spell-picker-compendiums">
       <div class="spell-picker-section-title">
-        <i class="fas fa-atlas"></i> Compendiums
+        <span><i class="fas fa-atlas"></i> Compendiums</span>
+        <button type="button" class="spell-picker-select-all" data-action="toggleAllPacks">
+          {{#if packsAllSelected}}Deselect All{{else}}Select All{{/if}}
+        </button>
       </div>
       <div class="spell-picker-pack-list">
         {{#if packs.length}}
@@ -120,7 +133,7 @@
           </section>
         {{/each}}
       {{else}}
-        <div class="empty-notice">No spells found matching selected filters.</div>
+        <div class="empty-notice">Select levels, schools, and compendiums to find spells.</div>
       {{/if}}
     </div>
   </main>
