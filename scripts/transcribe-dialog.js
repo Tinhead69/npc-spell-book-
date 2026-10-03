@@ -46,7 +46,6 @@ export class TranscribeSpellsApp extends HandlebarsApplicationMixin(ApplicationV
     },
     actions: {
       toggleLevel: TranscribeSpellsApp._onToggleLevel,
-      changeWizard: TranscribeSpellsApp._onChangeWizard,
       transcribeSpell: TranscribeSpellsApp._onTranscribeSpell
     }
   };
@@ -61,7 +60,7 @@ export class TranscribeSpellsApp extends HandlebarsApplicationMixin(ApplicationV
   _onFirstRender(context, options) {
     super._onFirstRender?.(context, options);
 
-    // Native <select> change is more reliable than relying solely on data-action.
+    // Do not use data-action on <select> — AppV2 click handlers re-render and close the dropdown.
     this.element.addEventListener("change", (event) => {
       if (!event.target?.matches?.('select[name="wizardSelect"]')) return;
       TranscribeSpellsApp._onChangeWizard.call(this, event, event.target);

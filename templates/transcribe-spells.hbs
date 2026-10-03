@@ -6,7 +6,7 @@
         <div class="item-name transcribe-title">{{spellbook.name}}</div>
         <div class="header-actions transcribe-wizard-bar">
           <label class="transcribe-wizard-label" for="transcribe-wizard-select">Wizard</label>
-          <select id="transcribe-wizard-select" name="wizardSelect" class="transcribe-wizard-select" data-action="changeWizard">
+          <select id="transcribe-wizard-select" name="wizardSelect" class="transcribe-wizard-select">
             {{#each wizards}}
               <option value="{{this.uuid}}" {{#if this.selected}}selected{{/if}}>{{this.name}}</option>
             {{/each}}
