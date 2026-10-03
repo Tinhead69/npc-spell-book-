@@ -4,6 +4,19 @@
       <div class="spell-picker-section-title">
         <i class="fas fa-filter"></i> Spell Filters
       </div>
+
+      <div class="spell-picker-rules">
+        <div class="spell-picker-col-title">Rules Version</div>
+        <div class="spell-picker-rules-options">
+          {{#each rulesOptions}}
+            <label class="spell-picker-check rules-check">
+              <input type="radio" name="rulesVersion" data-action="setRulesVersion" data-rules="{{this.id}}" {{#if this.selected}}checked{{/if}} />
+              <span>{{this.label}}</span>
+            </label>
+          {{/each}}
+        </div>
+      </div>
+
       <div class="spell-picker-filter-columns">
         <div class="spell-picker-filter-col">
           <div class="spell-picker-col-title">Level</div>
@@ -71,11 +84,14 @@
 
             <div class="spell-list">
               {{#each this.spells}}
-                <div class="spell-row spell-grid-row picker-grid-row" data-uuid="{{this.uuid}}">
+                <div class="spell-row spell-grid-row picker-grid-row" data-uuid="{{this.uuid}}" data-spell-tooltip="1">
                   <div class="col-name">
                     <img class="spell-icon" src="{{this.img}}" alt="" />
                     <div class="spell-details">
                       <span class="spell-title">{{this.name}}</span>
+                      {{#if this.rulesLabel}}
+                        <span class="spell-rules-tag">{{this.rulesLabel}}</span>
+                      {{/if}}
                     </div>
                   </div>
                   <div class="col-time">{{this.castingTime}}</div>

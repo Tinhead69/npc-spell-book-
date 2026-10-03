@@ -4,6 +4,40 @@ export function getSpellbookSpells(spellbook) {
   return foundry.utils.getProperty(spellbook, `flags.${MODULE_ID}.spells`) || [];
 }
 
+/**
+ * Resolve whether spell data is 2014 (legacy) or 2024 rules.
+ * @param {object} system Item system data (or full spell entry with .system)
+ * @returns {"2014"|"2024"|"unknown"}
+ */
+export function getSpellRulesVersion(system) {
+  const src = system?.source ?? system?.system?.source ?? {};
+  const rules = String(src.rules ?? "").trim();
+  if (rules === "2014" || rules === "2024") return rules;
+
+  const book = String(src.book ?? src.custom ?? src.value ?? "").toLowerCase();
+  if (
+    book.includes("2024")
+    || book.includes("xphb")
+    || book.includes("xmm")
+    || book.includes("xge24")
+    || book === "phb24"
+    || book === "srd-2024"
+    || book === "srd-5.2"
+  ) return "2024";
+
+  if (
+    book.includes("2014")
+    || book === "phb"
+    || book === "srd"
+    || book === "srd-5.1"
+    || book.includes("xge")
+    || book.includes("tce")
+    || book.includes("ee")
+  ) return "2014";
+
+  return "unknown";
+}
+
 /** @type {{ uuids: Set<string>, identifiers: Set<string>, names: Set<string> }|null} */
 let _wizardMembershipCache = null;
 

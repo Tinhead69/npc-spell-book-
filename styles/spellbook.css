@@ -356,6 +356,26 @@
   text-transform: uppercase;
 }
 
+.spell-picker-rules {
+  margin-bottom: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #2a2d37;
+}
+
+.spell-picker-rules-options {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.spell-picker-root .spell-rules-tag {
+  display: inline-block;
+  margin-top: 1px;
+  font-size: 0.65em;
+  color: #9aa0b0;
+  letter-spacing: 0.3px;
+}
+
 .spell-picker-filter-columns {
   display: flex;
   gap: 12px;
@@ -669,4 +689,42 @@
   padding: 40px 12px;
   color: #777;
   font-style: italic;
+}
+
+/* Floating spell description tooltip (body-level) */
+.npc-spellbook-tooltip {
+  position: fixed;
+  z-index: 10000;
+  width: 380px;
+  max-height: 320px;
+  overflow: auto;
+  background: #111216;
+  color: #ddd;
+  border: 1px solid #4a151b;
+  border-radius: 4px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.55);
+  pointer-events: none;
+  padding: 0;
+}
+
+.npc-spellbook-tooltip-header {
+  background: #4a151b;
+  color: #fff;
+  font-weight: bold;
+  font-size: 0.9rem;
+  padding: 6px 10px;
+}
+
+.npc-spellbook-tooltip-body {
+  padding: 8px 10px 10px;
+  font-size: 0.8rem;
+  line-height: 1.35;
+}
+
+.npc-spellbook-tooltip-body p {
+  margin: 0 0 0.5em 0;
+}
+
+.npc-spellbook-tooltip-body p:last-child {
+  margin-bottom: 0;
 }

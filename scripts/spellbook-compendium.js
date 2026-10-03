@@ -5,7 +5,8 @@ import {
   formatSpellEntry,
   isWizardSpell,
   getWizardSpellMembership,
-  clearWizardSpellMembershipCache
+  clearWizardSpellMembershipCache,
+  getSpellRulesVersion
 } from "./data.js";
 
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
@@ -20,6 +21,9 @@ const FALLBACK_SCHOOLS = {
   nec: "Necromancy",
   trs: "Transmutation"
 };
+
+const TOOLTIP_DELAY_MS = 2000;
+const TOOLTIP_ID = "npc-spellbook-spell-tooltip";
 
 export class CompendiumSpellPicker extends HandlebarsApplicationMixin(ApplicationV2) {
   constructor(options = {}) {
@@ -45,6 +49,13 @@ export class CompendiumSpellPicker extends HandlebarsApplicationMixin(Applicatio
     this.searchQuery = "";
     this.collapsedLevels = new Set();
     this._searchTimer = null;
+
+    // Default to 2014 legacy — matches this module's PHB 2014 transcription rules.
+    this.rulesVersion = "2014";
+
+    this._tooltipTimer = null;
+    this._tooltipRow = null;
+    this._descCache = new Map();
   }
 
   static DEFAULT_OPTIONS = {
@@ -65,6 +76,7 @@ export class CompendiumSpellPicker extends HandlebarsApplicationMixin(Applicatio
       toggleSchool: CompendiumSpellPicker._onToggleSchool,
       togglePack: CompendiumSpellPicker._onTogglePack,
       toggleLevelGroup: CompendiumSpellPicker._onToggleLevelGroup,
+      setRulesVersion: CompendiumSpellPicker._onSetRulesVersion,
       addSpell: CompendiumSpellPicker._onAddSpell
     }
   };
@@ -97,11 +109,109 @@ export class CompendiumSpellPicker extends HandlebarsApplicationMixin(Applicatio
   /** @override */
   _onFirstRender(context, options) {
     super._onFirstRender?.(context, options);
+
     this.element.addEventListener("input", (event) => {
       if (!event.target?.matches?.("[data-search-input]")) return;
       this.searchQuery = event.target.value.toLowerCase().trim();
       clearTimeout(this._searchTimer);
       this._searchTimer = setTimeout(() => this.render({ force: false }), 150);
+    });
+
+    this.element.addEventListener("pointerover", (event) => {
+      const row = event.target.closest?.(".spell-row[data-uuid]");
+      if (!row || !this.element.contains(row)) return;
+      const from = event.relatedTarget;
+      if (from && row.contains(from)) return;
+      this._scheduleSpellTooltip(row);
+    });
+
+    this.element.addEventListener("pointerout", (event) => {
+      const row = event.target.closest?.(".spell-row[data-uuid]");
+      if (!row) return;
+      const to = event.relatedTarget;
+      if (to && row.contains(to)) return;
+      this._clearSpellTooltip(true);
+    });
+  }
+
+  /** @override */
+  async close(options) {
+    this._clearSpellTooltip(true);
+    return super.close(options);
+  }
+
+  _scheduleSpellTooltip(row) {
+    this._clearSpellTooltip(false);
+    this._tooltipRow = row;
+    this._tooltipTimer = setTimeout(() => {
+      this._showSpellTooltip(row);
+    }, TOOLTIP_DELAY_MS);
+  }
+
+  _clearSpellTooltip(removeElement) {
+    if (this._tooltipTimer) {
+      clearTimeout(this._tooltipTimer);
+      this._tooltipTimer = null;
+    }
+    this._tooltipRow = null;
+    if (removeElement) {
+      document.getElementById(TOOLTIP_ID)?.remove();
+    }
+  }
+
+  async _showSpellTooltip(row) {
+    if (!row?.isConnected || this._tooltipRow !== row) return;
+
+    const uuid = row.dataset.uuid;
+    const title = row.querySelector(".spell-title")?.textContent?.trim() || "Spell";
+
+    let bodyHtml = this._descCache.get(uuid);
+    if (!bodyHtml) {
+      try {
+        const doc = await fromUuid(uuid);
+        const raw = doc?.system?.description?.value
+          || doc?.system?.description
+          || "<em>No description available.</em>";
+        const enricher = foundry.applications?.ux?.TextEditor?.implementation
+          || globalThis.TextEditor;
+        bodyHtml = enricher?.enrichHTML
+          ? await enricher.enrichHTML(String(raw), { async: true, relativeTo: doc })
+          : String(raw);
+      } catch (err) {
+        console.warn("NPC Spellbook | Failed to load spell description", uuid, err);
+        bodyHtml = "<em>Could not load spell description.</em>";
+      }
+      this._descCache.set(uuid, bodyHtml);
+    }
+
+    if (this._tooltipRow !== row || !row.isConnected) return;
+
+    let tip = document.getElementById(TOOLTIP_ID);
+    if (!tip) {
+      tip = document.createElement("div");
+      tip.id = TOOLTIP_ID;
+      tip.className = "npc-spellbook-tooltip";
+      document.body.appendChild(tip);
+    }
+
+    tip.innerHTML = `
+      <header class="npc-spellbook-tooltip-header">${foundry.utils.escapeHTML(title)}</header>
+      <div class="npc-spellbook-tooltip-body">${bodyHtml}</div>
+    `;
+
+    const rect = row.getBoundingClientRect();
+    const tipWidth = 380;
+    const left = Math.max(8, Math.min(rect.left + 24, window.innerWidth - tipWidth - 8));
+    tip.style.left = `${left}px`;
+    tip.style.top = `${Math.max(8, rect.bottom + 6)}px`;
+    tip.style.display = "block";
+
+    // Keep tooltip on-screen vertically
+    requestAnimationFrame(() => {
+      const tipRect = tip.getBoundingClientRect();
+      if (tipRect.bottom > window.innerHeight - 8) {
+        tip.style.top = `${Math.max(8, rect.top - tipRect.height - 6)}px`;
+      }
     });
   }
 
@@ -109,7 +219,6 @@ export class CompendiumSpellPicker extends HandlebarsApplicationMixin(Applicatio
     const context = await super._prepareContext(options);
     const spellPacks = await this._getSpellPacks();
 
-    // Ensure wizard list cache is fresh enough for this open; rebuild if empty.
     let membership = getWizardSpellMembership();
     if (!membership) {
       clearWizardSpellMembershipCache();
@@ -124,7 +233,12 @@ export class CompendiumSpellPicker extends HandlebarsApplicationMixin(Applicatio
       this.selectedPacks = new Set(spellPacks.map((p) => p.collection));
     }
 
-    // Cantrips cannot be transcribed into a spellbook (PHB 2014) — levels 1–9 only.
+    context.rulesOptions = [
+      { id: "2014", label: "2014 (Legacy)", selected: this.rulesVersion === "2014" },
+      { id: "2024", label: "2024", selected: this.rulesVersion === "2024" },
+      { id: "both", label: "Both", selected: this.rulesVersion === "both" }
+    ];
+
     context.levels = Array.from({ length: 9 }, (_, i) => {
       const level = i + 1;
       return {
@@ -153,7 +267,6 @@ export class CompendiumSpellPicker extends HandlebarsApplicationMixin(Applicatio
       bookSpells.map((s) => (s.name || "").toLowerCase().trim()).filter(Boolean)
     );
 
-    // Deduplicate across packs by level + name (case-insensitive). First match wins.
     const seenKeys = new Set();
     const allMatchingSpells = [];
     const indexFields = [
@@ -162,6 +275,7 @@ export class CompendiumSpellPicker extends HandlebarsApplicationMixin(Applicatio
       "system.level",
       "system.school",
       "system.identifier",
+      "system.source",
       "system.activation",
       "system.range",
       "system.target",
@@ -184,11 +298,21 @@ export class CompendiumSpellPicker extends HandlebarsApplicationMixin(Applicatio
         const name = entry.name || "";
         const nameKey = name.toLowerCase().trim();
         const uuid = entry.uuid || `Compendium.${pack.collection}.Item.${entry._id}`;
-        const dedupeKey = `${level}|${nameKey}`;
+        const rules = getSpellRulesVersion(entry.system);
+        const dedupeKey = `${level}|${nameKey}|${rules}`;
 
         if (level < 1 || !this.selectedLevels.has(level)) continue;
         if (school && !this.selectedSchools.has(school)) continue;
         if (this.searchQuery && !nameKey.includes(this.searchQuery)) continue;
+        if (this.rulesVersion !== "both") {
+          if (rules === "unknown") {
+            // Unknown source: include only when it doesn't contradict the selected edition.
+            // Prefer excluding unknowns from strict 2024 filter; allow for 2014 (legacy default).
+            if (this.rulesVersion === "2024") continue;
+          } else if (rules !== this.rulesVersion) {
+            continue;
+          }
+        }
         if (!isWizardSpell({ uuid, name, level, system: entry.system })) continue;
         if (!nameKey || seenKeys.has(dedupeKey)) continue;
         seenKeys.add(dedupeKey);
@@ -209,6 +333,8 @@ export class CompendiumSpellPicker extends HandlebarsApplicationMixin(Applicatio
 
         allMatchingSpells.push({
           ...formatted,
+          rules,
+          rulesLabel: rules === "2014" ? "2014" : rules === "2024" ? "2024" : "",
           isPresent: inBook && !justAdded,
           isAdded: justAdded
         });
@@ -222,7 +348,7 @@ export class CompendiumSpellPicker extends HandlebarsApplicationMixin(Applicatio
       const lvl = spell.level;
       if (!levelMap[lvl]) {
         levelMap[lvl] = {
-          label: lvl === 0 ? "CANTRIPS" : `LEVEL ${lvl}`,
+          label: `LEVEL ${lvl}`,
           level: lvl,
           collapsed: this.collapsedLevels.has(lvl),
           spells: []
@@ -237,6 +363,14 @@ export class CompendiumSpellPicker extends HandlebarsApplicationMixin(Applicatio
     context.hasSpells = context.activeLevels.length > 0;
 
     return context;
+  }
+
+  static _onSetRulesVersion(event, target) {
+    const input = target.matches?.("input") ? target : target.querySelector?.("input");
+    const rules = input?.dataset.rules ?? target.dataset.rules;
+    if (!rules) return;
+    this.rulesVersion = rules;
+    this.render({ force: false });
   }
 
   static _onToggleLevel(event, target) {
@@ -299,6 +433,8 @@ export class CompendiumSpellPicker extends HandlebarsApplicationMixin(Applicatio
 
     const scrollContainer = this.element?.querySelector(".spell-picker-scroll-container");
     const scrollTop = scrollContainer ? scrollContainer.scrollTop : 0;
+
+    this._clearSpellTooltip(true);
 
     await addSpellToSpellbook(this.spellbook, uuid);
     this.addedSessionUuids.add(uuid);
