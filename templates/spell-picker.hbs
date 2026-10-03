@@ -59,7 +59,7 @@
       <div class="spell-picker-pack-list">
         {{#if packs.length}}
           {{#each packs}}
-            <label class="spell-picker-check pack-check" data-action="togglePack" data-pack="{{this.id}}" title="{{this.label}}">
+            <label class="spell-picker-check pack-check" data-action="togglePack" data-pack="{{this.id}}" data-pack-ids="{{this.packIds}}" title="{{this.title}}">
               <input type="checkbox" tabindex="-1" {{#if this.selected}}checked{{/if}} />
               <span>{{this.label}}</span>
             </label>

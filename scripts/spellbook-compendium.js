@@ -149,16 +149,52 @@ export class CompendiumSpellPicker extends HandlebarsApplicationMixin(Applicatio
     }
   };
 
+  /** Normalize a Foundry index/Collection into an array of entry objects. */
+  static _getIndexEntries(index) {
+    if (!index) return [];
+    if (Array.isArray(index)) return index;
+    // Foundry Collection: filter(true) / contents are value arrays (never Map pairs).
+    if (typeof index.filter === "function") return index.filter(() => true);
+    if (Array.isArray(index.contents)) return index.contents;
+    if (typeof index.values === "function") return Array.from(index.values());
+    return [];
+  }
+
   /**
-   * True when an index entry is a real dnd5e spell (not a mis-typed feature/item).
-   * Requires type, numeric level (0+), and school — equipment packs never satisfy this.
+   * True when an index entry is a real dnd5e spell document.
+   * Equipment / feature packs do not use type "spell".
    */
   static _indexEntryIsSpell(entry) {
     if (!entry || entry.type !== "spell") return false;
-    const level = Number(entry.system?.level);
-    if (!Number.isFinite(level) || level < 0) return false;
-    if (!entry.system?.school) return false;
+    const levelRaw = entry.system?.level ?? entry["system.level"];
+    // If level is present in the index, require it to be a valid spell level (0 = cantrip).
+    if (levelRaw !== undefined && levelRaw !== null && levelRaw !== "") {
+      const level = Number(levelRaw);
+      if (!Number.isFinite(level) || level < 0) return false;
+    }
     return true;
+  }
+
+  /** True when this Item pack contains at least one spell. */
+  static async _packContainsSpells(pack) {
+    const index = await pack.getIndex({ fields: ["type", "system.level", "system.school"] });
+    const entries = CompendiumSpellPicker._getIndexEntries(index);
+    const spellEntries = entries.filter((e) => e?.type === "spell");
+    if (!spellEntries.length) return false;
+
+    // Prefer structured index data (level/school) so mis-typed junk is dropped.
+    if (spellEntries.some((e) => CompendiumSpellPicker._indexEntryIsSpell(e)
+      && (e.system?.school || e["system.school"] || e.system?.level !== undefined || e["system.level"] !== undefined))) {
+      return true;
+    }
+
+    // Index may omit system fields — verify one document for real.
+    try {
+      const doc = await pack.getDocument(spellEntries[0]._id);
+      return Boolean(doc && doc.type === "spell" && doc.system && ("level" in doc.system));
+    } catch (_) {
+      return false;
+    }
   }
 
   /** Item compendiums that actually contain at least one spell document. */
@@ -172,11 +208,7 @@ export class CompendiumSpellPicker extends HandlebarsApplicationMixin(Applicatio
 
     for (const pack of itemPacks) {
       try {
-        await pack.getIndex({ fields: ["type", "system.level", "system.school"] });
-        const entries = pack.index?.contents ?? Array.from(pack.index?.values?.() ?? pack.index ?? []);
-        if (entries.some((entry) => CompendiumSpellPicker._indexEntryIsSpell(entry))) {
-          spellPacks.push(pack);
-        }
+        if (await CompendiumSpellPicker._packContainsSpells(pack)) spellPacks.push(pack);
       } catch (err) {
         console.warn(`NPC Spellbook | Skipping pack (index failed): ${pack.collection}`, err);
       }
@@ -188,6 +220,63 @@ export class CompendiumSpellPicker extends HandlebarsApplicationMixin(Applicatio
 
     this._spellPacksCache = spellPacks;
     return spellPacks;
+  }
+
+  /** Package / module id for a compendium pack. */
+  static _packPackageId(pack) {
+    return pack?.metadata?.packageName
+      || pack?.metadata?.package
+      || String(pack?.collection || "").split(".")[0]
+      || pack?.collection;
+  }
+
+  /** True for CPR / Chris's Premades packs (normal, 2024, third-party, etc.). */
+  static _isCprPack(pack) {
+    const packageId = CompendiumSpellPicker._packPackageId(pack);
+    if (packageId === "chris-premades") return true;
+    const haystack = `${pack.collection} ${pack.metadata?.label || ""}`.toLowerCase();
+    return /\bcpr\b/.test(haystack) || /chris.?premades?/.test(haystack);
+  }
+
+  /**
+   * UI rows for the compendium list.
+   * All CPR spell packs (core + 2024 / third-party) share one "CPR" checkbox.
+   */
+  static _buildPackGroups(spellPacks) {
+    const cprPacks = [];
+    const otherPacks = [];
+
+    for (const pack of spellPacks) {
+      if (CompendiumSpellPicker._isCprPack(pack)) cprPacks.push(pack);
+      else otherPacks.push(pack);
+    }
+
+    const groups = [];
+
+    if (cprPacks.length) {
+      const packIds = cprPacks.map((p) => p.collection);
+      const memberLabels = cprPacks.map((p) => p.metadata?.label || p.collection);
+      groups.push({
+        id: "pkg:chris-premades",
+        label: "CPR",
+        packIds,
+        packIdsJoined: packIds.join(","),
+        title: memberLabels.join(", ")
+      });
+    }
+
+    for (const pack of otherPacks) {
+      groups.push({
+        id: pack.collection,
+        label: pack.metadata?.label || pack.collection,
+        packIds: [pack.collection],
+        packIdsJoined: pack.collection,
+        title: pack.metadata?.label || pack.collection
+      });
+    }
+
+    groups.sort((a, b) => a.label.localeCompare(b.label));
+    return groups;
   }
 
   _getSchoolConfig() {
@@ -328,10 +417,13 @@ export class CompendiumSpellPicker extends HandlebarsApplicationMixin(Applicatio
     context.schoolsAllSelected = schoolIds.length > 0
       && schoolIds.every((id) => this.selectedSchools.has(id));
 
-    context.packs = spellPacks.map((p) => ({
-      id: p.collection,
-      label: p.metadata.label,
-      selected: this.selectedPacks.has(p.collection)
+    const packGroups = CompendiumSpellPicker._buildPackGroups(spellPacks);
+    context.packs = packGroups.map((g) => ({
+      id: g.id,
+      label: g.label,
+      packIds: g.packIdsJoined,
+      title: g.title,
+      selected: g.packIds.length > 0 && g.packIds.every((id) => this.selectedPacks.has(id))
     }));
     context.packsAllSelected = validPackIds.size > 0
       && [...validPackIds].every((id) => this.selectedPacks.has(id));
@@ -476,13 +568,22 @@ export class CompendiumSpellPicker extends HandlebarsApplicationMixin(Applicatio
 
   static _onTogglePack(event, target) {
     event.preventDefault();
-    const pack = target.dataset.pack
-      ?? target.querySelector?.("input")?.dataset?.pack;
-    if (!pack) return;
     if (!(this.selectedPacks instanceof Set)) this.selectedPacks = new Set();
 
-    if (this.selectedPacks.has(pack)) this.selectedPacks.delete(pack);
-    else this.selectedPacks.add(pack);
+    // Grouped rows pass comma-separated pack ids (e.g. all CPR spell packs).
+    const joined = target.dataset.packIds
+      ?? target.querySelector?.("[data-pack-ids]")?.dataset?.packIds
+      ?? "";
+    const packIds = joined.split(",").map((s) => s.trim()).filter(Boolean);
+    if (!packIds.length) {
+      const pack = target.dataset.pack ?? target.querySelector?.("input")?.dataset?.pack;
+      if (pack) packIds.push(pack);
+    }
+    if (!packIds.length) return;
+
+    const allOn = packIds.every((id) => this.selectedPacks.has(id));
+    if (allOn) packIds.forEach((id) => this.selectedPacks.delete(id));
+    else packIds.forEach((id) => this.selectedPacks.add(id));
 
     this._rerenderPreservingScroll();
   }
