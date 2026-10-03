@@ -90,28 +90,30 @@
   align-items: center;
 }
 
-.npc-spellbook-sheet-body .btn {
+.npc-spellbook-sheet-body .header-actions .btn {
   background: #1f222d;
   color: #fff;
   border: 1px solid #3a3f50;
   border-radius: 3px;
   padding: 4px 10px;
   font-size: 0.8em;
+  line-height: 1.2;
+  width: auto;
+  min-width: 0;
+  height: auto;
+  flex: 0 0 auto;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 5px;
 }
 
-.npc-spellbook-sheet-body .btn:hover {
+.npc-spellbook-sheet-body .header-actions .btn:hover {
   background: #2a2e3d;
 }
 
-.npc-spellbook-sheet-body .clear-spellbook-btn {
-  padding: 4px 8px;
-}
-
-.npc-spellbook-sheet-body .clear-spellbook-btn:hover {
+.npc-spellbook-sheet-body .header-actions .clear-spellbook-btn:hover {
   background: #4a151b;
   border-color: #ff5555;
   color: #ffaaaa;

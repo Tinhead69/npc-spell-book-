@@ -65,15 +65,19 @@ function isCreateTypeOption(el) {
 }
 
 /**
- * True separator siblings between type options (not <hr> near Folder, not invented rules).
- * Most Create Item UIs use per-row borders instead — those need no separator nodes.
+ * Separator siblings between type options (not <hr> near Folder).
+ * Foundry often uses empty decorative nodes for the dotted rules.
  */
 function isCreateTypeSeparator(el) {
   if (!el || !(el instanceof HTMLElement)) return false;
   if (isCreateTypeOption(el)) return false;
   if (el.tagName === "HR") return false;
   if (el.matches(".separator, .divider, .form-fields-separator, [data-spellbook-type-sep]")) return true;
-  return false;
+  const empty = !el.textContent.trim()
+    && !el.querySelector("input, select, textarea, button, img, svg, i, label");
+  if (!empty) return false;
+  return isCreateTypeOption(el.previousElementSibling)
+    || isCreateTypeOption(el.nextElementSibling);
 }
 
 /** Find a native separator that sits between two type options in the same list. */
@@ -132,20 +136,23 @@ function addSpellbookToCreateDialog(app, html) {
       }
     }
 
-    // Prefer no custom rules: other rows already get solid borders from the system CSS.
-    // Only clone a real separator node when the list actually uses them.
+    // List is usually: [Spell] [sep] [Subclass]
+    // Want:           [Spell] [sep] [Spellbook] [sep] [Subclass]
+    // Clone the native sep node so style matches other rows (no invented dotted rules).
     const afterSpellSep = isCreateTypeSeparator(wrapper.nextElementSibling)
       ? wrapper.nextElementSibling
       : null;
     const sepSource = afterSpellSep || findNativeTypeSeparator(wrapper.parentElement);
 
-    if (afterSpellSep && sepSource) {
-      // [Spell] [sep] [Subclass] → [Spell] [sep] [Spellbook] [sep] [Subclass]
+    if (afterSpellSep) {
       afterSpellSep.after(clone);
-      clone.before(sepSource.cloneNode(true));
+      clone.after(afterSpellSep.cloneNode(true));
     } else if (sepSource) {
       wrapper.after(sepSource.cloneNode(true));
       wrapper.nextElementSibling.after(clone);
+      if (isCreateTypeOption(clone.nextElementSibling)) {
+        clone.after(sepSource.cloneNode(true));
+      }
     } else {
       wrapper.after(clone);
     }

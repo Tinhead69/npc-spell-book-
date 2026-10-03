@@ -128,16 +128,42 @@ export class CompendiumSpellPicker extends HandlebarsApplicationMixin(Applicatio
     }
   };
 
+  /**
+   * True when an index entry is a real dnd5e spell (not a mis-typed feature/item).
+   * Requires type, numeric level (0+), and school — equipment packs never satisfy this.
+   */
+  static _indexEntryIsSpell(entry) {
+    if (!entry || entry.type !== "spell") return false;
+    const level = Number(entry.system?.level);
+    if (!Number.isFinite(level) || level < 0) return false;
+    if (!entry.system?.school) return false;
+    return true;
+  }
+
+  /** Item compendiums that actually contain at least one spell document. */
   async _getSpellPacks() {
     if (this._spellPacksCache) return this._spellPacksCache;
 
-    const itemPacks = game.packs.filter((p) => p.metadata.type === "Item");
+    const itemPacks = game.packs.filter((p) =>
+      (p.documentName || p.metadata?.type) === "Item"
+    );
     const spellPacks = [];
 
     for (const pack of itemPacks) {
-      const index = await pack.getIndex({ fields: ["type"] });
-      if (index.some((e) => e.type === "spell")) spellPacks.push(pack);
+      try {
+        await pack.getIndex({ fields: ["type", "system.level", "system.school"] });
+        const entries = pack.index?.contents ?? Array.from(pack.index?.values?.() ?? pack.index ?? []);
+        if (entries.some((entry) => CompendiumSpellPicker._indexEntryIsSpell(entry))) {
+          spellPacks.push(pack);
+        }
+      } catch (err) {
+        console.warn(`NPC Spellbook | Skipping pack (index failed): ${pack.collection}`, err);
+      }
     }
+
+    spellPacks.sort((a, b) =>
+      String(a.metadata?.label || a.collection).localeCompare(String(b.metadata?.label || b.collection))
+    );
 
     this._spellPacksCache = spellPacks;
     return spellPacks;
@@ -247,8 +273,15 @@ export class CompendiumSpellPicker extends HandlebarsApplicationMixin(Applicatio
       this._warnedMissingWizardList = true;
     }
 
+    const validPackIds = new Set(spellPacks.map((p) => p.collection));
     if (!this.selectedPacks) {
-      this.selectedPacks = new Set(spellPacks.map((p) => p.collection));
+      this.selectedPacks = new Set(validPackIds);
+    } else {
+      // Drop stale selections for packs that have no spells.
+      this.selectedPacks = new Set([...this.selectedPacks].filter((id) => validPackIds.has(id)));
+      if (!this.selectedPacks.size && validPackIds.size) {
+        this.selectedPacks = new Set(validPackIds);
+      }
     }
 
     context.rulesOptions = [
