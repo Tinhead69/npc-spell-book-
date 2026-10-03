@@ -79,11 +79,16 @@ export class TranscribeSpellsApp extends HandlebarsApplicationMixin(ApplicationV
   }
 
   /**
-   * Re-resolve the loot book and selected wizard from the live world collections
-   * so comparisons always use current actor spell items.
+   * Re-resolve the loot book and selected wizard from live documents.
+   * Spellbooks may live in the world OR on an actor's inventory.
    */
   _refreshDocuments() {
-    if (this.spellbook?.id) {
+    const bookUuid = this.spellbook?.uuid;
+    if (bookUuid && typeof fromUuidSync === "function") {
+      try {
+        this.spellbook = fromUuidSync(bookUuid) || this.spellbook;
+      } catch (_) { /* keep existing ref */ }
+    } else if (this.spellbook?.id) {
       this.spellbook = game.items.get(this.spellbook.id) || this.spellbook;
     }
 
@@ -251,8 +256,18 @@ export class TranscribeSpellsApp extends HandlebarsApplicationMixin(ApplicationV
  * @param {Item} sourceSpellbook
  */
 export async function openTranscribeDialog(sourceSpellbook) {
-  // Prefer the world Item document so flag reads stay current.
-  const spellbook = (sourceSpellbook?.id && game.items.get(sourceSpellbook.id)) || sourceSpellbook;
+  // Resolve world items or actor-owned inventory items via UUID.
+  let spellbook = sourceSpellbook;
+  if (sourceSpellbook?.uuid) {
+    try {
+      spellbook = (await fromUuid(sourceSpellbook.uuid)) || sourceSpellbook;
+    } catch (_) {
+      spellbook = sourceSpellbook;
+    }
+  } else if (sourceSpellbook?.id) {
+    spellbook = game.items.get(sourceSpellbook.id) || sourceSpellbook;
+  }
+
   const spells = getSpellbookSpells(spellbook);
   if (!spells.length) {
     ui.notifications?.warn("There are no spells in this spellbook to transcribe.");

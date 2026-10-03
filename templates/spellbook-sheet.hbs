@@ -5,15 +5,19 @@
       <div class="header-fields">
         <input class="item-name" name="name" type="text" value="{{item.name}}" placeholder="Spellbook Name" />
         <div class="header-actions">
-          <button type="button" class="btn" data-action="addSpells">
-            <i class="fas fa-plus"></i> Add Spell
-          </button>
+          {{#if canAddSpells}}
+            <button type="button" class="btn" data-action="addSpells">
+              <i class="fas fa-plus"></i> Add Spell
+            </button>
+          {{/if}}
           <button type="button" class="btn" data-action="transcribeSpells">
             <i class="fas fa-scroll"></i> Transcribe
           </button>
-          <button type="button" class="btn clear-spellbook-btn" data-action="clearSpellbook">
-            <i class="fas fa-trash"></i> Clear
-          </button>
+          {{#if canAddSpells}}
+            <button type="button" class="btn clear-spellbook-btn" data-action="clearSpellbook">
+              <i class="fas fa-trash"></i> Clear
+            </button>
+          {{/if}}
         </div>
       </div>
     </div>
@@ -51,9 +55,11 @@
                 <div class="col-target">{{this.target}}</div>
                 <div class="col-components">{{this.components}}</div>
                 <div class="col-actions">
-                  <a class="spell-delete" data-action="deleteSpell" data-uuid="{{this.uuid}}" title="Remove Spell">
-                    <i class="fas fa-trash"></i>
-                  </a>
+                  {{#if @root.canAddSpells}}
+                    <a class="spell-delete" data-action="deleteSpell" data-uuid="{{this.uuid}}" title="Remove Spell">
+                      <i class="fas fa-trash"></i>
+                    </a>
+                  {{/if}}
                 </div>
               </div>
             {{/each}}

@@ -120,6 +120,11 @@ export function getSpellbookSheetClass() {
       const item = this.document;
       context.item = item;
 
+      // GM-only book editing, and only while the spellbook is a world item
+      // (not after it has been placed in an actor inventory).
+      const isOwned = Boolean(item?.isEmbedded || item?.actor);
+      context.canAddSpells = Boolean(game.user?.isGM && !isOwned);
+
       const spells = getSpellbookSpells(item);
       const displaySpells = await Promise.all(spells.map((s) => enrichSpellForDisplay(s)));
 
@@ -186,9 +191,18 @@ export function getSpellbookSheetClass() {
       return fp.browse();
     }
 
-    /** Action: Open the three-pane spell picker */
+    /** Action: Open the three-pane spell picker (GM + world item only) */
     static async _onAddSpells(event, target) {
-      new CompendiumSpellPicker({ spellbook: this.document }).render({ force: true });
+      const item = this.document;
+      if (!game.user?.isGM) {
+        ui.notifications?.warn("Only the GM can add spells to a spellbook.");
+        return;
+      }
+      if (item?.isEmbedded || item?.actor) {
+        ui.notifications?.warn("Spells cannot be added after the spellbook is in an actor's inventory.");
+        return;
+      }
+      new CompendiumSpellPicker({ spellbook: item }).render({ force: true });
     }
 
     /** Action: Open transcribe dialog */
@@ -196,8 +210,14 @@ export function getSpellbookSheetClass() {
       openTranscribeDialog(this.document);
     }
 
-    /** Action: Clear all spells */
+    /** Action: Clear all spells (GM + world item only) */
     static async _onClearSpellbook(event, target) {
+      const item = this.document;
+      if (!game.user?.isGM || item?.isEmbedded || item?.actor) {
+        ui.notifications?.warn("Only the GM can clear a world spellbook before it is claimed.");
+        return;
+      }
+
       const confirmed = await DialogV2.confirm({
         window: { title: "Clear Spellbook" },
         content: "<p>Are you sure you want to remove all spells from this spellbook?</p>",
@@ -205,17 +225,23 @@ export function getSpellbookSheetClass() {
       });
 
       if (confirmed) {
-        await this.document.unsetFlag(MODULE_ID, "spells");
+        await item.unsetFlag(MODULE_ID, "spells");
         this.render(true);
       }
     }
 
-    /** Action: Delete individual spell */
+    /** Action: Delete individual spell (GM + world item only) */
     static async _onDeleteSpell(event, target) {
+      const item = this.document;
+      if (!game.user?.isGM || item?.isEmbedded || item?.actor) {
+        ui.notifications?.warn("Only the GM can edit spells on a world spellbook.");
+        return;
+      }
+
       const uuid = target.dataset.uuid;
       if (uuid) {
         clearSpellTooltip(this, true);
-        await removeSpellFromSpellbook(this.document, uuid);
+        await removeSpellFromSpellbook(item, uuid);
         this.render(true);
       }
     }
