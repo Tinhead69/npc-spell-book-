@@ -21,13 +21,13 @@
         <div class="spell-picker-filter-col">
           <div class="spell-picker-col-title">
             <span>Level</span>
-            <button type="button" class="spell-picker-select-all" data-action="toggleAllLevels">
+            <button type="button" class="spell-picker-select-all" data-action="toggleAllLevels" data-mode="{{#if levelsAllSelected}}deselect{{else}}select{{/if}}">
               {{#if levelsAllSelected}}Deselect All{{else}}Select All{{/if}}
             </button>
           </div>
           {{#each levels}}
-            <label class="spell-picker-check">
-              <input type="checkbox" data-action="toggleLevel" data-level="{{this.level}}" {{#if this.selected}}checked{{/if}} />
+            <label class="spell-picker-check" data-action="toggleLevel" data-level="{{this.level}}">
+              <input type="checkbox" tabindex="-1" {{#if this.selected}}checked{{/if}} />
               <span>{{this.label}}</span>
             </label>
           {{/each}}
@@ -35,13 +35,13 @@
         <div class="spell-picker-filter-col">
           <div class="spell-picker-col-title">
             <span>School</span>
-            <button type="button" class="spell-picker-select-all" data-action="toggleAllSchools">
+            <button type="button" class="spell-picker-select-all" data-action="toggleAllSchools" data-mode="{{#if schoolsAllSelected}}deselect{{else}}select{{/if}}">
               {{#if schoolsAllSelected}}Deselect All{{else}}Select All{{/if}}
             </button>
           </div>
           {{#each schools}}
-            <label class="spell-picker-check" title="{{this.label}}">
-              <input type="checkbox" data-action="toggleSchool" data-school="{{this.id}}" {{#if this.selected}}checked{{/if}} />
+            <label class="spell-picker-check" data-action="toggleSchool" data-school="{{this.id}}" title="{{this.label}}">
+              <input type="checkbox" tabindex="-1" {{#if this.selected}}checked{{/if}} />
               <span>{{this.label}}</span>
             </label>
           {{/each}}
@@ -52,15 +52,15 @@
     <section class="spell-picker-compendiums">
       <div class="spell-picker-section-title">
         <span><i class="fas fa-atlas"></i> Compendiums</span>
-        <button type="button" class="spell-picker-select-all" data-action="toggleAllPacks">
+        <button type="button" class="spell-picker-select-all" data-action="toggleAllPacks" data-mode="{{#if packsAllSelected}}deselect{{else}}select{{/if}}">
           {{#if packsAllSelected}}Deselect All{{else}}Select All{{/if}}
         </button>
       </div>
       <div class="spell-picker-pack-list">
         {{#if packs.length}}
           {{#each packs}}
-            <label class="spell-picker-check pack-check" title="{{this.label}}">
-              <input type="checkbox" data-action="togglePack" data-pack="{{this.id}}" {{#if this.selected}}checked{{/if}} />
+            <label class="spell-picker-check pack-check" data-action="togglePack" data-pack="{{this.id}}" title="{{this.label}}">
+              <input type="checkbox" tabindex="-1" {{#if this.selected}}checked{{/if}} />
               <span>{{this.label}}</span>
             </label>
           {{/each}}

@@ -23,44 +23,62 @@ const FALLBACK_SCHOOLS = {
   trs: "Transmutation"
 };
 
-/** Show a loading dialog only if work takes longer than delayMs. */
+/** Lightweight ApplicationV2 loading window (avoids deprecated V1 Dialog). */
+class SpellLoadingApp extends ApplicationV2 {
+  static DEFAULT_OPTIONS = {
+    id: "npc-spellbook-loading",
+    classes: ["npc-spellbook-loading-dialog"],
+    tag: "div",
+    window: {
+      title: "Loading Spells",
+      icon: "fas fa-spinner",
+      resizable: false,
+      minimizable: false
+    },
+    position: { width: 320 }
+  };
+
+  constructor(message, options = {}) {
+    super(options);
+    this._message = message;
+  }
+
+  _renderHTML() {
+    const safe = foundry.utils.escapeHTML?.(this._message) || this._message;
+    return `
+      <div class="npc-spellbook-loading-content">
+        <i class="fas fa-spinner fa-spin" aria-hidden="true"></i>
+        <p>${safe}</p>
+      </div>
+    `;
+  }
+
+  _replaceHTML(result, content) {
+    content.innerHTML = result;
+  }
+}
+
+/** Show a loading window only if work takes longer than delayMs. */
 function beginDelayedLoading(message, delayMs = 2000) {
-  let dialog = null;
+  let app = null;
   let dismissed = false;
 
   const timer = setTimeout(() => {
     if (dismissed) return;
-
-    dialog = new Dialog({
-      title: "Loading Spells",
-      content: `
-        <div class="npc-spellbook-loading-content">
-          <i class="fas fa-spinner fa-spin" aria-hidden="true"></i>
-          <p>${foundry.utils.escapeHTML?.(message) || message}</p>
-        </div>
-      `,
-      buttons: {},
-      default: null
-    }, {
-      width: 320,
-      classes: ["dialog", "npc-spellbook-loading-dialog"],
-      minimizable: false,
-      resizable: false
-    });
-
-    dialog.render(true);
+    app = new SpellLoadingApp(message);
+    app.render({ force: true });
   }, delayMs);
 
   return {
     async dismiss() {
       dismissed = true;
       clearTimeout(timer);
-      if (dialog?.rendered) {
+      if (app?.rendered) {
         try {
-          await dialog.close({ force: true });
+          await app.close({ force: true });
         } catch (_) { /* already closed */ }
       }
-      dialog = null;
+      app = null;
     }
   };
 }
@@ -213,21 +231,23 @@ export class CompendiumSpellPicker extends HandlebarsApplicationMixin(Applicatio
   async render(options = {}, _options = {}) {
     const opts = typeof options === "boolean" ? { force: options, ..._options } : { ...options, ..._options };
     const firstOpen = !this.rendered;
-    const message = firstOpen
-      ? "Scanning spell compendiums… This can take a moment with large worlds."
-      : "Updating spell list…";
 
-    // Avoid stacking multiple loaders if render is re-entered.
-    if (!this._loadingHandle) {
-      this._loadingHandle = beginDelayedLoading(message, 2000);
+    // Only show the loader on first open (compendium scan). Filter toggles re-render quietly.
+    if (firstOpen && !this._loadingHandle) {
+      this._loadingHandle = beginDelayedLoading(
+        "Scanning spell compendiums… This can take a moment with large worlds.",
+        2000
+      );
     }
 
     try {
       return await super.render(opts);
     } finally {
-      const handle = this._loadingHandle;
-      this._loadingHandle = null;
-      await handle?.dismiss();
+      if (firstOpen) {
+        const handle = this._loadingHandle;
+        this._loadingHandle = null;
+        await handle?.dismiss();
+      }
     }
   }
 
@@ -430,68 +450,63 @@ export class CompendiumSpellPicker extends HandlebarsApplicationMixin(Applicatio
   }
 
   static _onToggleLevel(event, target) {
-    const input = target.matches?.("input") ? target : target.querySelector?.("input");
-    const level = Number(input?.dataset.level ?? target.dataset.level);
+    event.preventDefault();
+    const level = Number(target.dataset.level
+      ?? target.querySelector?.("input")?.dataset?.level);
     if (Number.isNaN(level)) return;
 
-    if (input?.type === "checkbox") {
-      if (input.checked) this.selectedLevels.add(level);
-      else this.selectedLevels.delete(level);
-    } else if (this.selectedLevels.has(level)) this.selectedLevels.delete(level);
+    // Toggle from stored state (do not trust checkbox.checked — AppV2 click timing varies).
+    if (this.selectedLevels.has(level)) this.selectedLevels.delete(level);
     else this.selectedLevels.add(level);
 
     this._rerenderPreservingScroll();
   }
 
   static _onToggleSchool(event, target) {
-    const input = target.matches?.("input") ? target : target.querySelector?.("input");
-    const school = input?.dataset.school ?? target.dataset.school;
+    event.preventDefault();
+    const school = target.dataset.school
+      ?? target.querySelector?.("input")?.dataset?.school;
     if (!school) return;
 
-    if (input?.type === "checkbox") {
-      if (input.checked) this.selectedSchools.add(school);
-      else this.selectedSchools.delete(school);
-    } else if (this.selectedSchools.has(school)) this.selectedSchools.delete(school);
+    if (this.selectedSchools.has(school)) this.selectedSchools.delete(school);
     else this.selectedSchools.add(school);
 
     this._rerenderPreservingScroll();
   }
 
   static _onTogglePack(event, target) {
-    const input = target.matches?.("input") ? target : target.querySelector?.("input");
-    const pack = input?.dataset.pack ?? target.dataset.pack;
+    event.preventDefault();
+    const pack = target.dataset.pack
+      ?? target.querySelector?.("input")?.dataset?.pack;
     if (!pack) return;
     if (!(this.selectedPacks instanceof Set)) this.selectedPacks = new Set();
 
-    if (input?.type === "checkbox") {
-      if (input.checked) this.selectedPacks.add(pack);
-      else this.selectedPacks.delete(pack);
-    } else if (this.selectedPacks.has(pack)) this.selectedPacks.delete(pack);
+    if (this.selectedPacks.has(pack)) this.selectedPacks.delete(pack);
     else this.selectedPacks.add(pack);
 
     this._rerenderPreservingScroll();
   }
 
-  static _onToggleAllLevels(_event, _target) {
+  static _onToggleAllLevels(_event, target) {
+    const mode = target.dataset.mode;
     const all = [1, 2, 3, 4, 5, 6, 7, 8, 9];
-    if (all.every((level) => this.selectedLevels.has(level))) this.selectedLevels.clear();
-    else this.selectedLevels = new Set(all);
+    this.selectedLevels = mode === "deselect" ? new Set() : new Set(all);
     this._rerenderPreservingScroll();
   }
 
-  static _onToggleAllSchools(_event, _target) {
+  static _onToggleAllSchools(_event, target) {
+    const mode = target.dataset.mode;
     const all = Object.keys(this._getSchoolConfig());
-    if (all.length && all.every((id) => this.selectedSchools.has(id))) this.selectedSchools.clear();
-    else this.selectedSchools = new Set(all);
+    this.selectedSchools = mode === "deselect" ? new Set() : new Set(all);
     this._rerenderPreservingScroll();
   }
 
-  static async _onToggleAllPacks(_event, _target) {
+  static async _onToggleAllPacks(_event, target) {
+    // Honor the button mode from click time so a slow await cannot flip into "select all".
+    const mode = target.dataset.mode;
     const packs = await this._getSpellPacks();
     const all = packs.map((p) => p.collection);
-    if (!(this.selectedPacks instanceof Set)) this.selectedPacks = new Set();
-    if (all.length && all.every((id) => this.selectedPacks.has(id))) this.selectedPacks.clear();
-    else this.selectedPacks = new Set(all);
+    this.selectedPacks = mode === "deselect" ? new Set() : new Set(all);
     this._rerenderPreservingScroll();
   }
 
