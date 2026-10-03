@@ -221,12 +221,9 @@ export function evaluateTranscription(wizard, spellEntry, options = {}) {
     };
   }
 
+  // Only the actor's actual spell items count — module transcription flags can go stale
+  // if the player deletes the spell from their sheet afterward.
   if (actorKnowsSpell(wizard, spellEntry)) {
-    return { canLearn: false, reasonKey: "Already in spellbook", reasonText: "In Spellbook" };
-  }
-
-  const known = getTranscribedSpells(wizard);
-  if (known.some((s) => s.uuid === spellEntry.uuid || s.name === spellEntry.name)) {
     return { canLearn: false, reasonKey: "Already in spellbook", reasonText: "In Spellbook" };
   }
 

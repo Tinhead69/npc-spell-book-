@@ -5,6 +5,7 @@ import {
   evaluateTranscription,
   getGold,
   getMaxSpellLevel,
+  getTranscribedSpells,
   getTranscriptionCost,
   getTranscriptionHours,
   getWizardLevel,
@@ -96,12 +97,32 @@ export class TranscribeSpellsApp extends HandlebarsApplicationMixin(ApplicationV
       || null;
   }
 
+  /**
+   * Drop module transcription log entries for spells no longer on the actor.
+   * Prevents a deleted spell from staying locked as "In Spellbook".
+   */
+  async _pruneStaleTranscriptionLog(wizard) {
+    if (!wizard) return;
+    const logged = getTranscribedSpells(wizard);
+    if (!logged.length) return;
+
+    const kept = logged.filter((entry) => actorKnowsSpell(wizard, entry));
+    if (kept.length === logged.length) return;
+
+    try {
+      await wizard.setFlag(MODULE_ID, "transcribedSpells", kept);
+    } catch (err) {
+      console.warn("NPC Spellbook | Failed to prune transcription log", err);
+    }
+  }
+
   /** @override */
   async _prepareContext(options) {
     const context = await super._prepareContext(options);
 
     // Every open / re-render: compare live actor spellbook vs item spellbook.
     this._refreshDocuments();
+    await this._pruneStaleTranscriptionLog(this.selectedWizard);
 
     const wizard = this.selectedWizard;
     const wizardLevel = getWizardLevel(wizard);
