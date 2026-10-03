@@ -102,20 +102,32 @@ export { isWizardSpell };
 function normalizeSpellName(name) {
   return String(name ?? "")
     .toLowerCase()
-    .replace(/\s*\(\s*legacy\s*\)\s*$/i, "")
-    .replace(/\s+2014\s*$/i, "")
-    .replace(/\s+2024\s*$/i, "")
+    // Strip edition tags: "(Legacy)", "(2024)", trailing "2014"/"2024"
+    .replace(/\s*\([^)]*\)\s*$/g, "")
+    .replace(/\s+20(14|24)\s*$/i, "")
     .trim();
 }
 
+/**
+ * Does this actor already have this spell in their dnd5e spell list / spellbook?
+ * Compares by identifier, normalized name, and source UUIDs.
+ */
 export function actorKnowsSpell(actor, spellEntry) {
   if (!actor?.items) return false;
+
   const targetName = normalizeSpellName(spellEntry.name);
   const targetUuid = spellEntry.uuid ?? "";
+  const targetId = String(
+    spellEntry.system?.identifier || spellEntry.identifier || ""
+  ).toLowerCase().trim();
 
   return actor.items.some((item) => {
     if (item.type !== "spell") return false;
-    if (normalizeSpellName(item.name) === targetName) return true;
+
+    const itemId = String(item.system?.identifier || "").toLowerCase().trim();
+    if (targetId && itemId && targetId === itemId) return true;
+
+    if (targetName && normalizeSpellName(item.name) === targetName) return true;
 
     const sourceUuid = item._stats?.compendiumSource ?? item.flags?.core?.sourceId ?? "";
     if (targetUuid && sourceUuid && sourceUuid === targetUuid) return true;

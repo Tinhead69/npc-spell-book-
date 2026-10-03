@@ -77,9 +77,32 @@ export class TranscribeSpellsApp extends HandlebarsApplicationMixin(ApplicationV
     return super.close(options);
   }
 
+  /**
+   * Re-resolve the loot book and selected wizard from the live world collections
+   * so comparisons always use current actor spell items.
+   */
+  _refreshDocuments() {
+    if (this.spellbook?.id) {
+      this.spellbook = game.items.get(this.spellbook.id) || this.spellbook;
+    }
+
+    this.wizardActors = game.actors.filter((actor) => isWizard(actor));
+
+    const selectedId = this.selectedWizard?.id;
+    const selectedUuid = this.selectedWizard?.uuid;
+    this.selectedWizard = (selectedId && game.actors.get(selectedId))
+      || (selectedUuid && fromUuidSync?.(selectedUuid))
+      || this.wizardActors[0]
+      || null;
+  }
+
   /** @override */
   async _prepareContext(options) {
     const context = await super._prepareContext(options);
+
+    // Every open / re-render: compare live actor spellbook vs item spellbook.
+    this._refreshDocuments();
+
     const wizard = this.selectedWizard;
     const wizardLevel = getWizardLevel(wizard);
     const maxSpellLevel = getMaxSpellLevel(wizardLevel);
@@ -93,7 +116,7 @@ export class TranscribeSpellsApp extends HandlebarsApplicationMixin(ApplicationV
     context.wizards = this.wizardActors.map((actor) => ({
       uuid: actor.uuid,
       name: actor.name,
-      selected: actor.uuid === wizard?.uuid
+      selected: actor.uuid === wizard?.uuid || actor.id === wizard?.id
     }));
 
     context.wizardLevel = wizardLevel;
@@ -105,14 +128,13 @@ export class TranscribeSpellsApp extends HandlebarsApplicationMixin(ApplicationV
       const level = Number(spell.level ?? spell.system?.level ?? 0);
       const cost = getTranscriptionCost(level);
       const hours = getTranscriptionHours(level);
+
+      // Primary check: is this spell already on the actor?
+      const isPresent = Boolean(wizard && actorKnowsSpell(wizard, spell));
+
       const evaluation = wizard
         ? evaluateTranscription(wizard, spell, { requireGold: true, checkAfford: true })
         : { canLearn: false, reasonKey: "No wizard selected", reasonText: "No wizard selected" };
-
-      const isPresent = Boolean(wizard && (
-        actorKnowsSpell(wizard, spell)
-        || evaluation.reasonKey === "Already in spellbook"
-      ));
 
       const row = {
         uuid: spell.uuid,
@@ -125,7 +147,9 @@ export class TranscribeSpellsApp extends HandlebarsApplicationMixin(ApplicationV
         timeLabel: level < 1 ? "—" : `${hours} hr${hours === 1 ? "" : "s"}`,
         isPresent,
         canTranscribe: !isPresent && evaluation.canLearn,
-        statusText: evaluation.reasonText || evaluation.reasonKey || ""
+        statusText: isPresent
+          ? "In Spellbook"
+          : (evaluation.reasonText || evaluation.reasonKey || "")
       };
 
       if (!levelMap[level]) {
@@ -206,7 +230,9 @@ export class TranscribeSpellsApp extends HandlebarsApplicationMixin(ApplicationV
  * @param {Item} sourceSpellbook
  */
 export async function openTranscribeDialog(sourceSpellbook) {
-  const spells = getSpellbookSpells(sourceSpellbook);
+  // Prefer the world Item document so flag reads stay current.
+  const spellbook = (sourceSpellbook?.id && game.items.get(sourceSpellbook.id)) || sourceSpellbook;
+  const spells = getSpellbookSpells(spellbook);
   if (!spells.length) {
     ui.notifications?.warn("There are no spells in this spellbook to transcribe.");
     return;
@@ -218,14 +244,16 @@ export async function openTranscribeDialog(sourceSpellbook) {
     return;
   }
 
+  // Prefer controlled token's base actor, then assigned character, then first wizard.
   const controlled = canvas.tokens?.controlled?.[0]?.actor;
+  const controlledBase = controlled?.id ? game.actors.get(controlled.id) : controlled;
   const assigned = game.user?.character;
-  const selectedWizard = (controlled && isWizard(controlled))
-    ? controlled
+  const selectedWizard = (controlledBase && isWizard(controlledBase))
+    ? controlledBase
     : (assigned && isWizard(assigned) ? assigned : wizardActors[0]);
 
   new TranscribeSpellsApp({
-    spellbook: sourceSpellbook,
+    spellbook,
     wizardActors,
     selectedWizard
   }).render({ force: true });
