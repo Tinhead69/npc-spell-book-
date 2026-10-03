@@ -1,8 +1,8 @@
-import { MODULE_ID } from "./data.js";
+import { MODULE_ID, getSpellbookSpells, removeSpellFromSpellbook } from "./data.js";
 
-const { HandlebarsApplicationMixin, ItemSheetV2 } = foundry.applications.api;
+const { HandlebarsApplicationMixin, DocumentSheetV2 } = foundry.applications.api;
 
-export class NpcSpellbookSheet extends HandlebarsApplicationMixin(ItemSheetV2) {
+export class NpcSpellbookSheet extends HandlebarsApplicationMixin(DocumentSheetV2) {
   static DEFAULT_OPTIONS = {
     id: "npc-spellbook-sheet",
     classes: ["dnd5e2", "sheet", "item", "spellbook-sheet"],
@@ -16,10 +16,10 @@ export class NpcSpellbookSheet extends HandlebarsApplicationMixin(ItemSheetV2) {
       height: 600
     },
     actions: {
-      addSpells: NpcSpellbookSheet._onAddSpells,
-      transcribe: NpcSpellbookSheet._onTranscribe,
-      clearAll: NpcSpellbookSheet._onClearAll,
-      deleteSpell: NpcSpellbookSheet._onDeleteSpell
+      openPicker: NpcSpellbookSheet._onAddSpells,
+      transcribeSpells: NpcSpellbookSheet._onTranscribe,
+      clearSpellbook: NpcSpellbookSheet._onClearAll,
+      removeSpell: NpcSpellbookSheet._onRemoveSpell
     }
   };
 
@@ -36,7 +36,8 @@ export class NpcSpellbookSheet extends HandlebarsApplicationMixin(ItemSheetV2) {
     context.item = item;
     context.isEditable = this.isEditable;
 
-    const storedSpells = item.getFlag(MODULE_ID, "spells") || [];
+    // Utilize existing helper from data.js instead of re-parsing flags
+    const storedSpells = getSpellbookSpells(item);
     const spellGroups = {};
 
     for (const rawSpell of storedSpells) {
@@ -53,20 +54,20 @@ export class NpcSpellbookSheet extends HandlebarsApplicationMixin(ItemSheetV2) {
       spellGroups[lvl].spells.push(prepared);
     }
 
-    context.spellGroups = Object.keys(spellGroups)
+    context.activeLevels = Object.keys(spellGroups)
       .map(Number)
       .sort((a, b) => a - b)
       .map(lvl => spellGroups[lvl]);
 
-    context.hasSpells = context.spellGroups.length > 0;
+    context.hasSpells = context.activeLevels.length > 0;
     return context;
   }
 
   _prepareSpellData(spell) {
     const sys = spell.system || {};
 
-    // 1. Casting Time / Activation
-    let time = "";
+    // 1. Activation / Casting Time
+    let castTime = "—";
     if (sys.activation?.type) {
       const val = sys.activation.value ? `${sys.activation.value} ` : "";
       const typeMap = {
@@ -78,67 +79,67 @@ export class NpcSpellbookSheet extends HandlebarsApplicationMixin(ItemSheetV2) {
         day: "Day",
         special: "Spec"
       };
-      time = typeMap[sys.activation.type] || `${val}${sys.activation.type}`;
+      castTime = typeMap[sys.activation.type] || `${val}${sys.activation.type}`;
     }
 
     // 2. Range
-    let range = "";
+    let rangeStr = "—";
     if (sys.range) {
-      if (sys.range.units === "self") range = "Self";
-      else if (sys.range.units === "touch") range = "Touch";
-      else if (sys.range.units === "spec") range = "Spec";
-      else if (sys.range.value) range = `${sys.range.value} ${sys.range.units || ""}`.trim();
+      if (sys.range.units === "self") rangeStr = "Self";
+      else if (sys.range.units === "touch") rangeStr = "Touch";
+      else if (sys.range.units === "spec") rangeStr = "Spec";
+      else if (sys.range.value) rangeStr = `${sys.range.value} ${sys.range.units || ""}`.trim();
     }
 
     // 3. Target
-    let target = "";
+    let targetStr = "—";
     if (sys.target?.affects?.count || sys.target?.affects?.type) {
-      target = `${sys.target.affects.count || ""} ${sys.target.affects.type || ""}`.trim();
+      targetStr = `${sys.target.affects.count || ""} ${sys.target.affects.type || ""}`.trim();
     } else if (sys.target?.template?.size) {
-      target = `${sys.target.template.size}ft ${sys.target.template.type || ""}`.trim();
+      targetStr = `${sys.target.template.size}ft ${sys.target.template.type || ""}`.trim();
     } else if (sys.target?.type) {
-      target = sys.target.type;
+      targetStr = sys.target.type;
     }
 
-    // 4. Components (V, S, M)
+    // 4. Components
     const props = Array.isArray(sys.properties)
       ? sys.properties
       : (sys.properties instanceof Set ? Array.from(sys.properties) : []);
 
-    const cArray = [];
-    if (props.includes("vocal") || sys.components?.vocal) cArray.push("V");
-    if (props.includes("somatic") || sys.components?.somatic) cArray.push("S");
-    if (props.includes("material") || sys.components?.material) cArray.push("M");
-    const components = cArray.join(", ");
+    const compList = [];
+    if (props.includes("vocal") || sys.components?.vocal) compList.push("V");
+    if (props.includes("somatic") || sys.components?.somatic) compList.push("S");
+    if (props.includes("material") || sys.components?.material) compList.push("M");
+    const componentsStr = compList.join(", ") || "—";
 
     // 5. Duration
-    let duration = "";
+    let durationStr = "—";
     if (sys.duration) {
-      if (sys.duration.units === "inst") duration = "Inst";
-      else if (sys.duration.units === "perm") duration = "Perm";
-      else if (sys.duration.value) duration = `${sys.duration.value} ${sys.duration.units || ""}`.trim();
-      else duration = sys.duration.units || "";
+      if (sys.duration.units === "inst") durationStr = "Inst";
+      else if (sys.duration.units === "perm") durationStr = "Perm";
+      else if (sys.duration.value) durationStr = `${sys.duration.value} ${sys.duration.units || ""}`.trim();
+      else if (sys.duration.units) durationStr = sys.duration.units;
     }
 
     return {
-      id: spell._id || spell.id,
+      uuid: spell.uuid || spell._id || spell.id,
       name: spell.name,
       img: spell.img || "icons/svg/book.svg",
       level: sys.level ?? 0,
-      time: time || "—",
-      range: range || "—",
-      target: target || "—",
-      components: components || "—",
-      duration: duration || "—"
+      time: castTime,
+      range: rangeStr,
+      target: targetStr,
+      components: componentsStr,
+      duration: durationStr
     };
   }
 
   static async _onAddSpells(event, target) {
-    // Triggers compendium picker dialog
+    // Compendium picker logic
   }
 
   static async _onTranscribe(event, target) {
-    // Transcribe to actor logic
+    // Transcription logic
   }
 
   static async _onClearAll(event, target) {
@@ -146,11 +147,16 @@ export class NpcSpellbookSheet extends HandlebarsApplicationMixin(ItemSheetV2) {
     this.render();
   }
 
-  static async _onDeleteSpell(event, target) {
-    const spellId = target.dataset.spellId;
-    const spells = this.document.getFlag(MODULE_ID, "spells") || [];
-    const updated = spells.filter(s => (s._id || s.id) !== spellId);
-    await this.document.setFlag(MODULE_ID, "spells", updated);
+  static async _onRemoveSpell(event, target) {
+    const spellUuid = target.dataset.uuid;
+    if (!spellUuid) return;
+    
+    // Use existing module function from data.js
+    await removeSpellFromSpellbook(this.document, spellUuid);
     this.render();
   }
+}
+
+export function getSpellbookSheetClass() {
+  return NpcSpellbookSheet;
 }
