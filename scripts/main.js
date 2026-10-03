@@ -1,4 +1,4 @@
-import { MODULE_ID } from "./data.js";
+import { MODULE_ID, isSpellbook } from "./data.js";
 import { NpcSpellbookSheet } from "./spellbook-sheet.js";
 
 // 1. Initialize sheet registration safely
@@ -22,7 +22,7 @@ Hooks.once("init", () => {
 
 // 2. Intercept item sheet requests so spellbook items open NpcSpellbookSheet
 Hooks.on("getItemSheetClass", (item) => {
-  if (item?.getFlag(MODULE_ID, "isSpellbook")) {
+  if (isSpellbook(item)) {
     return NpcSpellbookSheet;
   }
 });
