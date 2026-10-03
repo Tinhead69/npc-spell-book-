@@ -1,19 +1,18 @@
 import { MODULE_ID } from "./data.js";
-import { getSpellbookSheetClass } from "./spellbook-sheet.js";
+import { NpcSpellbookSheet } from "./spellbook-sheet.js";
 
 // 1. Initialize sheet registration safely
 Hooks.once("init", () => {
-  const SpellbookSheet = getSpellbookSheetClass();
   const SheetConfig = foundry.applications?.config?.DocumentSheetConfig ?? globalThis.DocumentSheetConfig;
 
   if (SheetConfig?.registerSheet) {
-    SheetConfig.registerSheet(Item, MODULE_ID, SpellbookSheet, {
+    SheetConfig.registerSheet(Item, MODULE_ID, NpcSpellbookSheet, {
       types: ["loot", "container", "consumable"],
       makeDefault: false,
       label: "NPC Spellbook Sheet"
     });
   } else if (typeof Items?.registerSheet === "function") {
-    Items.registerSheet(MODULE_ID, SpellbookSheet, {
+    Items.registerSheet(MODULE_ID, NpcSpellbookSheet, {
       types: ["loot", "container", "consumable"],
       makeDefault: false,
       label: "NPC Spellbook Sheet"
@@ -21,10 +20,10 @@ Hooks.once("init", () => {
   }
 });
 
-// 2. Intercept item sheet requests so spellbook items ALWAYS open SpellbookSheet
+// 2. Intercept item sheet requests so spellbook items open NpcSpellbookSheet
 Hooks.on("getItemSheetClass", (item) => {
   if (item?.getFlag(MODULE_ID, "isSpellbook")) {
-    return getSpellbookSheetClass();
+    return NpcSpellbookSheet;
   }
 });
 
@@ -108,8 +107,7 @@ function addSpellbookToCreateDialog(app, html) {
         });
 
         if (createdItem) {
-          const SpellbookSheet = getSpellbookSheetClass();
-          new SpellbookSheet({ document: createdItem }).render(true);
+          new NpcSpellbookSheet({ document: createdItem }).render(true);
         }
 
         if (typeof app.close === "function") app.close();
