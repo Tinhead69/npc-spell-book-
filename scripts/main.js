@@ -1,16 +1,24 @@
 import { MODULE_ID } from "./data.js";
 import { getSpellbookSheetClass } from "./spellbook-sheet.js";
 
-// 1. Initialize sheet registration and hook into getItemSheetClass
+// 1. Initialize sheet registration safely
 Hooks.once("init", () => {
   const SpellbookSheet = getSpellbookSheetClass();
-  const DocumentSheetConfig = foundry.applications.config.DocumentSheetConfig || globalThis.DocumentSheetConfig;
+  const SheetConfig = foundry.applications?.config?.DocumentSheetConfig ?? globalThis.DocumentSheetConfig;
 
-  DocumentSheetConfig.registerSheet(Item, MODULE_ID, SpellbookSheet, {
-    types: ["loot", "container", "consumable"],
-    makeDefault: false,
-    label: "NPC Spellbook Sheet"
-  });
+  if (SheetConfig?.registerSheet) {
+    SheetConfig.registerSheet(Item, MODULE_ID, SpellbookSheet, {
+      types: ["loot", "container", "consumable"],
+      makeDefault: false,
+      label: "NPC Spellbook Sheet"
+    });
+  } else if (typeof Items?.registerSheet === "function") {
+    Items.registerSheet(MODULE_ID, SpellbookSheet, {
+      types: ["loot", "container", "consumable"],
+      makeDefault: false,
+      label: "NPC Spellbook Sheet"
+    });
+  }
 });
 
 // 2. Intercept item sheet requests so spellbook items ALWAYS open SpellbookSheet
@@ -30,7 +38,6 @@ function addSpellbookToCreateDialog(app, html) {
   const radios = Array.from(root.querySelectorAll('input[name="type"]'));
   if (!radios.length) return;
 
-  // Find target radio option to clone
   const targetRadio = radios.find(r => r.value === "spell") ||
                       radios.find(r => r.value === "loot") ||
                       radios[radios.length - 1];
@@ -70,7 +77,6 @@ function addSpellbookToCreateDialog(app, html) {
     wrapper.after(clone);
   }
 
-  // Intercept form submit when "Spellbook" is chosen
   const form = root.tagName === "FORM" ? root : root.querySelector("form") || root.closest("form");
   if (form && !form.dataset.spellbookHooked) {
     form.dataset.spellbookHooked = "true";
@@ -112,7 +118,6 @@ function addSpellbookToCreateDialog(app, html) {
   }
 }
 
-// Hooks for V13 dialog rendering
 Hooks.on("renderDocumentCreateDialog", addSpellbookToCreateDialog);
 Hooks.on("renderCreateDocumentDialog", addSpellbookToCreateDialog);
 Hooks.on("renderDialog", addSpellbookToCreateDialog);
