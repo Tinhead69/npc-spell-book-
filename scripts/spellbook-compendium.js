@@ -1,7 +1,10 @@
 import {
   MODULE_ID,
+  HOMEBREW_PACK_ID,
   addSpellToSpellbook,
   getSpellbookSpells,
+  getWorldHomebrewSpells,
+  markSpellAsWizard,
   formatSpellEntry,
   isWizardSpell,
   getWizardSpellMembership,
@@ -10,7 +13,7 @@ import {
 } from "./data.js";
 import { bindSpellDescriptionTooltips, clearSpellTooltip } from "./spell-tooltip.js";
 
-const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
+const { ApplicationV2, HandlebarsApplicationMixin, DialogV2 } = foundry.applications.api;
 
 const FALLBACK_SCHOOLS = {
   abj: "Abjuration",
@@ -257,8 +260,9 @@ export class CompendiumSpellPicker extends HandlebarsApplicationMixin(Applicatio
   /**
    * UI rows for the compendium list.
    * CPR and GPS each collapse to one checkbox covering all their spell packs.
+   * Homebrew (world Items) is always offered when any world spells exist.
    */
-  static _buildPackGroups(spellPacks) {
+  static _buildPackGroups(spellPacks, { includeHomebrew = false } = {}) {
     const cprPacks = [];
     const gpsPacks = [];
     const otherPacks = [];
@@ -270,6 +274,16 @@ export class CompendiumSpellPicker extends HandlebarsApplicationMixin(Applicatio
     }
 
     const groups = [];
+
+    if (includeHomebrew) {
+      groups.push({
+        id: HOMEBREW_PACK_ID,
+        label: "Homebrew",
+        packIds: [HOMEBREW_PACK_ID],
+        packIdsJoined: HOMEBREW_PACK_ID,
+        title: "World Items directory spells (GM marks wizard spells)"
+      });
+    }
 
     if (cprPacks.length) {
       groups.push(CompendiumSpellPicker._makePackGroup(
@@ -297,8 +311,121 @@ export class CompendiumSpellPicker extends HandlebarsApplicationMixin(Applicatio
       });
     }
 
-    groups.sort((a, b) => a.label.localeCompare(b.label));
-    return groups;
+    // Keep Homebrew pinned at the top; sort the rest.
+    const homebrew = groups.filter((g) => g.id === HOMEBREW_PACK_ID);
+    const rest = groups.filter((g) => g.id !== HOMEBREW_PACK_ID)
+      .sort((a, b) => a.label.localeCompare(b.label));
+    return [...homebrew, ...rest];
+  }
+
+  /**
+   * Ask the GM which untagged world spells should count as wizard spells.
+   * @param {Item[]} candidates
+   * @returns {Promise<string[]|null>} Selected UUIDs, or null if cancelled
+   */
+  static async _promptMarkHomebrewWizardSpells(candidates) {
+    if (!candidates?.length) return [];
+
+    const escape = foundry.utils.escapeHTML?.bind(foundry.utils)
+      || ((s) => String(s).replace(/[&<>"']/g, (c) => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+      }[c])));
+
+    const rows = candidates
+      .slice()
+      .sort((a, b) => String(a.name).localeCompare(String(b.name)))
+      .map((spell) => {
+        const level = Number(spell.system?.level ?? 0);
+        const img = spell.img || "icons/svg/book.svg";
+        return `
+          <label class="npc-homebrew-tag-row">
+            <input type="checkbox" name="hb-spell" value="${escape(spell.uuid)}" />
+            <img src="${escape(img)}" alt="" width="24" height="24" />
+            <span class="npc-homebrew-tag-name">${escape(spell.name)}</span>
+            <span class="npc-homebrew-tag-level">Lvl ${level}</span>
+          </label>
+        `;
+      })
+      .join("");
+
+    const content = `
+      <div class="npc-homebrew-tag-dialog">
+        <p>These world spells are not on the wizard list. Select which ones should be treated as <strong>wizard</strong> spells for this module.</p>
+        <div class="npc-homebrew-tag-list">${rows}</div>
+      </div>
+    `;
+
+    let selectedUuids = null;
+    try {
+      await DialogV2.wait({
+        window: { title: "Homebrew Wizard Spells", icon: "fas fa-hat-wizard" },
+        position: { width: 480 },
+        content,
+        buttons: [
+          {
+            action: "apply",
+            label: "Apply",
+            icon: "fas fa-check",
+            default: true,
+            callback: (_event, button) => {
+              const scope = button.form
+                || button.closest?.(".window-content, .application, form")
+                || document;
+              selectedUuids = [...scope.querySelectorAll('input[name="hb-spell"]:checked')]
+                .map((input) => input.value)
+                .filter(Boolean);
+              return selectedUuids;
+            }
+          },
+          {
+            action: "cancel",
+            label: "Cancel",
+            icon: "fas fa-times",
+            callback: () => {
+              selectedUuids = null;
+              return null;
+            }
+          }
+        ],
+        rejectClose: false
+      });
+    } catch (_) {
+      return null;
+    }
+
+    return selectedUuids;
+  }
+
+  /**
+   * When enabling Homebrew: prompt for untagged world spells, then mark selected ones.
+   * @returns {Promise<boolean>} false if the GM cancelled (do not enable Homebrew)
+   */
+  async _offerHomebrewWizardTagging() {
+    if (!game.user?.isGM) {
+      ui.notifications?.warn("Only the GM can enable Homebrew spells.");
+      return false;
+    }
+
+    const worldSpells = getWorldHomebrewSpells();
+    const untagged = worldSpells.filter((spell) => !isWizardSpell(spell));
+
+    if (!untagged.length) return true;
+
+    const selectedUuids = await CompendiumSpellPicker._promptMarkHomebrewWizardSpells(untagged);
+    if (selectedUuids == null) return false;
+
+    let marked = 0;
+    for (const uuid of selectedUuids) {
+      const doc = worldSpells.find((s) => s.uuid === uuid) || await fromUuid(uuid);
+      if (!doc) continue;
+      if (await markSpellAsWizard(doc)) marked += 1;
+    }
+
+    if (marked) {
+      ui.notifications?.info(`Marked ${marked} homebrew spell${marked === 1 ? "" : "s"} as wizard spells.`);
+    }
+
+    return true;
   }
 
   _getSchoolConfig() {
@@ -407,7 +534,12 @@ export class CompendiumSpellPicker extends HandlebarsApplicationMixin(Applicatio
       this._warnedMissingWizardList = true;
     }
 
+    const worldSpells = getWorldHomebrewSpells();
+    const includeHomebrew = worldSpells.length > 0;
+
     const validPackIds = new Set(spellPacks.map((p) => p.collection));
+    if (includeHomebrew) validPackIds.add(HOMEBREW_PACK_ID);
+
     if (!(this.selectedPacks instanceof Set)) this.selectedPacks = new Set();
     // Drop stale selections for packs that have no spells (do not auto-select).
     this.selectedPacks = new Set([...this.selectedPacks].filter((id) => validPackIds.has(id)));
@@ -439,7 +571,7 @@ export class CompendiumSpellPicker extends HandlebarsApplicationMixin(Applicatio
     context.schoolsAllSelected = schoolIds.length > 0
       && schoolIds.every((id) => this.selectedSchools.has(id));
 
-    const packGroups = CompendiumSpellPicker._buildPackGroups(spellPacks);
+    const packGroups = CompendiumSpellPicker._buildPackGroups(spellPacks, { includeHomebrew });
     context.packs = packGroups.map((g) => ({
       id: g.id,
       label: g.label,
@@ -475,6 +607,62 @@ export class CompendiumSpellPicker extends HandlebarsApplicationMixin(Applicatio
       "system.activities"
     ];
 
+    const pushMatchingSpell = (entry, { uuid, packHint = "" } = {}) => {
+      if (entry?.type && entry.type !== "spell") return;
+
+      const level = Number(entry.system?.level ?? entry.level ?? 0);
+      const school = entry.system?.school || "";
+      const name = entry.name || "";
+      const nameKey = name.toLowerCase().trim();
+      const spellUuid = uuid || entry.uuid || "";
+      let rules = getSpellRulesVersion(entry);
+      if (rules === "unknown" && packHint) {
+        const hint = packHint.toLowerCase();
+        if (hint.includes("2024")) rules = "2024";
+        else if (hint.includes("2014") || hint.includes("legacy")) rules = "2014";
+      }
+      const dedupeKey = `${level}|${nameKey}|${rules}`;
+
+      if (level < 1 || !this.selectedLevels.has(level)) return;
+      if (school && !this.selectedSchools.has(school)) return;
+      if (this.searchQuery && !nameKey.includes(this.searchQuery)) return;
+      if (this.rulesVersion !== "both") {
+        if (rules === "unknown") {
+          if (this.rulesVersion === "2024") return;
+        } else if (rules !== this.rulesVersion) {
+          return;
+        }
+      }
+      const probe = (typeof entry.getFlag === "function" || entry.documentName === "Item")
+        ? entry
+        : { uuid: spellUuid, name, level, system: entry.system, flags: entry.flags };
+      if (!isWizardSpell(probe)) return;
+      if (!nameKey || seenKeys.has(dedupeKey)) return;
+      seenKeys.add(dedupeKey);
+
+      const formatted = formatSpellEntry({
+        uuid: spellUuid,
+        name: entry.name,
+        img: entry.img,
+        level,
+        system: entry.system ?? entry
+      });
+
+      const justAdded = this.addedSessionUuids.has(spellUuid) || this.addedSessionNames.has(nameKey);
+      const inBook = bookUuids.has(spellUuid)
+        || this.initialUuids.has(spellUuid)
+        || bookNames.has(nameKey)
+        || this.initialNames.has(nameKey);
+
+      allMatchingSpells.push({
+        ...formatted,
+        rules,
+        rulesLabel: rules === "2014" ? "2014" : rules === "2024" ? "2024" : "",
+        isPresent: inBook && !justAdded,
+        isAdded: justAdded
+      });
+    };
+
     for (const pack of spellPacks) {
       if (!this.selectedPacks.has(pack.collection)) continue;
 
@@ -482,58 +670,18 @@ export class CompendiumSpellPicker extends HandlebarsApplicationMixin(Applicatio
 
       for (const entry of index) {
         if (entry.type !== "spell") continue;
-
-        const level = Number(entry.system?.level ?? 0);
-        const school = entry.system?.school || "";
-        const name = entry.name || "";
-        const nameKey = name.toLowerCase().trim();
         const uuid = entry.uuid || `Compendium.${pack.collection}.Item.${entry._id}`;
-        let rules = getSpellRulesVersion(entry);
-        // When the spell lacks source.rules, infer from the pack name (e.g. "CPR Spells (2024)").
-        if (rules === "unknown") {
-          const packHint = `${pack.collection} ${pack.metadata?.label || ""}`.toLowerCase();
-          if (packHint.includes("2024")) rules = "2024";
-          else if (packHint.includes("2014") || packHint.includes("legacy")) rules = "2014";
-        }
-        const dedupeKey = `${level}|${nameKey}|${rules}`;
-
-        if (level < 1 || !this.selectedLevels.has(level)) continue;
-        if (school && !this.selectedSchools.has(school)) continue;
-        if (this.searchQuery && !nameKey.includes(this.searchQuery)) continue;
-        if (this.rulesVersion !== "both") {
-          if (rules === "unknown") {
-            // Unknown source: include only when it doesn't contradict the selected edition.
-            // Prefer excluding unknowns from strict 2024 filter; allow for 2014 (legacy default).
-            if (this.rulesVersion === "2024") continue;
-          } else if (rules !== this.rulesVersion) {
-            continue;
-          }
-        }
-        if (!isWizardSpell({ uuid, name, level, system: entry.system })) continue;
-        if (!nameKey || seenKeys.has(dedupeKey)) continue;
-        seenKeys.add(dedupeKey);
-
-        const formatted = formatSpellEntry({
+        pushMatchingSpell(entry, {
           uuid,
-          name: entry.name,
-          img: entry.img,
-          level,
-          system: entry.system
+          packHint: `${pack.collection} ${pack.metadata?.label || ""}`
         });
+      }
+    }
 
-        const justAdded = this.addedSessionUuids.has(uuid) || this.addedSessionNames.has(nameKey);
-        const inBook = bookUuids.has(uuid)
-          || this.initialUuids.has(uuid)
-          || bookNames.has(nameKey)
-          || this.initialNames.has(nameKey);
-
-        allMatchingSpells.push({
-          ...formatted,
-          rules,
-          rulesLabel: rules === "2014" ? "2014" : rules === "2024" ? "2024" : "",
-          isPresent: inBook && !justAdded,
-          isAdded: justAdded
-        });
+    if (this.selectedPacks.has(HOMEBREW_PACK_ID)) {
+      for (const spell of worldSpells) {
+        if (!isWizardSpell(spell)) continue;
+        pushMatchingSpell(spell, { uuid: spell.uuid, packHint: "homebrew" });
       }
     }
 
@@ -597,7 +745,7 @@ export class CompendiumSpellPicker extends HandlebarsApplicationMixin(Applicatio
     this._rerenderPreservingScroll();
   }
 
-  static _onTogglePack(event, target) {
+  static async _onTogglePack(event, target) {
     event.preventDefault();
     if (!(this.selectedPacks instanceof Set)) this.selectedPacks = new Set();
 
@@ -613,8 +761,20 @@ export class CompendiumSpellPicker extends HandlebarsApplicationMixin(Applicatio
     if (!packIds.length) return;
 
     const allOn = packIds.every((id) => this.selectedPacks.has(id));
-    if (allOn) packIds.forEach((id) => this.selectedPacks.delete(id));
-    else packIds.forEach((id) => this.selectedPacks.add(id));
+    if (allOn) {
+      packIds.forEach((id) => this.selectedPacks.delete(id));
+    } else {
+      const enablingHomebrew = packIds.includes(HOMEBREW_PACK_ID)
+        && !this.selectedPacks.has(HOMEBREW_PACK_ID);
+      if (enablingHomebrew) {
+        const ok = await this._offerHomebrewWizardTagging();
+        if (!ok) {
+          await this._rerenderPreservingScroll();
+          return;
+        }
+      }
+      packIds.forEach((id) => this.selectedPacks.add(id));
+    }
 
     this._rerenderPreservingScroll();
   }
@@ -638,7 +798,24 @@ export class CompendiumSpellPicker extends HandlebarsApplicationMixin(Applicatio
     const mode = target.dataset.mode;
     const packs = await this._getSpellPacks();
     const all = packs.map((p) => p.collection);
-    this.selectedPacks = mode === "deselect" ? new Set() : new Set(all);
+    if (getWorldHomebrewSpells().length) all.push(HOMEBREW_PACK_ID);
+
+    if (mode === "deselect") {
+      this.selectedPacks = new Set();
+    } else {
+      const enablingHomebrew = all.includes(HOMEBREW_PACK_ID)
+        && !this.selectedPacks.has(HOMEBREW_PACK_ID);
+      if (enablingHomebrew) {
+        const ok = await this._offerHomebrewWizardTagging();
+        if (!ok) {
+          // Still select non-homebrew packs if the GM cancelled tagging.
+          this.selectedPacks = new Set(all.filter((id) => id !== HOMEBREW_PACK_ID));
+          await this._rerenderPreservingScroll();
+          return;
+        }
+      }
+      this.selectedPacks = new Set(all);
+    }
     this._rerenderPreservingScroll();
   }
 

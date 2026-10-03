@@ -3,11 +3,11 @@
     "Settings": {
       "DeductGold": {
         "Name": "Deduct Gold on Transcription",
-        "Hint": "When enabled, transcribing a spell deducts 50 gp per spell level from the wizard's currency."
+        "Hint": "When enabled, transcribing a spell deducts 50 gp per spell level from the wizard's total currency (PP, GP, EP, SP, CP)."
       },
       "RequireGold": {
         "Name": "Require Sufficient Gold",
-        "Hint": "When enabled, wizards cannot transcribe a spell unless they can afford the ink cost."
+        "Hint": "When enabled, wizards cannot transcribe a spell unless their total coin wealth covers the ink cost."
       }
     },
     "Actions": {

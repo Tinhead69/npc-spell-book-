@@ -1,9 +1,12 @@
 import {
   MODULE_ID,
   getSpellbookSpells,
+  addSpellToSpellbook,
   removeSpellFromSpellbook,
   formatSpellEntry,
-  buildStoredSpellData
+  buildStoredSpellData,
+  isWizardSpell,
+  markSpellAsWizard
 } from "./data.js";
 import { openTranscribeDialog } from "./transcribe-dialog.js";
 import { CompendiumSpellPicker } from "./spellbook-compendium.js";
@@ -12,12 +15,19 @@ import { bindSpellDescriptionTooltips, clearSpellTooltip } from "./spell-tooltip
 let SpellbookSheetClass = null;
 
 /**
- * Safely resolves DocumentSheetV2 across V13 ApplicationV2 namespaces
+ * Prefer ItemSheetV2 (built-in drop pipeline); fall back to DocumentSheetV2.
  */
 function getBaseDocumentSheet() {
-  return foundry.applications.api?.DocumentSheetV2
+  return foundry.applications.sheets?.ItemSheetV2
+    || foundry.applications.api?.DocumentSheetV2
     || foundry.applications.sheets?.DocumentSheetV2
     || foundry.applications.api?.ApplicationV2;
+}
+
+function getDragDropClass() {
+  return foundry.applications.ux?.DragDrop?.implementation
+    || foundry.applications.ux?.DragDrop
+    || globalThis.DragDrop;
 }
 
 /**
@@ -94,10 +104,17 @@ export function getSpellbookSheetClass() {
       this._tooltipTimer = null;
       this._tooltipRow = null;
       this._unbindSpellTooltips = null;
+      this._spellDragDrop = null;
     }
 
     get item() {
       return this.document;
+    }
+
+    /** GM + world item only (not after the book is in an actor inventory). */
+    _canEditSpellList() {
+      const item = this.document;
+      return Boolean(game.user?.isGM && !(item?.isEmbedded || item?.actor));
     }
 
     /** @override */
@@ -107,11 +124,110 @@ export function getSpellbookSheetClass() {
     }
 
     /** @override */
+    _onRender(context, options) {
+      super._onRender?.(context, options);
+      this._bindSpellDropZone(this.element);
+    }
+
+    /** @override */
     async close(options) {
       this._unbindSpellTooltips?.();
       this._unbindSpellTooltips = null;
       clearSpellTooltip(this, true);
+      this._spellDragDrop = null;
       return super.close(options);
+    }
+
+    /**
+     * Bind AppV2 DragDrop so spells can be dropped from the sidebar / compendiums.
+     */
+    _bindSpellDropZone(html) {
+      const DragDropClass = getDragDropClass();
+      if (!DragDropClass || !html) return;
+
+      this._spellDragDrop ??= new DragDropClass({
+        dragSelector: null,
+        dropSelector: ".spellbook-body",
+        permissions: {
+          dragstart: () => false,
+          drop: () => this._canEditSpellList()
+        },
+        callbacks: {
+          drop: (event) => this._onDropSpell(event)
+        }
+      });
+      this._spellDragDrop.bind(html);
+    }
+
+    /** @override — ItemSheetV2 drop permission */
+    _canDragDrop() {
+      return this._canEditSpellList();
+    }
+
+    /**
+     * @override — Prefer ItemSheetV2 / DocumentSheetV2 drop pipeline when present.
+     */
+    async _onDrop(event) {
+      const handled = await this._onDropSpell(event);
+      if (handled) return;
+      return super._onDrop?.(event);
+    }
+
+    /**
+     * Resolve a dropped Item and add it when it is a spell.
+     * @returns {Promise<boolean>} true if the drop was handled (or rejected) here
+     */
+    async _onDropSpell(event) {
+      event.preventDefault();
+      const data = TextEditor.getDragEventData(event);
+      if (!data?.type && !data?.uuid) return false;
+
+      const looksLikeItem = !data.type || data.type === "Item" || data.type === "Item5e";
+      if (!looksLikeItem) return false;
+
+      if (!this._canEditSpellList()) {
+        ui.notifications?.warn("Only the GM can add spells to a world spellbook before it is claimed.");
+        return true;
+      }
+
+      let spellDoc = null;
+      try {
+        if (typeof Item?.implementation?.fromDropData === "function") {
+          spellDoc = await Item.implementation.fromDropData(data);
+        } else if (data.uuid) {
+          spellDoc = await fromUuid(data.uuid);
+        }
+      } catch (err) {
+        console.warn("NPC Spellbook | Failed to resolve dropped document", err);
+      }
+
+      if (!spellDoc || spellDoc.documentName !== "Item") return false;
+
+      if (spellDoc.type !== "spell") {
+        ui.notifications?.warn("Only spells can be dropped onto a spellbook.");
+        return true;
+      }
+
+      // World Items bar: GM may opt in untagged homebrew as wizard spells.
+      const isWorldItem = !spellDoc.pack && Boolean(game.items?.get?.(spellDoc.id));
+      if (isWorldItem && !isWizardSpell(spellDoc)) {
+        const DialogV2 = foundry.applications.api?.DialogV2;
+        const confirmed = DialogV2?.confirm
+          ? await DialogV2.confirm({
+            window: { title: "Mark as Wizard Spell?" },
+            content: `<p><strong>${foundry.utils.escapeHTML?.(spellDoc.name) || spellDoc.name}</strong> is not on the wizard list.<br>Mark it as a wizard spell and add it to this book?</p>`,
+            rejectClose: false
+          })
+          : window.confirm(`"${spellDoc.name}" is not on the wizard list. Mark it as a wizard spell and add it?`);
+
+        if (!confirmed) return true;
+        const marked = await markSpellAsWizard(spellDoc);
+        if (!marked) return true;
+      }
+
+      await addSpellToSpellbook(this.document, spellDoc.uuid);
+      this.render(true);
+      return true;
     }
 
     /** @override */
@@ -122,8 +238,7 @@ export function getSpellbookSheetClass() {
 
       // GM-only book editing, and only while the spellbook is a world item
       // (not after it has been placed in an actor inventory).
-      const isOwned = Boolean(item?.isEmbedded || item?.actor);
-      context.canAddSpells = Boolean(game.user?.isGM && !isOwned);
+      context.canAddSpells = this._canEditSpellList();
 
       const spells = getSpellbookSpells(item);
       const displaySpells = await Promise.all(spells.map((s) => enrichSpellForDisplay(s)));
@@ -194,12 +309,12 @@ export function getSpellbookSheetClass() {
     /** Action: Open the three-pane spell picker (GM + world item only) */
     static async _onAddSpells(event, target) {
       const item = this.document;
-      if (!game.user?.isGM) {
-        ui.notifications?.warn("Only the GM can add spells to a spellbook.");
-        return;
-      }
-      if (item?.isEmbedded || item?.actor) {
-        ui.notifications?.warn("Spells cannot be added after the spellbook is in an actor's inventory.");
+      if (!this._canEditSpellList()) {
+        ui.notifications?.warn(
+          game.user?.isGM
+            ? "Spells cannot be added after the spellbook is in an actor's inventory."
+            : "Only the GM can add spells to a spellbook."
+        );
         return;
       }
       new CompendiumSpellPicker({ spellbook: item }).render({ force: true });
@@ -212,11 +327,11 @@ export function getSpellbookSheetClass() {
 
     /** Action: Clear all spells (GM + world item only) */
     static async _onClearSpellbook(event, target) {
-      const item = this.document;
-      if (!game.user?.isGM || item?.isEmbedded || item?.actor) {
+      if (!this._canEditSpellList()) {
         ui.notifications?.warn("Only the GM can clear a world spellbook before it is claimed.");
         return;
       }
+      const item = this.document;
 
       const confirmed = await DialogV2.confirm({
         window: { title: "Clear Spellbook" },
@@ -232,8 +347,7 @@ export function getSpellbookSheetClass() {
 
     /** Action: Delete individual spell (GM + world item only) */
     static async _onDeleteSpell(event, target) {
-      const item = this.document;
-      if (!game.user?.isGM || item?.isEmbedded || item?.actor) {
+      if (!this._canEditSpellList()) {
         ui.notifications?.warn("Only the GM can edit spells on a world spellbook.");
         return;
       }
@@ -241,7 +355,7 @@ export function getSpellbookSheetClass() {
       const uuid = target.dataset.uuid;
       if (uuid) {
         clearSpellTooltip(this, true);
-        await removeSpellFromSpellbook(item, uuid);
+        await removeSpellFromSpellbook(this.document, uuid);
         this.render(true);
       }
     }

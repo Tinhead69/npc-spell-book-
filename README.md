@@ -10,14 +10,17 @@ A Foundry VTT module for **D&D 5e (2014)** that adds lootable NPC wizard spellbo
 ## Features
 
 - Create **Spellbook** loot items (Create Item dialog or right-click → Mark as Spellbook)
-- GM manages NPC spell lists via drag-and-drop or compendium browser
-- Wizards **Study Spellbook** to transcribe spells
+- GM manages NPC spell lists via drag-and-drop or a filtered wizard-spell compendium browser (including a **Homebrew** group for world Items; GM marks which are wizard spells)
+- Wizards **Study Spellbook** / **Transcribe** to copy spells into their own book
+- Side-by-side compare of loot book contents vs the wizard's known spells
 - **5e 2014 mechanics** enforced by wizard level:
   - Max spell level = `ceil(wizard level / 2)` (PHB spell slot progression)
   - Cost: **50 gp per spell level**
   - Time: **2 hours per spell level**
-- Transcribed spells stored in module flags on the wizard (`Transcribed Spells` button on character sheet)
+- **Currency:** affordability and deduction use the wizard's **full purse** (PP, GP, EP, SP, CP) converted with dnd5e rates — not GP alone. The UI shows total wealth as a GP equivalent.
+- Transcribed spells are also logged in module flags (`Transcribed Spells` on the character sheet)
 - Does **not** modify the built-in dnd5e spellbook or spell preparation
+- When a spellbook is owned by a player, only the GM can add/clear/delete spells; players can still open **Transcribe**
 
 ## Installation
 
@@ -30,14 +33,14 @@ A Foundry VTT module for **D&D 5e (2014)** that adds lootable NPC wizard spellbo
 
 1. Items → **Create Item** → choose **Spellbook**, or right-click a Loot item → **Mark as Spellbook**
 2. Open the item sheet (NPC Spellbook)
-3. Drag spells from compendiums onto the list, or use **Add Spell**
+3. Drag wizard spells from the sidebar/compendiums onto the sheet, or use **Add Spell** (CPR/GPS packs are grouped when present; **Homebrew** lists world Items spells — the GM confirms which count as wizard spells)
 
 ### Player — Transcribe spells
 
 1. Open the spellbook (or right-click in Items directory → **Study Spellbook**)
 2. Select your wizard character
-3. Spells above your max level are blocked automatically
-4. Click **Transcribe Spell** and confirm (gold is deducted if settings allow)
+3. Spells above your max level are blocked; spells already on the actor show as **In Spellbook**
+4. Click **Transcribe** and confirm (wealth is checked/deducted across all coin types if settings allow)
 
 ### View transcribed spells
 
@@ -47,21 +50,28 @@ On any wizard PC sheet, click **Transcribed Spells** in the header.
 
 | Setting | Default | Description |
 |---------|---------|-------------|
-| Deduct Gold on Transcription | On | Removes 50 gp × spell level when transcribing |
-| Require Sufficient Gold | On | Blocks transcription if the wizard cannot afford ink |
+| Deduct Gold on Transcription | On | Deducts 50 gp × spell level from the wizard's total currency (all denominations) |
+| Require Sufficient Gold | On | Blocks transcription unless the wizard's total coin wealth covers the ink cost |
 
 ## Development
 
 ```
-Projects/npc-spell-book/
+npc-spell-book/
 ├── module.json
 ├── scripts/
 │   ├── main.js
 │   ├── data.js
 │   ├── mechanics.js
 │   ├── spellbook-sheet.js
+│   ├── spellbook-compendium.js
+│   ├── spell-tooltip.js
+│   ├── transcribe-dialog.js
 │   └── learn-dialog.js
 ├── templates/
+│   ├── spellbook-sheet.hbs
+│   ├── transcribe-spells.hbs
+│   ├── spell-picker.hbs
+│   └── …
 ├── lang/en.json
 └── styles/spellbook.css
 ```

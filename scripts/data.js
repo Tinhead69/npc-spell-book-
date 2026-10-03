@@ -1,7 +1,55 @@
 export const MODULE_ID = "npc-spell-book";
 
+/** Virtual pack id for world Items spells in the Add Spell picker. */
+export const HOMEBREW_PACK_ID = "world:homebrew";
+
+/** Module flag on a world spell item: GM marked this as a wizard spell. */
+export const WIZARD_SPELL_FLAG = "wizardSpell";
+
 export function getSpellbookSpells(spellbook) {
   return foundry.utils.getProperty(spellbook, `flags.${MODULE_ID}.spells`) || [];
+}
+
+/**
+ * Has the GM tagged this spell as a wizard spell via this module?
+ * @param {Item|object} spell
+ * @returns {boolean}
+ */
+export function hasWizardSpellTag(spell) {
+  if (!spell || typeof spell !== "object") return false;
+  if (typeof spell.getFlag === "function" && spell.getFlag(MODULE_ID, WIZARD_SPELL_FLAG) === true) {
+    return true;
+  }
+  const flags = spell.flags?.[MODULE_ID];
+  return flags?.[WIZARD_SPELL_FLAG] === true;
+}
+
+/**
+ * Persist a GM decision that a world spell counts as a wizard spell.
+ * @param {Item} spellDoc
+ * @returns {Promise<boolean>}
+ */
+export async function markSpellAsWizard(spellDoc) {
+  if (!spellDoc || typeof spellDoc.setFlag !== "function") return false;
+  if (!game.user?.isGM) {
+    ui.notifications?.warn("Only the GM can mark homebrew spells as wizard spells.");
+    return false;
+  }
+  await spellDoc.setFlag(MODULE_ID, WIZARD_SPELL_FLAG, true);
+  return true;
+}
+
+/**
+ * World Items directory spells (levels 1–9) for the Homebrew picker group.
+ * @returns {Item[]}
+ */
+export function getWorldHomebrewSpells() {
+  const items = game.items?.contents ?? game.items ?? [];
+  return items.filter((item) => {
+    if (item?.type !== "spell") return false;
+    const level = Number(item.system?.level ?? NaN);
+    return Number.isFinite(level) && level >= 1 && level <= 9;
+  });
 }
 
 /**
@@ -130,6 +178,16 @@ export function isWizardSpell(spell) {
       const level = Number(rawLevel);
       if (!Number.isFinite(level) || level < 1 || level > 9) return false;
     }
+  }
+
+  // GM-tagged homebrew (world items) — checked before the system registry.
+  if (typeof spell === "string") {
+    try {
+      const doc = typeof fromUuidSync === "function" ? fromUuidSync(spell) : null;
+      if (doc && hasWizardSpellTag(doc)) return true;
+    } catch (_) { /* ignore */ }
+  } else if (hasWizardSpellTag(spell)) {
+    return true;
   }
 
   const membership = getWizardSpellMembership();
