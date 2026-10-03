@@ -6,33 +6,56 @@ export function getSpellbookSpells(spellbook) {
 
 /**
  * Resolve whether spell data is 2014 (legacy) or 2024 rules.
- * @param {object} system Item system data (or full spell entry with .system)
+ * Accepts system data or a full index/document-like entry.
+ * @param {object} spellOrSystem
  * @returns {"2014"|"2024"|"unknown"}
  */
-export function getSpellRulesVersion(system) {
-  const src = system?.source ?? system?.system?.source ?? {};
-  const rules = String(src.rules ?? "").trim();
-  if (rules === "2014" || rules === "2024") return rules;
+export function getSpellRulesVersion(spellOrSystem) {
+  if (!spellOrSystem) return "unknown";
 
-  const book = String(src.book ?? src.custom ?? src.value ?? "").toLowerCase();
+  const entry = spellOrSystem.system ? spellOrSystem : null;
+  const system = entry?.system ?? spellOrSystem;
+  const name = String(entry?.name ?? spellOrSystem.name ?? "");
+  const flags = entry?.flags ?? spellOrSystem.flags ?? {};
+  const ddb = flags.ddbimporter || flags["ddb-importer"] || {};
+
+  // DDB Importer "Legacy postfix" marks 2014 replacements as "(Legacy)".
+  if (/\(\s*legacy\s*\)/i.test(name) || ddb.isLegacy === true || ddb.legacy === true) {
+    return "2014";
+  }
+
+  const src = system?.source ?? {};
+  const rules = String(src.rules ?? ddb.rules ?? "").trim();
+  if (rules === "2014" || rules === "2024") return rules;
+  if (rules.toLowerCase() === "legacy") return "2014";
+  if (rules.toLowerCase() === "modern") return "2024";
+
+  const book = String(src.book ?? src.custom ?? src.value ?? ddb.definitionIdSourceId ?? "").toLowerCase();
+  const bookLabel = String(src.custom ?? ddb.book ?? ddb.sourceName ?? "").toLowerCase();
+  const haystack = `${book} ${bookLabel}`;
+
   if (
-    book.includes("2024")
-    || book.includes("xphb")
-    || book.includes("xmm")
-    || book.includes("xge24")
+    haystack.includes("2024")
+    || haystack.includes("xphb")
+    || haystack.includes("xmm")
+    || haystack.includes("xge24")
+    || haystack.includes("player's handbook (2024)")
+    || haystack.includes("players handbook (2024)")
     || book === "phb24"
     || book === "srd-2024"
     || book === "srd-5.2"
+    || book === "srd 5.2"
   ) return "2024";
 
   if (
-    book.includes("2014")
+    haystack.includes("2014")
     || book === "phb"
     || book === "srd"
     || book === "srd-5.1"
-    || book.includes("xge")
-    || book.includes("tce")
-    || book.includes("ee")
+    || haystack.includes("player's handbook (2014)")
+    || haystack.includes("xge")
+    || haystack.includes("tce")
+    || haystack.includes("ee")
   ) return "2014";
 
   return "unknown";
@@ -161,6 +184,12 @@ export function formatSpellEntry(spell) {
   };
 }
 
+/** Capitalize the first letter of each word in metadata display text. */
+function capitalizeMeta(text) {
+  if (!text || text === "—") return text;
+  return String(text).replace(/\b([a-z])/g, (m) => m.toUpperCase());
+}
+
 function formatCastingTime(system) {
   const act = system.activation ?? Object.values(system.activities ?? {})[0]?.activation;
   if (!act?.type) return "—";
@@ -171,17 +200,17 @@ function formatCastingTime(system) {
     action: "Action",
     bonus: "Bonus Action",
     reaction: "Reaction",
-    minute: "minute",
-    hour: "hour",
-    day: "day",
+    minute: "Minute",
+    hour: "Hour",
+    day: "Day",
     special: "Special",
     legendary: "Legendary",
     mythic: "Mythic",
     lair: "Lair"
   };
-  const label = labels[type] || type;
+  const label = labels[type] || capitalizeMeta(type);
   if (value > 1 && ["minute", "hour", "day"].includes(type)) return `${value} ${label}s`;
-  if (value > 1) return `${value} ${label}`;
+  if (value > 1) return capitalizeMeta(`${value} ${label}`);
   return label;
 }
 
@@ -190,12 +219,12 @@ function formatRange(system) {
   if (!rng) return "—";
 
   const units = String(rng.units ?? "").toLowerCase();
-  if (units === "self") return "self";
-  if (units === "touch") return "touch";
-  if (units === "spec" || units === "special") return "special";
-  if (units === "any") return "any";
-  if (rng.value != null && rng.value !== "" && units) return `${rng.value} ${units}`;
-  if (units) return units;
+  if (units === "self") return "Self";
+  if (units === "touch") return "Touch";
+  if (units === "spec" || units === "special") return "Special";
+  if (units === "any") return "Any";
+  if (rng.value != null && rng.value !== "" && units) return capitalizeMeta(`${rng.value} ${units}`);
+  if (units) return capitalizeMeta(units);
   if (rng.value != null && rng.value !== "") return String(rng.value);
   return "—";
 }
@@ -205,18 +234,18 @@ function formatDuration(system) {
   if (!dur) return "—";
 
   const units = String(dur.units ?? "").toLowerCase();
-  if (!units || units === "inst") return "instant";
-  if (units === "perm") return "permanent";
-  if (units === "spec" || units === "special") return "special";
-  if (units === "disp") return "until dispelled";
-  if (units === "conc") return "concentration";
+  if (!units || units === "inst") return "Instant";
+  if (units === "perm") return "Permanent";
+  if (units === "spec" || units === "special") return "Special";
+  if (units === "disp") return "Until Dispelled";
+  if (units === "conc") return "Concentration";
 
   const value = Number(dur.value ?? 0);
   if (value > 0) {
     const plural = value === 1 ? units : `${units}s`;
-    return `${value} ${plural}`;
+    return capitalizeMeta(`${value} ${plural}`);
   }
-  return units || "—";
+  return capitalizeMeta(units) || "—";
 }
 
 function formatTarget(system) {
@@ -226,18 +255,18 @@ function formatTarget(system) {
   if (tgt.affects?.type) {
     const count = tgt.affects.count || tgt.affects.value || "";
     const type = tgt.affects.type;
-    return `${count} ${type}`.trim() || type;
+    return capitalizeMeta(`${count} ${type}`.trim() || type);
   }
 
   if (tgt.type) {
     const value = tgt.value ?? "";
-    return `${value} ${tgt.type}`.trim() || tgt.type;
+    return capitalizeMeta(`${value} ${tgt.type}`.trim() || tgt.type);
   }
 
   if (tgt.template?.type) {
     const size = tgt.template.size ?? "";
     const units = tgt.template.units || "";
-    return `${size}${units ? ` ${units}` : ""} ${tgt.template.type}`.trim();
+    return capitalizeMeta(`${size}${units ? ` ${units}` : ""} ${tgt.template.type}`.trim());
   }
 
   return "—";

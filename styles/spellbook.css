@@ -54,6 +54,11 @@
   cursor: pointer;
 }
 
+.npc-spellbook-sheet-body .profile-img:hover {
+  border-color: #d1b87a;
+  box-shadow: 0 0 0 1px #d1b87a55;
+}
+
 .npc-spellbook-sheet-body .header-fields {
   flex: 1;
   min-width: 0;
@@ -236,7 +241,7 @@
 .npc-spellbook-sheet-body .col-components {
   text-align: center;
   justify-self: stretch;
-  font-size: 0.72em;
+  font-size: 0.82em;
   color: #bbb;
   padding: 0 2px;
   word-break: break-word;
@@ -596,7 +601,7 @@
 .spell-picker-root .col-target,
 .spell-picker-root .col-components {
   text-align: center;
-  font-size: 0.72em;
+  font-size: 0.82em;
   color: #bbb;
   padding: 0 2px;
   word-break: break-word;

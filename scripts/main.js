@@ -60,6 +60,53 @@ Hooks.once("init", () => {
   }
 });
 
+function isCreateTypeOption(el) {
+  return Boolean(el?.querySelector?.('input[name="type"]'));
+}
+
+/**
+ * Type-list dividers are sibling nodes between options (not <hr>, which Foundry styles as solid gold).
+ */
+function isCreateTypeSeparator(el) {
+  if (!el || !(el instanceof HTMLElement)) return false;
+  if (isCreateTypeOption(el)) return false;
+  if (el.tagName === "HR") return false; // form rules near Folder — wrong style
+  if (el.matches(".separator, .divider, .form-fields-separator, [data-spellbook-type-sep]")) return true;
+  // Empty/decorative sibling used as a dotted rule between type rows
+  if (!el.textContent.trim() && !el.querySelector("input, select, textarea, button")) return true;
+  return false;
+}
+
+function createMatchingTypeSeparator(referenceOption) {
+  const sep = document.createElement("div");
+  sep.setAttribute("data-spellbook-type-sep", "true");
+  sep.setAttribute("aria-hidden", "true");
+
+  // Match the dotted border used between other Create Item type rows.
+  const style = referenceOption?.ownerDocument?.defaultView?.getComputedStyle?.(referenceOption);
+  const borderColor = style?.borderBottomColor || style?.borderTopColor || "rgba(180, 180, 180, 0.45)";
+  const borderStyle = (style?.borderBottomStyle && style.borderBottomStyle !== "none")
+    ? style.borderBottomStyle
+    : "dotted";
+  const borderWidth = (style?.borderBottomWidth && style.borderBottomWidth !== "0px")
+    ? style.borderBottomWidth
+    : "1px";
+
+  sep.style.cssText = [
+    "display: block",
+    "border: none",
+    `border-top: ${borderWidth} ${borderStyle} ${borderColor}`,
+    "margin: 0",
+    "padding: 0",
+    "height: 0",
+    "width: 100%",
+    "flex: 0 0 auto",
+    "pointer-events: none"
+  ].join(";");
+
+  return sep;
+}
+
 function addSpellbookToCreateDialog(app, html) {
   const root = html instanceof HTMLElement ? html : (html[0] || html);
   if (!root || !(root instanceof HTMLElement)) return;
@@ -105,9 +152,27 @@ function addSpellbookToCreateDialog(app, html) {
       }
     }
 
-    // Insert as a normal type row after Spell. Do NOT inject <hr> — Foundry styles those as
-    // solid gold rules (used near Folder), while type-list dividers come from each option's border.
-    wrapper.after(clone);
+    // List structure is usually: [Spell] [sep] [Subclass]
+    // Inserting only after Spell yields: [Spell] [Spellbook] [sep] [Subclass] — missing middle line.
+    // Desired: [Spell] [sep] [Spellbook] [sep] [Subclass]
+    const afterSpellSep = isCreateTypeSeparator(wrapper.nextElementSibling)
+      ? wrapper.nextElementSibling
+      : null;
+
+    const sepSource = afterSpellSep
+      || Array.from(wrapper.parentElement?.children ?? []).find((el) => isCreateTypeSeparator(el));
+
+    const sepBetween = sepSource
+      ? sepSource.cloneNode(true)
+      : createMatchingTypeSeparator(wrapper);
+
+    if (afterSpellSep) {
+      afterSpellSep.after(clone);
+      clone.before(sepBetween);
+    } else {
+      wrapper.after(sepBetween);
+      sepBetween.after(clone);
+    }
   }
 
   const form = root.tagName === "FORM" ? root : root.querySelector("form") || root.closest("form");

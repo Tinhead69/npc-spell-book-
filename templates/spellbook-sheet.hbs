@@ -1,7 +1,7 @@
 <div class="npc-spellbook-sheet-body">
   <header class="sheet-header">
     <div class="header-top-row">
-      <img class="profile-img" src="{{item.img}}" data-edit="img" title="{{item.name}}" alt="{{item.name}}" />
+      <img class="profile-img" src="{{item.img}}" data-action="editImage" data-edit="img" title="Change Spellbook Image" alt="{{item.name}}" />
       <div class="header-fields">
         <input class="item-name" name="name" type="text" value="{{item.name}}" placeholder="Spellbook Name" />
         <div class="header-actions">
@@ -38,7 +38,7 @@
 
           <div class="spell-list">
             {{#each this.spells}}
-              <div class="spell-row spell-grid-row" data-uuid="{{this.uuid}}">
+              <div class="spell-row spell-grid-row" data-uuid="{{this.uuid}}" data-spell-tooltip="1">
                 <div class="col-name">
                   <img class="spell-icon" src="{{this.img}}" alt="" />
                   <div class="spell-details">

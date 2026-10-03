@@ -7,6 +7,7 @@ import {
 } from "./data.js";
 import { openTranscribeDialog } from "./mechanics.js";
 import { CompendiumSpellPicker } from "./spellbook-compendium.js";
+import { bindSpellDescriptionTooltips, clearSpellTooltip } from "./spell-tooltip.js";
 
 let SpellbookSheetClass = null;
 
@@ -76,7 +77,8 @@ export function getSpellbookSheetClass() {
         transcribeSpells: SpellbookSheet._onTranscribeSpells,
         clearSpellbook: SpellbookSheet._onClearSpellbook,
         deleteSpell: SpellbookSheet._onDeleteSpell,
-        toggleLevel: SpellbookSheet._onToggleLevel
+        toggleLevel: SpellbookSheet._onToggleLevel,
+        editImage: SpellbookSheet._onEditImage
       }
     };
 
@@ -89,10 +91,27 @@ export function getSpellbookSheetClass() {
     constructor(options = {}) {
       super(options);
       this.collapsedLevels = new Set();
+      this._tooltipTimer = null;
+      this._tooltipRow = null;
+      this._unbindSpellTooltips = null;
     }
 
     get item() {
       return this.document;
+    }
+
+    /** @override */
+    _onFirstRender(context, options) {
+      super._onFirstRender?.(context, options);
+      this._unbindSpellTooltips = bindSpellDescriptionTooltips(this.element, this);
+    }
+
+    /** @override */
+    async close(options) {
+      this._unbindSpellTooltips?.();
+      this._unbindSpellTooltips = null;
+      clearSpellTooltip(this, true);
+      return super.close(options);
     }
 
     /** @override */
@@ -139,6 +158,34 @@ export function getSpellbookSheetClass() {
       this.render({ force: false });
     }
 
+    /** Action: Change the spellbook icon via FilePicker */
+    static async _onEditImage(event, target) {
+      event.preventDefault();
+      if (this.isEditable === false) return;
+
+      const field = target.dataset.edit || target.dataset.field || "img";
+      const current = foundry.utils.getProperty(this.document, field) || this.document.img;
+      const FilePickerClass = foundry.applications.apps?.FilePicker?.implementation
+        || globalThis.FilePicker;
+
+      if (!FilePickerClass) {
+        ui.notifications?.error("File picker is unavailable.");
+        return;
+      }
+
+      const fp = new FilePickerClass({
+        type: "image",
+        current,
+        callback: async (path) => {
+          await this.document.update({ [field]: path });
+          this.render(false);
+        },
+        top: this.position.top + 40,
+        left: this.position.left + 10
+      });
+      return fp.browse();
+    }
+
     /** Action: Open the three-pane spell picker */
     static async _onAddSpells(event, target) {
       new CompendiumSpellPicker({ spellbook: this.document }).render({ force: true });
@@ -167,6 +214,7 @@ export function getSpellbookSheetClass() {
     static async _onDeleteSpell(event, target) {
       const uuid = target.dataset.uuid;
       if (uuid) {
+        clearSpellTooltip(this, true);
         await removeSpellFromSpellbook(this.document, uuid);
         this.render(true);
       }

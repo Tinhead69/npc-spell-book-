@@ -8,6 +8,7 @@ import {
   clearWizardSpellMembershipCache,
   getSpellRulesVersion
 } from "./data.js";
+import { bindSpellDescriptionTooltips, clearSpellTooltip } from "./spell-tooltip.js";
 
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
 
@@ -21,9 +22,6 @@ const FALLBACK_SCHOOLS = {
   nec: "Necromancy",
   trs: "Transmutation"
 };
-
-const TOOLTIP_DELAY_MS = 2000;
-const TOOLTIP_ID = "npc-spellbook-spell-tooltip";
 
 export class CompendiumSpellPicker extends HandlebarsApplicationMixin(ApplicationV2) {
   constructor(options = {}) {
@@ -55,7 +53,7 @@ export class CompendiumSpellPicker extends HandlebarsApplicationMixin(Applicatio
 
     this._tooltipTimer = null;
     this._tooltipRow = null;
-    this._descCache = new Map();
+    this._unbindSpellTooltips = null;
   }
 
   static DEFAULT_OPTIONS = {
@@ -106,6 +104,36 @@ export class CompendiumSpellPicker extends HandlebarsApplicationMixin(Applicatio
     return CONFIG.DND5E?.spellSchools || FALLBACK_SCHOOLS;
   }
 
+  /** Scroll containers that should keep position across filter re-renders. */
+  static SCROLL_SELECTORS = [
+    ".spell-picker-scroll-container",
+    ".spell-picker-pack-list",
+    ".spell-picker-compendiums",
+    ".spell-picker-sidebar"
+  ];
+
+  _captureScroll() {
+    const positions = {};
+    for (const sel of CompendiumSpellPicker.SCROLL_SELECTORS) {
+      const el = this.element?.querySelector(sel);
+      if (el) positions[sel] = el.scrollTop;
+    }
+    this._savedScroll = positions;
+  }
+
+  _restoreScroll() {
+    if (!this._savedScroll || !this.element) return;
+    for (const [sel, top] of Object.entries(this._savedScroll)) {
+      const el = this.element.querySelector(sel);
+      if (el) el.scrollTop = top;
+    }
+  }
+
+  async _rerenderPreservingScroll() {
+    this._captureScroll();
+    await this.render({ force: false });
+  }
+
   /** @override */
   _onFirstRender(context, options) {
     super._onFirstRender?.(context, options);
@@ -114,105 +142,24 @@ export class CompendiumSpellPicker extends HandlebarsApplicationMixin(Applicatio
       if (!event.target?.matches?.("[data-search-input]")) return;
       this.searchQuery = event.target.value.toLowerCase().trim();
       clearTimeout(this._searchTimer);
-      this._searchTimer = setTimeout(() => this.render({ force: false }), 150);
+      this._searchTimer = setTimeout(() => this._rerenderPreservingScroll(), 150);
     });
 
-    this.element.addEventListener("pointerover", (event) => {
-      const row = event.target.closest?.(".spell-row[data-uuid]");
-      if (!row || !this.element.contains(row)) return;
-      const from = event.relatedTarget;
-      if (from && row.contains(from)) return;
-      this._scheduleSpellTooltip(row);
-    });
+    this._unbindSpellTooltips = bindSpellDescriptionTooltips(this.element, this);
+  }
 
-    this.element.addEventListener("pointerout", (event) => {
-      const row = event.target.closest?.(".spell-row[data-uuid]");
-      if (!row) return;
-      const to = event.relatedTarget;
-      if (to && row.contains(to)) return;
-      this._clearSpellTooltip(true);
-    });
+  /** @override */
+  _onRender(context, options) {
+    super._onRender?.(context, options);
+    this._restoreScroll();
   }
 
   /** @override */
   async close(options) {
-    this._clearSpellTooltip(true);
+    this._unbindSpellTooltips?.();
+    this._unbindSpellTooltips = null;
+    clearSpellTooltip(this, true);
     return super.close(options);
-  }
-
-  _scheduleSpellTooltip(row) {
-    this._clearSpellTooltip(false);
-    this._tooltipRow = row;
-    this._tooltipTimer = setTimeout(() => {
-      this._showSpellTooltip(row);
-    }, TOOLTIP_DELAY_MS);
-  }
-
-  _clearSpellTooltip(removeElement) {
-    if (this._tooltipTimer) {
-      clearTimeout(this._tooltipTimer);
-      this._tooltipTimer = null;
-    }
-    this._tooltipRow = null;
-    if (removeElement) {
-      document.getElementById(TOOLTIP_ID)?.remove();
-    }
-  }
-
-  async _showSpellTooltip(row) {
-    if (!row?.isConnected || this._tooltipRow !== row) return;
-
-    const uuid = row.dataset.uuid;
-    const title = row.querySelector(".spell-title")?.textContent?.trim() || "Spell";
-
-    let bodyHtml = this._descCache.get(uuid);
-    if (!bodyHtml) {
-      try {
-        const doc = await fromUuid(uuid);
-        const raw = doc?.system?.description?.value
-          || doc?.system?.description
-          || "<em>No description available.</em>";
-        const enricher = foundry.applications?.ux?.TextEditor?.implementation
-          || globalThis.TextEditor;
-        bodyHtml = enricher?.enrichHTML
-          ? await enricher.enrichHTML(String(raw), { async: true, relativeTo: doc })
-          : String(raw);
-      } catch (err) {
-        console.warn("NPC Spellbook | Failed to load spell description", uuid, err);
-        bodyHtml = "<em>Could not load spell description.</em>";
-      }
-      this._descCache.set(uuid, bodyHtml);
-    }
-
-    if (this._tooltipRow !== row || !row.isConnected) return;
-
-    let tip = document.getElementById(TOOLTIP_ID);
-    if (!tip) {
-      tip = document.createElement("div");
-      tip.id = TOOLTIP_ID;
-      tip.className = "npc-spellbook-tooltip";
-      document.body.appendChild(tip);
-    }
-
-    tip.innerHTML = `
-      <header class="npc-spellbook-tooltip-header">${foundry.utils.escapeHTML(title)}</header>
-      <div class="npc-spellbook-tooltip-body">${bodyHtml}</div>
-    `;
-
-    const rect = row.getBoundingClientRect();
-    const tipWidth = 380;
-    const left = Math.max(8, Math.min(rect.left + 24, window.innerWidth - tipWidth - 8));
-    tip.style.left = `${left}px`;
-    tip.style.top = `${Math.max(8, rect.bottom + 6)}px`;
-    tip.style.display = "block";
-
-    // Keep tooltip on-screen vertically
-    requestAnimationFrame(() => {
-      const tipRect = tip.getBoundingClientRect();
-      if (tipRect.bottom > window.innerHeight - 8) {
-        tip.style.top = `${Math.max(8, rect.top - tipRect.height - 6)}px`;
-      }
-    });
   }
 
   async _prepareContext(options) {
@@ -276,6 +223,7 @@ export class CompendiumSpellPicker extends HandlebarsApplicationMixin(Applicatio
       "system.school",
       "system.identifier",
       "system.source",
+      "flags.ddbimporter",
       "system.activation",
       "system.range",
       "system.target",
@@ -298,7 +246,7 @@ export class CompendiumSpellPicker extends HandlebarsApplicationMixin(Applicatio
         const name = entry.name || "";
         const nameKey = name.toLowerCase().trim();
         const uuid = entry.uuid || `Compendium.${pack.collection}.Item.${entry._id}`;
-        const rules = getSpellRulesVersion(entry.system);
+        const rules = getSpellRulesVersion(entry);
         const dedupeKey = `${level}|${nameKey}|${rules}`;
 
         if (level < 1 || !this.selectedLevels.has(level)) continue;
@@ -370,7 +318,7 @@ export class CompendiumSpellPicker extends HandlebarsApplicationMixin(Applicatio
     const rules = input?.dataset.rules ?? target.dataset.rules;
     if (!rules) return;
     this.rulesVersion = rules;
-    this.render({ force: false });
+    this._rerenderPreservingScroll();
   }
 
   static _onToggleLevel(event, target) {
@@ -384,7 +332,7 @@ export class CompendiumSpellPicker extends HandlebarsApplicationMixin(Applicatio
     } else if (this.selectedLevels.has(level)) this.selectedLevels.delete(level);
     else this.selectedLevels.add(level);
 
-    this.render({ force: false });
+    this._rerenderPreservingScroll();
   }
 
   static _onToggleSchool(event, target) {
@@ -398,7 +346,7 @@ export class CompendiumSpellPicker extends HandlebarsApplicationMixin(Applicatio
     } else if (this.selectedSchools.has(school)) this.selectedSchools.delete(school);
     else this.selectedSchools.add(school);
 
-    this.render({ force: false });
+    this._rerenderPreservingScroll();
   }
 
   static _onTogglePack(event, target) {
@@ -412,7 +360,7 @@ export class CompendiumSpellPicker extends HandlebarsApplicationMixin(Applicatio
     } else if (this.selectedPacks.has(pack)) this.selectedPacks.delete(pack);
     else this.selectedPacks.add(pack);
 
-    this.render({ force: false });
+    this._rerenderPreservingScroll();
   }
 
   static _onToggleLevelGroup(event, target) {
@@ -423,7 +371,7 @@ export class CompendiumSpellPicker extends HandlebarsApplicationMixin(Applicatio
     if (this.collapsedLevels.has(level)) this.collapsedLevels.delete(level);
     else this.collapsedLevels.add(level);
 
-    this.render({ force: false });
+    this._rerenderPreservingScroll();
   }
 
   static async _onAddSpell(event, target) {
@@ -431,10 +379,7 @@ export class CompendiumSpellPicker extends HandlebarsApplicationMixin(Applicatio
     const uuid = target.dataset.uuid;
     if (!uuid || !this.spellbook) return;
 
-    const scrollContainer = this.element?.querySelector(".spell-picker-scroll-container");
-    const scrollTop = scrollContainer ? scrollContainer.scrollTop : 0;
-
-    this._clearSpellTooltip(true);
+    clearSpellTooltip(this, true);
 
     await addSpellToSpellbook(this.spellbook, uuid);
     this.addedSessionUuids.add(uuid);
@@ -442,10 +387,7 @@ export class CompendiumSpellPicker extends HandlebarsApplicationMixin(Applicatio
     const spellName = (target.dataset.name || "").toLowerCase().trim();
     if (spellName) this.addedSessionNames.add(spellName);
 
-    await this.render({ force: false });
-
-    const restored = this.element?.querySelector(".spell-picker-scroll-container");
-    if (restored) restored.scrollTop = scrollTop;
+    await this._rerenderPreservingScroll();
 
     const sheet = this.spellbook.sheet;
     if (sheet?.rendered) sheet.render(false);
