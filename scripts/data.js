@@ -6,6 +6,18 @@ export const HOMEBREW_PACK_ID = "world:homebrew";
 /** Module flag on a world spell item: GM marked this as a wizard spell. */
 export const WIZARD_SPELL_FLAG = "wizardSpell";
 
+/**
+ * GM, Assistant, or Trusted Player — same module management rights as the GM.
+ * @param {User} [user]
+ * @returns {boolean}
+ */
+export function canManageSpellbooks(user = game.user) {
+  if (!user) return false;
+  if (user.isGM) return true;
+  const trusted = CONST?.USER_ROLES?.TRUSTED ?? 2;
+  return Number(user.role ?? 0) >= trusted;
+}
+
 export function getSpellbookSpells(spellbook) {
   return foundry.utils.getProperty(spellbook, `flags.${MODULE_ID}.spells`) || [];
 }
@@ -25,14 +37,14 @@ export function hasWizardSpellTag(spell) {
 }
 
 /**
- * Persist a GM decision that a world spell counts as a wizard spell.
+ * Persist a decision that a world spell counts as a wizard spell.
  * @param {Item} spellDoc
  * @returns {Promise<boolean>}
  */
 export async function markSpellAsWizard(spellDoc) {
   if (!spellDoc || typeof spellDoc.setFlag !== "function") return false;
-  if (!game.user?.isGM) {
-    ui.notifications?.warn("Only the GM can mark homebrew spells as wizard spells.");
+  if (!canManageSpellbooks()) {
+    ui.notifications?.warn("Only a GM or Trusted Player can mark homebrew spells as wizard spells.");
     return false;
   }
   await spellDoc.setFlag(MODULE_ID, WIZARD_SPELL_FLAG, true);

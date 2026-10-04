@@ -1,5 +1,6 @@
 import {
   MODULE_ID,
+  canManageSpellbooks,
   getSpellbookSpells,
   addSpellToSpellbook,
   removeSpellFromSpellbook,
@@ -112,10 +113,10 @@ export function getSpellbookSheetClass() {
       return this.document;
     }
 
-    /** GM + world item only (not after the book is in an actor inventory). */
+    /** GM/Trusted + world item only (not after the book is in an actor inventory). */
     _canEditSpellList() {
       const item = this.document;
-      return Boolean(game.user?.isGM && !(item?.isEmbedded || item?.actor));
+      return Boolean(canManageSpellbooks() && !(item?.isEmbedded || item?.actor));
     }
 
     /** @override */
@@ -187,7 +188,7 @@ export function getSpellbookSheetClass() {
       if (!looksLikeItem) return false;
 
       if (!this._canEditSpellList()) {
-        ui.notifications?.warn("Only the GM can add spells to a world spellbook before it is claimed.");
+        ui.notifications?.warn("Only a GM or Trusted Player can add spells to a world spellbook before it is claimed.");
         return true;
       }
 
@@ -319,9 +320,9 @@ export function getSpellbookSheetClass() {
       const item = this.document;
       if (!this._canEditSpellList()) {
         ui.notifications?.warn(
-          game.user?.isGM
+          canManageSpellbooks()
             ? "Spells cannot be added after the spellbook is in an actor's inventory."
-            : "Only the GM can add spells to a spellbook."
+            : "Only a GM or Trusted Player can add spells to a spellbook."
         );
         return;
       }
@@ -344,7 +345,7 @@ export function getSpellbookSheetClass() {
     /** Action: Clear all spells (GM + world item only) */
     static async _onClearSpellbook(event, target) {
       if (!this._canEditSpellList()) {
-        ui.notifications?.warn("Only the GM can clear a world spellbook before it is claimed.");
+        ui.notifications?.warn("Only a GM or Trusted Player can clear a world spellbook before it is claimed.");
         return;
       }
       const item = this.document;
@@ -364,7 +365,7 @@ export function getSpellbookSheetClass() {
     /** Action: Delete individual spell (GM + world item only) */
     static async _onDeleteSpell(event, target) {
       if (!this._canEditSpellList()) {
-        ui.notifications?.warn("Only the GM can edit spells on a world spellbook.");
+        ui.notifications?.warn("Only a GM or Trusted Player can edit spells on a world spellbook.");
         return;
       }
 

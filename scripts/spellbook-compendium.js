@@ -1,6 +1,7 @@
 import {
   MODULE_ID,
   HOMEBREW_PACK_ID,
+  canManageSpellbooks,
   addSpellToSpellbook,
   getSpellbookSpells,
   getWorldHomebrewSpells,
@@ -401,8 +402,8 @@ export class CompendiumSpellPicker extends HandlebarsApplicationMixin(Applicatio
    * @returns {Promise<boolean>} false if the GM cancelled (do not enable Homebrew)
    */
   async _offerHomebrewWizardTagging() {
-    if (!game.user?.isGM) {
-      ui.notifications?.warn("Only the GM can enable Homebrew spells.");
+    if (!canManageSpellbooks()) {
+      ui.notifications?.warn("Only a GM or Trusted Player can enable Homebrew spells.");
       return false;
     }
 
