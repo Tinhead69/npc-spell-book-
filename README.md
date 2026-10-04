@@ -1,6 +1,7 @@
 # NPC Spellbook (Foundry v13)
 
-A Foundry VTT module for **D&D 5e that adds lootable creates NPC wizard spellbooks that can be added to character sheets as loot.  Wizards can transcribe spells using Player's Handbook rules
+A Foundry VTT module for **D&D 5e (2014)** that adds lootable NPC wizard spellbooks. Wizards can transcribe spells using Player's Handbook rules, stored **independently** of the dnd5e system spellbook.
+
 ## Requirements
 
 - Foundry VTT **v13.351+**
@@ -9,8 +10,8 @@ A Foundry VTT module for **D&D 5e that adds lootable creates NPC wizard spellboo
 ## Features
 
 - Create **Spellbook** loot items (Create Item dialog or right-click → Mark as Spellbook)
-- GM manages NPC spell lists via a filtered wizard-spell compendium browser (including a **Homebrew** group for world Items; GM marks which are wizard spells)
-- Wizards can **Study Spellbook** / **Transcribe** to copy spells into their own book and the monetary value for 
+- GM manages NPC spell lists via drag-and-drop or a filtered wizard-spell compendium browser (including a **Homebrew** group for world Items; GM marks which are wizard spells)
+- Wizards **Study Spellbook** / **Transcribe** to copy spells into their own book
 - Side-by-side compare of loot book contents vs the wizard's known spells
 - **5e 2014 mechanics** enforced by wizard level:
   - Max spell level = `ceil(wizard level / 2)` (PHB spell slot progression)
@@ -30,26 +31,21 @@ A Foundry VTT module for **D&D 5e that adds lootable creates NPC wizard spellboo
 
 ### GM — Create an NPC spellbook
 
-1. Items → **Create Item** → choose **Spellbook**
-2. The item sheet (NPC Spellbook) open
-3. To add spells, click the add spell button.  This opens a spell picker window where you can filter spells by level/school of magic and world compendiums.
-4. Clicking the Add button in this window will copy the spell to the spellbook.
-5. The spellbook can be dragged into the inventory of any character or NPC.
+1. Items → **Create Item** → choose **Spellbook**, or right-click a Loot item → **Mark as Spellbook**
+2. Open the item sheet (NPC Spellbook)
+3. Drag wizard spells from the sidebar/compendiums onto the sheet, or use **Add Spell** (CPR/GPS packs are grouped when present; **Homebrew** lists world Items spells — the GM confirms which count as wizard spells)
 
 ### Player — Transcribe spells
 
-1. Open the spellbook 
-2. Your character should be highlighted at the top.
+1. Open the spellbook (or right-click in Items directory → **Study Spellbook**)
+2. Select your wizard character
 3. Spells above your max level are blocked; spells already on the actor show as **In Spellbook**
 4. Click **Transcribe** and confirm (wealth is checked/deducted across all coin types if settings allow)
 
-### GM - Transcribe spells
+### View transcribed spells
 
-1.  Open the spellbook
-2.  Click Transcribe spells and select the character you wish to add the spells to from the drop down box.
-3.  Spells above the max level of the character are automatically blocked; Spells already on the actor show as "**In Spellbook**
-4.  Click the **Transcribe** button and the spell will be added to the characters spellbook and marked as prepared.
-   
+On any wizard PC sheet, click **Transcribed Spells** in the header.
+
 ## Module Settings
 
 | Setting | Default | Description |

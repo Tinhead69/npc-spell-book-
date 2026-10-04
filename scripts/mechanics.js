@@ -227,9 +227,10 @@ function buildSpellbookItemData(spellDoc, sourceSpellbook) {
   data.img = spellDoc.img;
 
   data.system = data.system ?? {};
+  // Wizards prepare transcribed spells so they appear ready on the sheet.
   data.system.preparation = foundry.utils.mergeObject(
     data.system.preparation ?? {},
-    { mode: "prepared", prepared: false },
+    { mode: "prepared", prepared: true },
     { inplace: false }
   );
 
