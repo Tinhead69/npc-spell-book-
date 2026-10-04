@@ -18,7 +18,7 @@ A Foundry VTT module for **D&D 5e (2014)** that adds lootable NPC wizard spellbo
   - Cost: **50 gp per spell level**
   - Time: **2 hours per spell level**
 - **Currency:** affordability and deduction use the wizard's **full purse** (PP, GP, EP, SP, CP) converted with dnd5e rates — not GP alone. The UI shows total wealth as a GP equivalent.
-- Transcribed spells are also logged in module flags (`Transcribed Spells` on the character sheet)
+- hovering over a spell in either the lootable spellbook (not actor spellbook), spell picker sheet or the transcribe spell sheet provides a tool tip description of the spell.
 - Does **not** modify the built-in dnd5e spellbook or spell preparation
 - When a spellbook is owned by a player, only a GM or Trusted Player can add/clear/delete spells; other players can still open **Transcribe**
 
