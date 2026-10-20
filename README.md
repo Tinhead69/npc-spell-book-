@@ -1,83 +1,27 @@
-# NPC Spellbook (Foundry v13)
+# Merchant NPC
 
-A Foundry VTT module for **D&D 5e (2014)** that adds lootable NPC wizard spellbooks. Wizards can transcribe spells using Player's Handbook rules, stored **independently** of the dnd5e system spellbook.
+An installable Foundry VTT module for Foundry 13.351 and D&D 5e 5.0.0.
 
-## Requirements
+## GitHub distribution
 
-- Foundry VTT **v13.351+**
-- [D&D 5e system](https://github.com/foundryvtt/dnd5e) **3.0+**
+Repository: [Tinhead69/Tinheads-Merchant-NPC](https://github.com/Tinhead69/Tinheads-Merchant-NPC)  
+Foundry manifest URL: `https://raw.githubusercontent.com/Tinhead69/Tinheads-Merchant-NPC/main/module.json`  
+Release download URL: `https://github.com/Tinhead69/Tinheads-Merchant-NPC/releases/download/v0.1.1/merchant-npc-0.1.1.zip`
 
-## Features
+In Foundry's **Install Module** screen, paste the manifest URL. For each release, create a GitHub release whose tag matches the version (for example, `v0.1.1`) and attach the ZIP with the exact filename shown in the release download URL above. Update the version and download URL in `module.json` for subsequent releases.
 
-- Create **Spellbook** loot items (Create Item dialog or right-click → Mark as Spellbook)
-- GM manages NPC spell lists via drag-and-drop or a filtered wizard-spell compendium browser (including a **Homebrew** group for world Items; GM marks which are wizard spells)
-- Wizards **Study Spellbook** / **Transcribe** to copy spells into their own book
-- Side-by-side compare of loot book contents vs the wizard's known spells
-- **5e 2014 mechanics** enforced by wizard level:
-  - Max spell level = `ceil(wizard level / 2)` (PHB spell slot progression)
-  - Cost: **50 gp per spell level**
-  - Time: **2 hours per spell level**
-- **Currency:** affordability and deduction use the wizard's **full purse** (PP, GP, EP, SP, CP) converted with dnd5e rates — not GP alone. The UI shows total wealth as a GP equivalent.
-- hovering over a spell in either the lootable spellbook (not actor spellbook), spell picker sheet or the transcribe spell sheet provides a tool tip description of the spell.
-- Does **not** modify the built-in dnd5e spellbook or spell preparation
-- When a spellbook is owned by a player, only a GM or Trusted Player can add/clear/delete spells; other players can still open **Transcribe**
+## Install
 
-## Installation
+Copy the `merchant-npc` folder into your Foundry `Data/modules` directory, then enable **Merchant NPC** in the world's Manage Modules window. If packaging for a module manifest, zip the contents with `module.json` at the archive root.
 
-1. Copy this folder to `{FoundryData}/modules/npc-spell-book`
-2. Enable the module in your world (requires dnd5e)
+## Use
 
-## Usage
+- Open an NPC actor sheet and click **Shop** in its header, or use **Open Merchant Shop** from the Actors directory context menu.
+- GMs can add world items with the selector, drag items from the Items sidebar or a compendium onto the shop, remove stock, and choose compendiums for random stock generation.
+- Set each item's price in its D&D 5e item data before listing it. Stock quantity is tracked by the shop; a purchase sells one unit.
+- Players choose a character they own and click **Buy**. The module totals that character's `system.currency` denominations, checks the exact value against the price, deducts the price, adds the item to the character, credits the merchant, and reduces stock.
+- Merchant stock is saved in the NPC actor's `merchant-npc.stock` flag; merchant funds use the NPC's normal D&D 5e currency fields.
 
-### GM — Create an NPC spellbook
+## Notes
 
-1. Items → **Create Item** → choose **Spellbook**, or right-click a Loot item → **Mark as Spellbook**
-2. Open the item sheet (NPC Spellbook)
-3. Drag wizard spells from the sidebar/compendiums onto the sheet, or use **Add Spell** (CPR/GPS packs are grouped when present; **Homebrew** lists world Items spells — the GM confirms which count as wizard spells)
-
-### Player — Transcribe spells
-
-1. Open the spellbook (or right-click in Items directory → **Study Spellbook**)
-2. Select your wizard character
-3. Spells above your max level are blocked; spells already on the actor show as **In Spellbook**
-4. Click **Transcribe** and confirm (wealth is checked/deducted across all coin types if settings allow)
-
-### View transcribed spells
-
-On any wizard PC sheet, click **Transcribed Spells** in the header.
-
-## Module Settings
-
-| Setting | Default | Description |
-|---------|---------|-------------|
-| Deduct Gold on Transcription | On | Deducts 50 gp × spell level from the wizard's total currency (all denominations) |
-| Require Sufficient Gold | On | Blocks transcription unless the wizard's total coin wealth covers the ink cost |
-
-## Development
-
-```
-npc-spell-book/
-├── module.json
-├── scripts/
-│   ├── main.js
-│   ├── data.js
-│   ├── mechanics.js
-│   ├── spellbook-sheet.js
-│   ├── spellbook-compendium.js
-│   ├── spell-tooltip.js
-│   ├── transcribe-dialog.js
-│   └── learn-dialog.js
-├── templates/
-│   ├── spellbook-sheet.hbs
-│   ├── transcribe-spells.hbs
-│   ├── spell-picker.hbs
-│   └── …
-├── lang/en.json
-└── styles/spellbook.css
-```
-
-Symlink the folder into your Foundry modules directory for live reload during development.
-
-## License
-
-MIT
+This initial version handles the standard D&D 5e coin denominations (pp, gp, ep, sp, cp), converts currency to the exact copper value for affordability, and re-denominates the remaining balance. It assumes item prices use the standard denomination values and the `system.price.value` plus `system.price.denomination` data fields. It does not apply discounts, taxes, or quantity multipliers.
