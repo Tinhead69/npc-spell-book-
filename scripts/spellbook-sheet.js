@@ -181,7 +181,8 @@ export function getSpellbookSheetClass() {
      */
     async _onDropSpell(event) {
       event.preventDefault();
-      const data = TextEditor.getDragEventData(event);
+      const TextEditorClass = foundry.applications.ux.TextEditor.implementation;
+      const data = TextEditorClass.getDragEventData(event);
       if (!data?.type && !data?.uuid) return false;
 
       const looksLikeItem = !data.type || data.type === "Item" || data.type === "Item5e";
