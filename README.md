@@ -1,4 +1,4 @@
-# NPC Spell Book Creator
+# Tinhead's NPC Spell Book Creator
 
 Ever wanted your NPC wizards to have their own spell book?  Well here's your chance.  
 This module creates a lootable NPC spellbook that once found, can be interacted with by the wizard that finds it.  Interactions follow current D&D 5e rules and include costs and durations for transcribing spells into their own spell books.
