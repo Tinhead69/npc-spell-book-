@@ -41,7 +41,7 @@ The spell list shows the casting time, range, duration, target and components fo
 
 Clicking add spell will add the required spell to the spellbook sheet and change the button to read Spell added.  You can also search for spells by name using the search bar at the top.  Spell levels can also be collapsed to make it easier to select other levels.
 
-![Spells_added](Screenshots/spells-added.png)
+![Spells_added](Screenshots/spell-added.png)
 
 Once you have finished adding the spells to the book.  You can close the sheet by clicking the close window [x] in the top right hand corner of the sheet.  This returns you to the spell book sheet.
 
