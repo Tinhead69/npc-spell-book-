@@ -60,7 +60,7 @@ The monetary and time cost for transcribing the spell are shown in the transcrib
 
 Spells that are transcribed start as unprepared in the spellbook and can be prepared by the wizard when they next learn their spells.
 
-![Spells_in_spellbook])Screenshots/admiral-nalonia.png)
+![Spells_in_spellbook](Screenshots/admiral-nalonia.png)
 
 
 
