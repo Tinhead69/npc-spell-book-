@@ -21,7 +21,7 @@ The module adds a spellbook option under the create item menu. Add the name of t
 
 You are then presented with the new spellbook sheet.  Here you can click the book icon to change the item icon, change the name of the spellbook by clicking 'New Spellbook' or add new spells.  Once spells are added to the book, they will be displayed here and ready to transcribe.  You can also clear the spellbook if you add too many spells.
 
-![Spellbook_Sheet](new-spellbook-sheet.png)
+![Spellbook_Sheet](Screenshots/new-spellbook-sheet.png)
 
 Click Add Spells to open the spell selector sheet.  This may take a moment to load as it checks the compendiums installed in your world.
 
