@@ -2,7 +2,7 @@
   "id": "Tinheads-npc-spell-book",
   "title": "Tinhead's NPC Spellbook",
   "description": "Lootable NPC wizard spellbooks that let wizard PCs transcribe spells using 5e 2014 rules, independent of the built-in spellbook.",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "compatibility": {
     "minimum": "13",
     "verified": "14"
