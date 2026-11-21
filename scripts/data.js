@@ -1,5 +1,10 @@
 export const MODULE_ID = "npc-spell-book";
 
+export function isNpcSpellbook(item) {
+  // Reading stored flags directly also works when Foundry has not activated the scope.
+  return Boolean(item?.flags?.[MODULE_ID]?.isSpellbook);
+}
+
 /** Virtual pack id for world Items spells in the Add Spell picker. */
 export const HOMEBREW_PACK_ID = "world:homebrew";
 

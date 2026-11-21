@@ -1,11 +1,7 @@
-import { MODULE_ID } from "./data.js";
+import { isNpcSpellbook } from "./data.js";
 import { isWizard } from "./mechanics.js";
 import { openTranscribeDialog } from "./transcribe-dialog.js";
-import { getSpellbookSheetClass } from "./spellbook-sheet.js";
-
-function isNpcSpellbook(item) {
-  return Boolean(item?.getFlag?.(MODULE_ID, "isSpellbook"));
-}
+import { getSpellbookSheetClass, renderDefaultItemSheet } from "./spellbook-sheet.js";
 
 function getOwnerActor(item) {
   const owner = item?.actor;
@@ -19,18 +15,15 @@ function canOwnerTranscribe(item) {
   return isWizard(owner);
 }
 
-function openSpellbookSheet(item) {
+async function openSpellbookSheet(item) {
   if (!item || !isNpcSpellbook(item)) return;
   try {
-    if (item.sheet) {
-      item.sheet.render(true);
-      return;
-    }
+    const SpellbookSheet = getSpellbookSheetClass();
+    const sheet = item.sheet ?? new SpellbookSheet({ document: item });
+    await sheet.render(true);
   } catch (err) {
-    console.warn("NPC Spellbook | item.sheet.render failed, falling back", err);
+    await renderDefaultItemSheet(item, true, undefined, err);
   }
-  const SpellbookSheet = getSpellbookSheetClass();
-  new SpellbookSheet({ document: item }).render({ force: true });
 }
 
 function tryTranscribe(item) {

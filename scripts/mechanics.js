@@ -153,7 +153,7 @@ export async function deductGold(actor, amount) {
     remaining -= coins * per;
   }
 
-  await actor.update(update);
+  if (!await actor.update(update)) throw new Error("The gold payment was not saved.");
 }
 
 export { isWizardSpell };
@@ -331,24 +331,38 @@ export async function transcribeSpell(wizard, spellEntry, sourceSpellbook, optio
   const spellLevel = Number(spellEntry.level ?? spellDoc.system?.level ?? 0);
   const cost = getTranscriptionCost(spellLevel);
 
-  if (deduct && cost > 0) {
-    await deductGold(wizard, cost);
+  const itemData = buildSpellbookItemData(spellDoc, sourceSpellbook);
+  const [createdSpell] = await wizard.createEmbeddedDocuments("Item", [itemData]);
+  if (!createdSpell) throw new Error("The spell could not be added to the wizard's spellbook.");
+
+  try {
+    if (deduct && cost > 0) await deductGold(wizard, cost);
+  } catch (error) {
+    try {
+      const removed = await wizard.deleteEmbeddedDocuments("Item", [createdSpell.id]);
+      if (!removed.length) throw new Error("Foundry did not remove the copied spell.");
+    } catch (rollbackError) {
+      console.error("NPC Spellbook | Could not remove the spell after payment failed", rollbackError);
+      throw new Error("Payment failed and the copied spell could not be removed. Ask your GM to check the character sheet.", { cause: error });
+    }
+    throw error;
   }
 
-  const itemData = buildSpellbookItemData(spellDoc, sourceSpellbook);
-  await wizard.createEmbeddedDocuments("Item", [itemData]);
-
-  const transcribed = Array.from(getTranscribedSpells(wizard));
-  transcribed.push({
-    uuid: spellDoc.uuid,
-    name: spellDoc.name,
-    level: spellLevel,
-    img: spellDoc.img,
-    sourceItemId: sourceSpellbook.id,
-    sourceItemName: sourceSpellbook.name,
-    transcribedAt: Date.now()
-  });
-  await wizard.setFlag(MODULE_ID, "transcribedSpells", transcribed);
+  try {
+    const transcribed = Array.from(getTranscribedSpells(wizard));
+    transcribed.push({
+      uuid: spellDoc.uuid,
+      name: spellDoc.name,
+      level: spellLevel,
+      img: spellDoc.img,
+      sourceItemId: sourceSpellbook.id,
+      sourceItemName: sourceSpellbook.name,
+      transcribedAt: Date.now()
+    });
+    await wizard.setFlag(MODULE_ID, "transcribedSpells", transcribed);
+  } catch (error) {
+    console.warn("NPC Spellbook | Spell transcribed, but the transcription log could not be saved", error);
+  }
 
   return true;
 }

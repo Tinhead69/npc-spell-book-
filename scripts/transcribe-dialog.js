@@ -265,18 +265,26 @@ export class TranscribeSpellsApp extends HandlebarsApplicationMixin(ApplicationV
     const original = target.innerHTML;
     target.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Transcribing…`;
 
-    const success = await transcribeSpell(wizard, spellEntry, this.spellbook, {
-      deductGold: true,
-      requireGold: true
-    });
+    let success;
+    try {
+      success = await transcribeSpell(wizard, spellEntry, this.spellbook, {
+        deductGold: true,
+        requireGold: true
+      });
+    } catch (error) {
+      console.error("NPC Spellbook | Transcription failed", error);
+      ui.notifications?.error(error.message || "Could not transcribe the spell.");
+      return;
+    } finally {
+      target.disabled = false;
+      target.innerHTML = original;
+    }
 
     if (success) {
       ui.notifications?.info(`Transcribed "${spellEntry.name}" into ${wizard.name}'s spellbook.`);
       // Refresh actor reference so item list includes the new spell.
       this.selectedWizard = game.actors.get(wizard.id) || wizard;
     } else {
-      target.disabled = false;
-      target.innerHTML = original;
       const evaluation = evaluateTranscription(wizard, spellEntry, { requireGold: true, checkAfford: true });
       ui.notifications?.warn(evaluation.reasonText || evaluation.reasonKey || "Could not transcribe spell.");
     }

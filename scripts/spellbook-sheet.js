@@ -16,6 +16,28 @@ import { bindSpellDescriptionTooltips, clearSpellTooltip } from "./spell-tooltip
 
 let SpellbookSheetClass = null;
 
+export async function renderDefaultItemSheet(item, options, legacyOptions, error) {
+  console.warn("NPC Spellbook | Custom sheet failed to open", error);
+  try {
+    const registrations = Object.values(CONFIG.Item?.sheetClasses?.[item.type] ?? {});
+    const alternatives = registrations.filter(({ cls }) => cls && cls !== SpellbookSheetClass);
+    const DefaultSheet = (alternatives.find(entry => entry.default) ?? alternatives[0])?.cls;
+    if (!DefaultSheet) throw new Error(`No standard item sheet registered for ${item.type}.`);
+
+    const ApplicationV2 = foundry.applications.api.ApplicationV2;
+    if (DefaultSheet.prototype instanceof ApplicationV2) {
+      return await new DefaultSheet({ document: item }).render(options, legacyOptions);
+    }
+    const { force = false, ...renderOptions } = typeof options === "boolean"
+      ? { ...legacyOptions, force: options }
+      : options;
+    return await new DefaultSheet(item).render(force, renderOptions);
+  } catch (fallbackError) {
+    console.error("NPC Spellbook | Standard item sheet failed to open", fallbackError);
+    ui.notifications?.error("Could not open the spellbook or its standard item sheet. See the console for details.");
+  }
+}
+
 /**
  * Prefer ItemSheetV2 (built-in drop pipeline); fall back to DocumentSheetV2.
  */
@@ -111,6 +133,14 @@ export function getSpellbookSheetClass() {
 
     get item() {
       return this.document;
+    }
+
+    async render(options = {}, legacyOptions) {
+      try {
+        return await super.render(options, legacyOptions);
+      } catch (error) {
+        return renderDefaultItemSheet(this.document, options, legacyOptions, error);
+      }
     }
 
     /** GM/Trusted + world item only (not after the book is in an actor inventory). */

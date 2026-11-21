@@ -1,4 +1,4 @@
-import { MODULE_ID } from "./data.js";
+import { MODULE_ID, isNpcSpellbook } from "./data.js";
 import { getSpellbookSheetClass } from "./spellbook-sheet.js";
 import {
   enhanceSpellbookInventoryRows,
@@ -28,7 +28,7 @@ function patchItemSheetClass() {
 
   const original = proto._getSheetClass;
   proto._getSheetClass = function _npcSpellbookGetSheetClass() {
-    if (this.getFlag(MODULE_ID, "isSpellbook")) {
+    if (isNpcSpellbook(this)) {
       return getSpellbookSheetClass();
     }
     return original.call(this);
