@@ -1,8 +1,13 @@
-export const MODULE_ID = "npc-spell-book";
+export const MODULE_ID = "Tinheads-npc-spell-book";
+const LEGACY_FLAG_SCOPE = "npc-spell-book";
+
+export function getSpellbookFlag(document, key) {
+  return document?.flags?.[MODULE_ID]?.[key] ?? document?.flags?.[LEGACY_FLAG_SCOPE]?.[key];
+}
 
 export function isNpcSpellbook(item) {
   // Reading stored flags directly also works when Foundry has not activated the scope.
-  return Boolean(item?.flags?.[MODULE_ID]?.isSpellbook);
+  return Boolean(getSpellbookFlag(item, "isSpellbook"));
 }
 
 /** Virtual pack id for world Items spells in the Add Spell picker. */
@@ -24,7 +29,7 @@ export function canManageSpellbooks(user = game.user) {
 }
 
 export function getSpellbookSpells(spellbook) {
-  return foundry.utils.getProperty(spellbook, `flags.${MODULE_ID}.spells`) || [];
+  return getSpellbookFlag(spellbook, "spells") ?? [];
 }
 
 /**
@@ -34,11 +39,7 @@ export function getSpellbookSpells(spellbook) {
  */
 export function hasWizardSpellTag(spell) {
   if (!spell || typeof spell !== "object") return false;
-  if (typeof spell.getFlag === "function" && spell.getFlag(MODULE_ID, WIZARD_SPELL_FLAG) === true) {
-    return true;
-  }
-  const flags = spell.flags?.[MODULE_ID];
-  return flags?.[WIZARD_SPELL_FLAG] === true;
+  return getSpellbookFlag(spell, WIZARD_SPELL_FLAG) === true;
 }
 
 /**

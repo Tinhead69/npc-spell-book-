@@ -28,7 +28,7 @@ export class StudySpellbookDialog extends HandlebarsApplicationMixin(Application
 
   static PARTS = {
     body: {
-      template: "modules/npc-spell-book/templates/learn-spells.hbs"
+      template: `modules/${Data.MODULE_ID}/templates/learn-spells.hbs`
     }
   };
 

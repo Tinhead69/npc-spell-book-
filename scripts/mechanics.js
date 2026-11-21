@@ -1,4 +1,4 @@
-import { MODULE_ID, isWizardSpell } from "./data.js";
+import { MODULE_ID, getSpellbookFlag, isWizardSpell } from "./data.js";
 
 const GP_PER_LEVEL = 50;
 const HOURS_PER_LEVEL = 2;
@@ -9,7 +9,7 @@ const HOURS_PER_LEVEL = 2;
  * @returns {Array}
  */
 export function getTranscribedSpells(actor) {
-  return actor?.getFlag(MODULE_ID, "transcribedSpells") ?? [];
+  return getSpellbookFlag(actor, "transcribedSpells") ?? [];
 }
 
 /**
@@ -197,7 +197,7 @@ export function actorKnowsSpell(actor, spellEntry) {
     const sourceUuid = item._stats?.compendiumSource ?? item.flags?.core?.sourceId ?? "";
     if (targetUuid && sourceUuid && sourceUuid === targetUuid) return true;
 
-    const moduleSource = item.flags?.[MODULE_ID]?.sourceSpellUuid;
+    const moduleSource = getSpellbookFlag(item, "sourceSpellUuid");
     if (targetUuid && moduleSource === targetUuid) return true;
 
     return false;
